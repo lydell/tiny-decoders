@@ -456,15 +456,20 @@ function keyErrorMessage(
   message: string
 ): string {
   const prefix = typeof key === "string" ? "object" : "array";
-  const at = typeof key === "string" ? JSON.stringify(key) : String(key);
+  const at =
+    typeof key === "string" ? truncate(JSON.stringify(key)) : String(key);
   const missing =
-    typeof key !== "string" || value == null || typeof value !== "object"
-      ? ""
-      : Object.prototype.hasOwnProperty.call(value, key)
+    typeof key === "number"
+      ? Array.isArray(value) && (key < 0 || key >= value.length)
+        ? " (out of bounds)"
+        : ""
+      : value == null || typeof value !== "object"
         ? ""
-        : key in value
-          ? " (prototype)"
-          : " (missing)";
+        : Object.prototype.hasOwnProperty.call(value, key)
+          ? ""
+          : key in value
+            ? " (prototype)"
+            : " (missing)";
   return [
     `${prefix}[${at}]`,
     keyErrorPrefixRegex.test(message) ? "" : ": ",
