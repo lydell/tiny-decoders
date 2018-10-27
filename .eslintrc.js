@@ -15,6 +15,7 @@ module.exports = {
     "no-console": "error",
     "prettier/prettier": "error",
     "sort-imports-es6-autofix/sort-imports-es6": "error",
+    "symbol-description": "off",
   }),
   overrides: [
     {
@@ -30,6 +31,7 @@ module.exports = {
     {
       files: ["test/*.js"],
       env: { node: true, jest: true },
+      globals: baseRules.browserEnv(),
       rules: baseRules({ builtin: false, jest: true }),
     },
   ],

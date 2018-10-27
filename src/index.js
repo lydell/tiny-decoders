@@ -239,12 +239,14 @@ export function repr(
     printExtraProps = true,
     maxArrayChildren = 5,
     maxObjectChildren = 3,
+    identifierRegex = /^\w{1,20}$/,
   }: {|
     key?: string | number,
     recurse?: boolean,
     printExtraProps?: boolean,
     maxArrayChildren?: number,
     maxObjectChildren?: number,
+    identifierRegex?: RegExp,
   |} = {}
 ): string {
   function extraProps(str: string): string {
@@ -276,7 +278,7 @@ export function repr(
     }
 
     return filteredKeys.length > 0
-      ? `${str} (extra props: ${repr(obj2, { key, printExtraProps: false })})`
+      ? `${str} (properties: ${repr(obj2, { key, printExtraProps: false })})`
       : str;
   }
 
@@ -295,18 +297,22 @@ export function repr(
     }
 
     if (typeof value === "string") {
+      const printed = truncate(JSON.stringify(value));
       // If the string could be mistaken for a number, prefix it with "(string)"
       // to make it entirely clear that it is in fact a string.
-      return !isNaN(Number(value)) || value === "NaN"
-        ? `(string) ${JSON.stringify(value)}`
-        : truncate(JSON.stringify(value));
+      return (!isNaN(Number(value)) || value === "NaN") &&
+        value !== "" &&
+        !/\s/.test(value)
+        ? `(string) ${printed}`
+        : printed;
     }
 
     // $FlowIgnore: Flow doesn't know about Symbols yet.
     if (typeof value === "symbol") {
-      return value.description == null
-        ? type
-        : `${type}(${truncate(JSON.stringify(value.description))})`;
+      // This could use `Symbol.prototype.description` when it has gained better
+      // support.
+      const description = String(value).replace(/^Symbol\(|\)$/g, "");
+      return `${type}(${truncate(JSON.stringify(description))})`;
     }
 
     if (typeof value === "function") {
@@ -320,14 +326,19 @@ export function repr(
     // Don't use `value instanceof Date` to support cross-iframe values.
     if (type === "Date") {
       const printed =
-        typeof value.toISOString === "function"
+        typeof value.toISOString === "function" &&
+        typeof value.getTime === "function" &&
+        !isNaN(value.getTime())
           ? value.toISOString()
           : String(value);
       return extraProps(`${type}(${printed})`);
     }
 
     if (type === "Error" && typeof value.message === "string") {
-      const name = typeof value.name === "string" ? value.name : type;
+      const name =
+        typeof value.name === "string" && identifierRegex.test(value.name)
+          ? value.name
+          : type;
       return extraProps(`${name}(${truncate(JSON.stringify(value.message))})`);
     }
 
@@ -374,9 +385,14 @@ export function repr(
       !Array.isArray(value)
     ) {
       const keys = Object.keys(value);
+      const rawName = value.constructor.name;
+      const name =
+        typeof rawName === "string" && identifierRegex.test(rawName)
+          ? rawName
+          : type;
 
       if (!recurse) {
-        return `${type}(${keys.length})`;
+        return `${name}(${keys.length})`;
       }
 
       const newKeys =
@@ -397,7 +413,8 @@ export function repr(
         )
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);
 
-      return `{${items.join(", ")}}`;
+      const prefix = name === "Object" ? "" : `${name} `;
+      return `${prefix}{${items.join(", ")}}`;
     }
 
     const length =
