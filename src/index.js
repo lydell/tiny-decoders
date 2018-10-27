@@ -35,7 +35,9 @@ export function mixedDict(value: mixed): { [string]: mixed } {
   return value;
 }
 
-export function constant<T>(constantValue: T): mixed => T {
+export function constant<T: boolean | number | string | void | null>(
+  constantValue: T
+): mixed => T {
   return function constantDecoder(value: mixed): T {
     if (value !== constantValue) {
       throw new TypeError(
