@@ -3,15 +3,24 @@
 Type-safe data validation for the minimalist, inspired by [nvie/decoders] and
 [Elm’s JSON Decoders].
 
-[nvie/decoders]: https://github.com/nvie/decoders
-[elm’s json decoders]:
-  https://package.elm-lang.org/packages/elm/json/latest/Json-Decode
+Supports [Flow] and [TypeScript].
 
 ## Installation
 
-```
-npm install tiny-decoders
-```
+Not yet :)
+
+## Usage
+
+TODO
+
+## Comparison with [nvie/decoders]
+
+|                | decoders                                  | tiny-decoders                  |
+| -------------- | ----------------------------------------- | ------------------------------ |
+| Size           | ~28 kB minified (~6 kB gzipped)           | ~5 kB minified (<2 kB gzipped) |
+| Dependencies   | Yes                                       | No                             |
+| Error messages | Really fancy                              | Kinda good (size tradeoff)    |
+| Built-in functions      | Type checking + validation (regex, email) | Type checking only (validation can be plugged in)             |
 
 ## Development
 
@@ -49,10 +58,13 @@ You can need [Node.js] 10 and npm 6.
 [babel]: https://babeljs.io/
 [cors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
 [dtslint]: https://github.com/Microsoft/dtslint/
+[elm’s json decoders]:
+  https://package.elm-lang.org/packages/elm/json/latest/Json-Decode
 [eslint]: https://eslint.org/
 [flow]: https://flow.org/
 [jest]: https://jestjs.io/
 [node.js]: https://nodejs.org/en/
 [npm]: https://www.npmjs.com/
+[nvie/decoders]: https://github.com/nvie/decoders
 [prettier]: https://prettier.io/
 [typescript]: http://www.typescriptlang.org/
