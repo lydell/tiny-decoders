@@ -155,7 +155,11 @@ export function fieldDeep<T>(
 
 export function optional<T, U>(
   decoder: mixed => T,
-  defaultValue?: U
+  // This parameter is implicitly optional since `U` is allowed to be `void`
+  // (undefined), but don’ mark it with a question mark `defaultValue?: U`
+  // because that causes `name: optional(string)` in the `User` test in flow.js
+  // to match `match: string`!
+  defaultValue: U
 ): mixed => T | U {
   return function optionalDecoder(value: mixed): T | U {
     if (value == null) {
