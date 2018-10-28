@@ -190,6 +190,174 @@ at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 `);
 });
 
+test("when fieldAndThen isn’t enough", () => {
+  // In this case one needs to look at several boolean fields to decide how to
+  // decode the rest of the object. So we can’t use `fieldAndThen` as in the
+  // last test. Instead we use the more general `andThen`.
+  const persons: mixed = [
+    {
+      isUser: true,
+      name: "John Doe",
+      email: "john@example.com",
+    },
+    {
+      isUser: true,
+      isAdmin: true,
+      name: "Jane Doe",
+      email: "jane@example.com",
+      privileges: ["edit", "delete"],
+    },
+    {
+      isUser: false,
+      isAdmin: true,
+      privileges: ["publish"],
+    },
+    {
+      isAdmin: true,
+      isPartner: true,
+      privileges: ["publish"],
+      affiliation: "investor",
+    },
+    {
+      isUser: true,
+      isAdmin: true,
+      isPartner: true,
+      name: "Donald Duck",
+      email: "don@example.org",
+      privileges: ["edit"],
+      affiliation: "investor",
+    },
+    {
+      isUser: true,
+      name: "John Doe",
+      email: "john@example.com",
+      // This user has somehow tried to gain admin privileges!
+      privileges: ["publish", "edit", "delete"],
+    },
+  ];
+
+  // This is how we’d like to represent the data in a type-safe way.
+  type Person = {|
+    user: ?{|
+      name: string,
+      email: string,
+    |},
+    admin: ?{|
+      privileges: Array<string>,
+    |},
+    partner: ?{|
+      affiliation: string,
+    |},
+  |};
+
+  type Roles = {|
+    isUser: boolean,
+    isAdmin: boolean,
+    isPartner: boolean,
+  |};
+
+  const rolesDecoder: mixed => Roles = record({
+    isUser: optional(boolean, false),
+    isAdmin: optional(boolean, false),
+    isPartner: optional(boolean, false),
+  });
+
+  function getPersonDecoder(roles: Roles): mixed => Person {
+    return group({
+      user: roles.isUser
+        ? record({
+            name: string,
+            email: string,
+          })
+        : () => null,
+      admin: roles.isAdmin
+        ? record({
+            privileges: array(string),
+          })
+        : () => null,
+      partner: roles.isPartner
+        ? record({
+            affiliation: string,
+          })
+        : () => null,
+    });
+  }
+
+  // First get the roles, and then get a person decoder based on the roles.
+  const personDecoder: mixed => Person = andThen(
+    rolesDecoder,
+    getPersonDecoder
+  );
+
+  expect(array(personDecoder)(persons)).toMatchInlineSnapshot(`
+Array [
+  Object {
+    "admin": null,
+    "partner": null,
+    "user": Object {
+      "email": "john@example.com",
+      "name": "John Doe",
+    },
+  },
+  Object {
+    "admin": Object {
+      "privileges": Array [
+        "edit",
+        "delete",
+      ],
+    },
+    "partner": null,
+    "user": Object {
+      "email": "jane@example.com",
+      "name": "Jane Doe",
+    },
+  },
+  Object {
+    "admin": Object {
+      "privileges": Array [
+        "publish",
+      ],
+    },
+    "partner": null,
+    "user": null,
+  },
+  Object {
+    "admin": Object {
+      "privileges": Array [
+        "publish",
+      ],
+    },
+    "partner": Object {
+      "affiliation": "investor",
+    },
+    "user": null,
+  },
+  Object {
+    "admin": Object {
+      "privileges": Array [
+        "edit",
+      ],
+    },
+    "partner": Object {
+      "affiliation": "investor",
+    },
+    "user": Object {
+      "email": "don@example.org",
+      "name": "Donald Duck",
+    },
+  },
+  Object {
+    "admin": null,
+    "partner": null,
+    "user": Object {
+      "email": "john@example.com",
+      "name": "John Doe",
+    },
+  },
+]
+`);
+});
+
 test("renaming fields", () => {
   type UserSnakeCase = {|
     first_name: string,
