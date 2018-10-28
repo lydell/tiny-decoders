@@ -87,6 +87,5 @@ export function repr(
     printExtraProps?: boolean;
     maxArrayChildren?: number;
     maxObjectChildren?: number;
-    identifierRegex?: RegExp;
   }
 ): string;

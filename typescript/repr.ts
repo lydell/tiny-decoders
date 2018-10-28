@@ -9,7 +9,6 @@ repr(0, {
   printExtraProps: false,
   maxArrayChildren: 10,
   maxObjectChildren: 10,
-  identifierRegex: /^/,
 });
 
 repr("", {

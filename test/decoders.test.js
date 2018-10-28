@@ -134,8 +134,8 @@ Array [
     `Expected an array, but got: {"0": 1, "length": 1}`
   );
   expect(() => array(number)([1, "2"])).toThrowErrorMatchingInlineSnapshot(`
-array[1]: Expected a number, but got: (string) "2"
-at 1 in [1, (index 1) (string) "2"]
+array[1]: Expected a number, but got: "2"
+at 1 in [1, (index 1) "2"]
 `);
 });
 

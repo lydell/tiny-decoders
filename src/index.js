@@ -247,14 +247,12 @@ export function repr(
     printExtraProps = true,
     maxArrayChildren = 5,
     maxObjectChildren = 3,
-    identifierRegex = /^\w{1,20}$/,
   }: {|
     key?: string | number,
     recurse?: boolean,
     printExtraProps?: boolean,
     maxArrayChildren?: number,
     maxObjectChildren?: number,
-    identifierRegex?: RegExp,
   |} = {}
 ): string {
   function extraProps(str: string): string {
@@ -305,14 +303,7 @@ export function repr(
     }
 
     if (typeof value === "string") {
-      const printed = truncate(JSON.stringify(value));
-      // If the string could be mistaken for a number, prefix it with "(string)"
-      // to make it entirely clear that it is in fact a string.
-      return (!isNaN(Number(value)) || value === "NaN") &&
-        value !== "" &&
-        !/\s/.test(value)
-        ? `(string) ${printed}`
-        : printed;
+      return printString(value);
     }
 
     // $FlowIgnore: Flow doesn't know about Symbols yet.
@@ -320,46 +311,22 @@ export function repr(
       // This could use `Symbol.prototype.description` when it has gained better
       // support.
       const description = String(value).replace(/^Symbol\(|\)$/g, "");
-      return `${type}(${truncate(JSON.stringify(description))})`;
+      return `${type}(${printString(description)})`;
     }
 
     if (typeof value === "function") {
-      return extraProps(`function ${truncate(JSON.stringify(value.name))}`);
+      return extraProps(`function ${printString(value.name)}`);
     }
 
     if (type === "RegExp") {
       return extraProps(truncate(String(value)));
     }
 
-    // Don't use `value instanceof Date` to support cross-iframe values.
-    if (type === "Date") {
-      const printed =
-        typeof value.toISOString === "function" &&
-        typeof value.getTime === "function" &&
-        !isNaN(value.getTime()) // Invalid date, such as `new Date("nope")`.
-          ? value.toISOString()
-          : String(value);
-      return extraProps(`${type}(${printed})`);
-    }
+    if (Array.isArray(value)) {
+      if (!recurse) {
+        return `${type}(${value.length})`;
+      }
 
-    if (type === "Error" && typeof value.message === "string") {
-      const name =
-        typeof value.name === "string" && identifierRegex.test(value.name)
-          ? value.name
-          : type;
-      return extraProps(`${name}(${truncate(JSON.stringify(value.message))})`);
-    }
-
-    if (
-      typeof value === "object" &&
-      (type === "Boolean" || type === "Number" || type === "String")
-    ) {
-      const printed =
-        type === "String" ? truncate(JSON.stringify(value)) : String(value);
-      return `new ${type}(${printed})`;
-    }
-
-    if (Array.isArray(value) && recurse) {
       const lastIndex = value.length - 1;
       const items = [];
 
@@ -397,11 +364,7 @@ export function repr(
       const keys = Object.keys(value);
 
       // `class Foo {}` has `type === "Object"` and `rawName === "Foo"`.
-      const rawName = value.constructor.name;
-      const name =
-        typeof rawName === "string" && identifierRegex.test(rawName)
-          ? rawName
-          : type;
+      const { name } = value.constructor;
 
       if (!recurse) {
         return `${name}(${keys.length})`;
@@ -419,7 +382,7 @@ export function repr(
         .slice(0, maxObjectChildren)
         .map(
           key2 =>
-            `${truncate(JSON.stringify(key2))}: ${repr(value[key2], {
+            `${printString(key2)}: ${repr(value[key2], {
               recurse: false,
               printExtraProps: false,
             })}`
@@ -430,18 +393,14 @@ export function repr(
       return `${prefix}{${items.join(", ")}}`;
     }
 
-    // Show the number of items in the collection (`Map`, `Set`, typed arrays).
-    const length =
-      typeof value.length === "number"
-        ? value.length
-        : typeof value.size === "number"
-          ? value.size
-          : undefined;
-
-    return extraProps(length == null ? type : `${type}(${length})`);
+    return extraProps(type);
   } catch (_error) {
     return type;
   }
+}
+
+function printString(str: string): string {
+  return truncate(JSON.stringify(str));
 }
 
 function truncate(
@@ -470,8 +429,7 @@ function keyErrorMessage(
   message: string
 ): string {
   const prefix = typeof key === "string" ? "object" : "array";
-  const at =
-    typeof key === "string" ? truncate(JSON.stringify(key)) : String(key);
+  const at = typeof key === "string" ? printString(key) : String(key);
   const missing =
     typeof key === "number"
       ? Array.isArray(value) && (key < 0 || key >= value.length)

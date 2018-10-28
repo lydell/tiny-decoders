@@ -51,6 +51,7 @@ test("number", () => {
 
 test("string", () => {
   expect(repr("")).toMatchInlineSnapshot(`""`);
+  expect(repr("0")).toMatchInlineSnapshot(`"0"`);
   expect(repr("string")).toMatchInlineSnapshot(`"string"`);
   expect(repr('"quotes"')).toMatchInlineSnapshot(`"\\"quotes\\""`);
   /* eslint-disable no-irregular-whitespace */
@@ -61,23 +62,6 @@ test("string", () => {
   expect(repr("Iñtërnâtiônàlizætiøn☃💩")).toMatchInlineSnapshot(
     `"Iñtërnâti…ætiøn☃💩"`
   );
-});
-
-test("number-like strings", () => {
-  expect(repr("0")).toMatchInlineSnapshot(`(string) "0"`);
-  expect(repr("NaN")).toMatchInlineSnapshot(`(string) "NaN"`);
-  expect(repr("Infinity")).toMatchInlineSnapshot(`(string) "Infinity"`);
-  expect(repr("-Infinity")).toMatchInlineSnapshot(`(string) "-Infinity"`);
-  expect(repr("1e300")).toMatchInlineSnapshot(`(string) "1e300"`);
-  expect(repr("-123456789.01234567890123456789")).toMatchInlineSnapshot(
-    `(string) "-12345678…23456789"`
-  );
-
-  // Not number-like:
-  expect(repr("10px")).toMatchInlineSnapshot(`"10px"`);
-  expect(repr("")).toMatchInlineSnapshot(`""`);
-  expect(repr(" \n")).toMatchInlineSnapshot(`" \\n"`);
-  expect(repr("  10  ")).toMatchInlineSnapshot(`"  10  "`);
 });
 
 test("symbol", () => {
@@ -113,19 +97,14 @@ test("regex", () => {
 
 test("Date", () => {
   expect(repr(new Date("2018-10-27T16:07:33.978Z"))).toMatchInlineSnapshot(
-    `Date(2018-10-27T16:07:33.978Z)`
+    `Date`
   );
-  expect(repr(new Date("invalid"))).toMatchInlineSnapshot(`Date(Invalid Date)`);
+  expect(repr(new Date("invalid"))).toMatchInlineSnapshot(`Date`);
 });
 
 test("Error", () => {
-  expect(repr(new Error("error"))).toMatchInlineSnapshot(`Error("error")`);
-  expect(repr(new RangeError("out of range"))).toMatchInlineSnapshot(
-    `RangeError("out of range")`
-  );
-  expect(repr(new Error("too long\nmessage to fit"))).toMatchInlineSnapshot(
-    `Error("too long\\…e to fit")`
-  );
+  expect(repr(new Error("error"))).toMatchInlineSnapshot(`Error`);
+  expect(repr(new RangeError("out of range"))).toMatchInlineSnapshot(`Error`);
 
   class CustomError extends Error {
     constructor(message: string) {
@@ -134,47 +113,22 @@ test("Error", () => {
     }
   }
   expect(repr(new CustomError("custom"))).toMatchInlineSnapshot(
-    `CustomError("custom") (properties: {"name": "CustomError"})`
-  );
-
-  class CustomError2 extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "WayTooLongErrorNameToShow";
-    }
-  }
-  expect(repr(new CustomError2("custom"))).toMatchInlineSnapshot(
-    `Error("custom") (properties: {"name": "WayTooLon…meToShow"})`
+    `Error (properties: {"name": "CustomError"})`
   );
 
   const error = new Error();
   error.name = '"), "key": "other value"';
   expect(repr(error)).toMatchInlineSnapshot(
-    `Error("") (properties: {"name": "\\"), \\"ke… value\\""})`
-  );
-
-  const error2 = new Error();
-  // $FlowIgnore: `.message` is not allowed to be null, but we’re testing here.
-  error2.message = null;
-  expect(repr(error2)).toMatchInlineSnapshot(
-    `Error (properties: {"message": null})`
+    `Error (properties: {"name": "\\"), \\"ke… value\\""})`
   );
 });
 
 /* eslint-disable no-new-wrappers */
 test("primitive wrappers", () => {
-  expect(repr(new Boolean(true))).toMatchInlineSnapshot(`new Boolean(true)`);
-  expect(repr(new Boolean(false))).toMatchInlineSnapshot(`new Boolean(false)`);
-
-  expect(repr(new Number(0))).toMatchInlineSnapshot(`new Number(0)`);
-  expect(repr(new Number(NaN))).toMatchInlineSnapshot(`new Number(NaN)`);
-
-  expect(repr(new String("string"))).toMatchInlineSnapshot(
-    `new String("string")`
-  );
-  expect(repr(new String('"), "key": "other value"'))).toMatchInlineSnapshot(
-    `new String("\\"), \\"ke… value\\"")`
-  );
+  expect(repr(new Boolean(true))).toMatchInlineSnapshot(`Boolean`);
+  expect(repr(new Boolean(false))).toMatchInlineSnapshot(`Boolean`);
+  expect(repr(new Number(0))).toMatchInlineSnapshot(`Number`);
+  expect(repr(new String("string"))).toMatchInlineSnapshot(`String`);
 });
 /* eslint-enable no-new-wrappers */
 
@@ -208,7 +162,7 @@ test("array", () => {
       { maxArrayChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `[undefined, <empty>, null, true, NaN, "string", Symbol("desc"), function "repr", /test/gm, Date(2018-10-27T16:07:33.978Z), RangeError(""), new String("wrap"), Array(0), Object(0), Array(1), Object(1), Point(2)]`
+    `[undefined, <empty>, null, true, NaN, "string", Symbol("desc"), function "repr", /test/gm, Date, Error, String, Array(0), Object(0), Array(1), Object(1), Point(2)]`
   );
 });
 
@@ -276,7 +230,7 @@ test("object", () => {
       { maxObjectChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "string", "f": Symbol("desc"), "g": function "repr", "h": /test/gm, "i": Date(2018-10-27T16:07:33.978Z), "j": RangeError(""), "k": new String("wrap"), "l": Array(0), "m": Object(0), "o": Array(1), "p": Object(1), "r": Point(2)}`
+    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "string", "f": Symbol("desc"), "g": function "repr", "h": /test/gm, "i": Date, "j": Error, "k": String, "l": Array(0), "m": Object(0), "o": Array(1), "p": Object(1), "r": Point(2)}`
   );
   expect(repr({ '"), "key": "other value"': 1 })).toMatchInlineSnapshot(
     `{"\\"), \\"ke… value\\"": 1}`
@@ -284,14 +238,6 @@ test("object", () => {
   expect(repr(new Point(10, 235.8))).toMatchInlineSnapshot(
     `Point {"x": 10, "y": 235.8}`
   );
-  class Bad {
-    /*:: prop: number; */
-    constructor() {
-      this.prop = 1;
-    }
-  }
-  Object.defineProperty(Bad, "name", { value: '"), "key": "other value"' });
-  expect(repr(new Bad())).toMatchInlineSnapshot(`{"prop": 1}`);
 });
 
 test("object key", () => {
@@ -321,22 +267,16 @@ test("object key", () => {
   ).toMatchInlineSnapshot(`{"a": 1, "b": 2, "c": 3, (2 more)}`);
 });
 
-test("objects with length", () => {
-  expect(repr(Buffer.from("buffer"))).toMatchInlineSnapshot(`Uint8Array(6)`);
+test("misc", () => {
+  expect(repr(Buffer.from("buffer"))).toMatchInlineSnapshot(`Uint8Array`);
   expect(repr(new Float32Array([1, 2.5]))).toMatchInlineSnapshot(
-    `Float32Array(2)`
+    `Float32Array`
   );
   expect(repr(document.querySelectorAll("html"))).toMatchInlineSnapshot(
-    `NodeList(1)`
+    `NodeList`
   );
-});
-
-test("objects with size", () => {
-  expect(repr(new Map())).toMatchInlineSnapshot(`Map(0)`);
-  expect(repr(new Set([1, 1, 2]))).toMatchInlineSnapshot(`Set(2)`);
-});
-
-test("misc", () => {
+  expect(repr(new Map())).toMatchInlineSnapshot(`Map`);
+  expect(repr(new Set([1, 1, 2]))).toMatchInlineSnapshot(`Set`);
   expect(repr(new WeakMap())).toMatchInlineSnapshot(`WeakMap`);
   expect(repr(new WeakSet())).toMatchInlineSnapshot(`WeakSet`);
   expect(repr(document.createElement("p"))).toMatchInlineSnapshot(
@@ -350,7 +290,7 @@ test("misc", () => {
         return arguments;
       })(1, 2)
     )
-  ).toMatchInlineSnapshot(`Arguments(2)`);
+  ).toMatchInlineSnapshot(`Arguments`);
 });
 
 test("extra properties", () => {
@@ -369,16 +309,12 @@ test("extra properties", () => {
   const date = new Date("2018-10-27T16:07:33.978Z");
   // $FlowIgnore: Unknown prop for testing.
   date.prop = 1;
-  expect(repr(date)).toMatchInlineSnapshot(
-    `Date(2018-10-27T16:07:33.978Z) (properties: {"prop": 1})`
-  );
+  expect(repr(date)).toMatchInlineSnapshot(`Date (properties: {"prop": 1})`);
 
   const error = new Error();
   // $FlowIgnore: Unknown prop for testing.
   error.prop = 1;
-  expect(repr(error)).toMatchInlineSnapshot(
-    `Error("") (properties: {"prop": 1})`
-  );
+  expect(repr(error)).toMatchInlineSnapshot(`Error (properties: {"prop": 1})`);
 
   const array = [];
   // $FlowIgnore: Unknown prop for testing.
@@ -388,7 +324,7 @@ test("extra properties", () => {
   const set = new Set();
   // $FlowIgnore: Unknown prop for testing.
   set.prop = 1;
-  expect(repr(set)).toMatchInlineSnapshot(`Set(0) (properties: {"prop": 1})`);
+  expect(repr(set)).toMatchInlineSnapshot(`Set (properties: {"prop": 1})`);
 
   // eslint-disable-next-line no-empty-function
   function fn2() {}
@@ -409,13 +345,13 @@ test("extra properties", () => {
 });
 
 test("catch errors", () => {
-  const date = new Date("2018-10-27T16:07:33.978Z");
+  const regex = /test/;
   // $FlowIgnore: Re-assigning method for testing.
-  date.toISOString = () => {
+  regex.toString = () => {
     throw new Error("failed for whatever reason");
   };
-  expect(() => date.toISOString()).toThrowErrorMatchingInlineSnapshot(
+  expect(() => regex.toString()).toThrowErrorMatchingInlineSnapshot(
     `failed for whatever reason`
   );
-  expect(repr(date)).toMatchInlineSnapshot(`Date`);
+  expect(repr(regex)).toMatchInlineSnapshot(`RegExp`);
 });
