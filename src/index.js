@@ -185,6 +185,8 @@ export function andThen<T, U>(
   fn: T => mixed => U
 ): mixed => U {
   return function andThenDecoder(value: mixed): U {
+    // Run `value` through `decoder`, pass the result of that to `fn` and then
+    // run `value` through the return value of `fn`.
     return fn(decoder(value))(value);
   };
 }
@@ -334,7 +336,7 @@ export function repr(
       const printed =
         typeof value.toISOString === "function" &&
         typeof value.getTime === "function" &&
-        !isNaN(value.getTime())
+        !isNaN(value.getTime()) // Invalid date, such as `new Date("nope")`.
           ? value.toISOString()
           : String(value);
       return extraProps(`${type}(${printed})`);
@@ -360,6 +362,8 @@ export function repr(
     if (Array.isArray(value) && recurse) {
       const lastIndex = value.length - 1;
       const items = [];
+
+      // Print values around the provided key, if any.
       const start =
         typeof key === "number"
           ? Math.max(0, Math.min(key, lastIndex - maxArrayChildren + 1))
@@ -391,6 +395,8 @@ export function repr(
       !Array.isArray(value)
     ) {
       const keys = Object.keys(value);
+
+      // `class Foo {}` has `type === "Object"` and `rawName === "Foo"`.
       const rawName = value.constructor.name;
       const name =
         typeof rawName === "string" && identifierRegex.test(rawName)
@@ -401,6 +407,7 @@ export function repr(
         return `${name}(${keys.length})`;
       }
 
+      // Make sure the provided key (if any) comes first, so that it is visible.
       const newKeys =
         typeof key === "string" && keys.indexOf(key) >= 0
           ? [key, ...keys.filter(key2 => key2 !== key)]
@@ -423,6 +430,7 @@ export function repr(
       return `${prefix}{${items.join(", ")}}`;
     }
 
+    // Show the number of items in the collection (`Map`, `Set`, typed arrays).
     const length =
       typeof value.length === "number"
         ? value.length
@@ -445,7 +453,9 @@ function truncate(
 ): string {
   return str.length <= maxLength
     ? str
-    : [
+    : // If the string is too long, show a bit at the start and a bit at the end
+      // and cut out the middle (replacing it with a separator).
+      [
         str.slice(0, Math.floor(maxLength / 2)),
         separator,
         str.slice(-(Math.ceil(maxLength / 2) - separator.length)),
