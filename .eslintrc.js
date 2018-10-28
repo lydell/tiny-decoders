@@ -23,7 +23,7 @@ module.exports = {
       env: { node: true },
     },
     {
-      files: ["{src,test}/*.js"],
+      files: ["{src,flow,test}/*.js"],
       rules: Object.assign({}, baseRules({ builtin: false, flow: true }), {
         "flowtype-errors/show-errors": "error",
       }),

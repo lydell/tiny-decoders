@@ -908,7 +908,8 @@ Object {
 }
 `);
 
-  // $ExpectError: `User` is exact, so `extra: "prop"` is not allowed.
+  // `User` is exact, so `extra: "prop"` is not allowed:
+  // $ExpectError
   const user2: User = {
     id: 1,
     name: "John Doe",

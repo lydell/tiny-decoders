@@ -174,7 +174,7 @@ at "\\"), \\"ke… value\\"" in {"\\"), \\"ke… value\\"": 1}
 });
 
 test("group", () => {
-  expect(group({})()).toMatchInlineSnapshot(`Object {}`);
+  expect(group({})(undefined)).toMatchInlineSnapshot(`Object {}`);
   expect(group({ a: string })("string")).toMatchInlineSnapshot(`
 Object {
   "a": "string",
