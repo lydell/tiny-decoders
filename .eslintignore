@@ -5,3 +5,4 @@ coverage
 dist
 flow-typed/npm
 node_modules
+typescript

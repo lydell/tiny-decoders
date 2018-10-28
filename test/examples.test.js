@@ -433,8 +433,8 @@ Object {
 `);
 
   // A third way is to use `record`, `group`, `field` and `map` all at once.
-  // TODO and WARNING: If you misspell "firstName" as "fistName" Flow doesn’t
-  // catch it! Not sure if this is a bug in tiny-decoders or Flow.
+  // TODO and WARNING: If you misspell field using this approach Flow doesn’t
+  // catch it! This seems to be a bug in Flow, because TypeScript does catch it.
   const userCamelCaseDecoder3: mixed => UserCamelCase = map(
     group({
       firstName: field("first_name", string),

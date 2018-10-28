@@ -24,6 +24,8 @@
     "flow": "flow",
     "eslint": "eslint .",
     "eslint:fix": "npm run eslint -- --fix",
+    "dtslint": "dtslint typescript --onlyTestTsNext",
+    "prettier": "prettier --write \"*.md\" \"typescript/*.{ts,json}\"",
     "jest": "jest",
     "coverage": "jest --coverage",
     "clean": "rimraf dist",
@@ -33,8 +35,8 @@
     "build:commonjs": "babel src/index.js --out-file dist/index.js",
     "build:esm": "babel --env-name esm src/index.js --out-file dist/index.mjs",
     "build:flow": "node -e \"require('fs').copyFileSync('src/index.js', 'dist/index.js.flow')\"",
-    "build:typescript": "node -e \"require('fs').copyFileSync('src/index.d.ts', 'dist/index.d.ts')\"",
-    "test": "run-s eslint coverage build",
+    "build:typescript": "node -e \"require('fs').copyFileSync('typescript/index.d.ts', 'dist/index.d.ts')\"",
+    "test": "run-s eslint dtslint coverage build",
     "prepublishOnly": "npm test"
   },
   "devDependencies": {
@@ -45,6 +47,7 @@
     "babel-core": "7.0.0-bridge.0",
     "babel-eslint": "10.0.1",
     "babel-jest": "23.6.0",
+    "dtslint": "0.3.0",
     "eslint": "5.8.0",
     "eslint-config-lydell": "10.0.0",
     "eslint-plugin-flowtype": "3.1.1",
