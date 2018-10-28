@@ -1,4 +1,4 @@
-# tiny-decoders
+# tiny-decoders [![Build Status][travis-badge]][travis-link]
 
 Type-safe data validation for the minimalist, inspired by [nvie/decoders] and
 [Elm’s JSON Decoders].
@@ -68,3 +68,5 @@ You can need [Node.js] 10 and npm 6.
 [nvie/decoders]: https://github.com/nvie/decoders
 [prettier]: https://prettier.io/
 [typescript]: http://www.typescriptlang.org/
+[travis-badge]: https://travis-ci.com/lydell/tiny-decoders.svg?branch=master
+[travis-link]: https://travis-ci.com/lydell/tiny-decoders
