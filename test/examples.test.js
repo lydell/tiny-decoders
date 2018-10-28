@@ -867,3 +867,53 @@ Object {
 }
 `);
 });
+
+test("inferring types", () => {
+  // Feels like you are specifying everything twice – once in `type`, once in
+  // the decoder? There is a way to let Flow infer the type from a decoder!
+  // This approach is taken from:
+  // https://github.com/nvie/decoders/issues/93
+  // https://gist.github.com/girvo/b4207d4fc92f6b336813d1404309baab
+
+  const userDecoder = record({
+    id: either(string, number),
+    name: string,
+    age: number,
+    active: boolean,
+    country: optional(string),
+  });
+
+  // First, a general helper type:
+  type ExtractDecoderType = <T>((mixed) => T) => T;
+  // Then, let Flow infer the `User` type!
+  type User = $Call<ExtractDecoderType, typeof userDecoder>;
+
+  const data = {
+    id: 1,
+    name: "John Doe",
+    age: 30,
+    active: true,
+  };
+
+  const user: User = userDecoder(data);
+  expect(user).toMatchInlineSnapshot(`
+Object {
+  "active": true,
+  "age": 30,
+  "country": undefined,
+  "id": 1,
+  "name": "John Doe",
+}
+`);
+
+  // $ExpectError: `User` is exact, so `extra: "prop"` is not allowed.
+  const user2: User = {
+    id: 1,
+    name: "John Doe",
+    age: 30,
+    active: true,
+    country: undefined,
+    extra: "prop",
+  };
+  expect(user2).toMatchObject(user);
+});

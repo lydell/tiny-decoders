@@ -77,12 +77,12 @@ export function dict<T>(decoder: mixed => T): mixed => { [string]: T } {
   };
 }
 
-type ExtractReturnValue = <T, U>((mixed) => T | U) => T | U;
+type ExtractDecoderType = <T, U>((mixed) => T | U) => T | U;
 
 export function group<T: {}>(
   mapping: T
-): mixed => $ObjMap<T, ExtractReturnValue> {
-  return function groupDecoder(value: mixed): $ObjMap<T, ExtractReturnValue> {
+): mixed => $ObjMap<T, ExtractDecoderType> {
+  return function groupDecoder(value: mixed): $ObjMap<T, ExtractDecoderType> {
     const keys = Object.keys(mapping);
     // Using a for-loop rather than `.reduce` gives a nicer stack trace.
     const result = {};
@@ -97,8 +97,8 @@ export function group<T: {}>(
 
 export function record<T: {}>(
   mapping: T
-): mixed => $ObjMap<T, ExtractReturnValue> {
-  return function recordDecoder(value: mixed): $ObjMap<T, ExtractReturnValue> {
+): mixed => $ObjMap<T, ExtractDecoderType> {
+  return function recordDecoder(value: mixed): $ObjMap<T, ExtractDecoderType> {
     const obj = mixedDict(value);
     const keys = Object.keys(mapping);
     // Using a for-loop rather than `.reduce` gives a nicer stack trace.
