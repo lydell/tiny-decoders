@@ -34,7 +34,8 @@ You can need [Node.js] 10 and npm 6.
 ### Directories
 
 - `src/`: Source code.
-- `test/`: [Jest] tests and mocks.
+- `examples/`: Examples, in the form of [Jest] tests.
+- `test/`: [Jest] tests.
 - `flow/`: [Flow] typechecking tests. Turn off “ExpectError” in .flowconfig to
   see what the errors look like.
 - `typescript/`: [TypeScript] type definitions, config and typechecking tests.

@@ -21,14 +21,6 @@ import {
   string,
 } from "../src";
 
-// Make snapshots for error messages easier to read.
-// Before: `"\\"string\\""`
-// After: `"string"`
-expect.addSnapshotSerializer({
-  test: value => typeof value === "string" && value.includes("Expected"),
-  print: value => value,
-});
-
 test("boolean", () => {
   expect(boolean(true)).toMatchInlineSnapshot(`true`);
   expect(boolean(false)).toMatchInlineSnapshot(`false`);

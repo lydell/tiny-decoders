@@ -5,6 +5,7 @@ import { repr } from "../src";
 // Make snapshots easier to read.
 // Before: `"\\"string\\""`
 // After: `"string"`
+// This is like the serializer in jest.snapshots.config.js but for _all_ strings.
 expect.addSnapshotSerializer({
   test: value => typeof value === "string",
   print: value => value,

@@ -23,13 +23,13 @@ module.exports = {
       env: { node: true },
     },
     {
-      files: ["{src,flow,test}/*.js"],
+      files: ["{src,flow,examples,test}/*.js"],
       rules: Object.assign({}, baseRules({ builtin: false, flow: true }), {
         "flowtype-errors/show-errors": "error",
       }),
     },
     {
-      files: ["test/*.js"],
+      files: ["{examples,test}/*.js"],
       env: { node: true, jest: true },
       globals: baseRules.browserEnv(),
       rules: baseRules({ builtin: false, jest: true }),
