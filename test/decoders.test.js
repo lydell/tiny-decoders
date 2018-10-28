@@ -345,6 +345,13 @@ test("optional", () => {
   expect(
     field("present", optional(string))({ present: "string" })
   ).toMatchInlineSnapshot(`"string"`);
+  expect((optional(number, 5)(undefined): number)).toMatchInlineSnapshot(`5`);
+  expect(
+    (optional(number, "5")(undefined): number | string)
+  ).toMatchInlineSnapshot(`"5"`);
+  expect((optional(number, null)(undefined): ?number)).toMatchInlineSnapshot(
+    `null`
+  );
 
   expect(() => optional(number)("string")).toThrowErrorMatchingInlineSnapshot(
     `(optional) Expected a number, but got: "string"`
