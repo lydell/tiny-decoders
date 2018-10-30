@@ -403,22 +403,15 @@ function printString(str: string): string {
   return truncate(JSON.stringify(str));
 }
 
-function truncate(
-  str: string,
-  {
-    maxLength = 20,
-    separator = "…",
-  }: {| maxLength?: number, separator?: string |} = {}
-): string {
-  return str.length <= maxLength
+function truncate(str: string): string {
+  // If the string is too long, show a bit at the start and a bit at the end and
+  // cut out the middle (replacing it with a separator). Explaining the magic
+  // numbers: 20 is the maximum length and: `20 = 10 + "…".length + 9`.
+  // `maxLength` and `separator` could be taken as parameters and the offset
+  // could be calculated from them, but I've hardcoded them to save some bytes.
+  return str.length <= 20
     ? str
-    : // If the string is too long, show a bit at the start and a bit at the end
-      // and cut out the middle (replacing it with a separator).
-      [
-        str.slice(0, Math.floor(maxLength / 2)),
-        separator,
-        str.slice(-(Math.ceil(maxLength / 2) - separator.length)),
-      ].join("");
+    : [str.slice(0, 10), "…", str.slice(-9)].join("");
 }
 
 const keyErrorPrefixRegex = /^(?:object|array)(?=\[)/;
