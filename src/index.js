@@ -240,7 +240,8 @@ function stripPrefix(prefix: string, str: string): string {
 }
 
 export function repr(
-  value: mixed,
+  // $FlowIgnore: Using `any` rather than `mixed` here to cut down on the bytes.
+  value: any,
   {
     key,
     recurse = true,
@@ -253,37 +254,37 @@ export function repr(
     maxObjectChildren?: number,
   |} = {}
 ): string {
-  const type = Object.prototype.toString
+  const type = typeof value;
+  const toStringType = Object.prototype.toString
     .call(value)
     .replace(/^\[object\s+(.+)\]$/, "$1");
 
   try {
     if (
-      value === undefined ||
-      value === null ||
-      typeof value === "number" ||
-      typeof value === "boolean" ||
-      // $FlowIgnore: Flow doesn't know about Symbols yet.
-      typeof value === "symbol" ||
-      type === "RegExp"
+      value == null ||
+      type === "number" ||
+      type === "boolean" ||
+      type === "symbol" ||
+      toStringType === "RegExp"
     ) {
       return truncate(String(value));
     }
 
-    if (typeof value === "string") {
+    if (type === "string") {
       return printString(value);
     }
 
-    if (typeof value === "function") {
+    if (type === "function") {
       return `function ${printString(value.name)}`;
     }
 
     if (Array.isArray(value)) {
+      const arr: Array<mixed> = value;
       if (!recurse) {
-        return `${type}(${value.length})`;
+        return `${toStringType}(${arr.length})`;
       }
 
-      const lastIndex = value.length - 1;
+      const lastIndex = arr.length - 1;
       const items = [];
 
       // Print values around the provided key, if any.
@@ -299,7 +300,7 @@ export function repr(
 
       for (let index = start; index <= end; index++) {
         const item =
-          index in value ? repr(value[index], { recurse: false }) : "<empty>";
+          index in arr ? repr(arr[index], { recurse: false }) : "<empty>";
         items.push(index === key ? `(index ${index}) ${item}` : item);
       }
 
@@ -310,15 +311,12 @@ export function repr(
       return `[${items.join(", ")}]`;
     }
 
-    if (
-      type === "Object" &&
-      typeof value === "object" &&
-      !Array.isArray(value)
-    ) {
-      const keys = Object.keys(value);
+    if (toStringType === "Object") {
+      const obj: { [string]: mixed } = value;
+      const keys = Object.keys(obj);
 
-      // `class Foo {}` has `type === "Object"` and `rawName === "Foo"`.
-      const { name } = value.constructor;
+      // `class Foo {}` has `toStringType === "Object"` and `rawName === "Foo"`.
+      const { name } = obj.constructor;
 
       if (!recurse) {
         return `${name}(${keys.length})`;
@@ -335,8 +333,7 @@ export function repr(
       const items = newKeys
         .slice(0, maxObjectChildren)
         .map(
-          key2 =>
-            `${printString(key2)}: ${repr(value[key2], { recurse: false })}`
+          key2 => `${printString(key2)}: ${repr(obj[key2], { recurse: false })}`
         )
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);
 
@@ -344,9 +341,9 @@ export function repr(
       return `${prefix}{${items.join(", ")}}`;
     }
 
-    return type;
+    return toStringType;
   } catch (_error) {
-    return type;
+    return toStringType;
   }
 }
 
