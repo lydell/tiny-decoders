@@ -84,7 +84,6 @@ export function repr(
   options?: {
     key?: string | number;
     recurse?: boolean;
-    printExtraProps?: boolean;
     maxArrayChildren?: number;
     maxObjectChildren?: number;
   }

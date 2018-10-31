@@ -47,7 +47,7 @@ test("string", () => {
   expect(string("string")).toMatchInlineSnapshot(`"string"`);
 
   expect(() => string(Symbol("desc"))).toThrowErrorMatchingInlineSnapshot(
-    `Expected a string, but got: Symbol("desc")`
+    `Expected a string, but got: Symbol(desc)`
   );
 });
 

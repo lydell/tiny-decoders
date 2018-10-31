@@ -244,50 +244,15 @@ export function repr(
   {
     key,
     recurse = true,
-    printExtraProps = true,
     maxArrayChildren = 5,
     maxObjectChildren = 3,
   }: {|
     key?: string | number,
     recurse?: boolean,
-    printExtraProps?: boolean,
     maxArrayChildren?: number,
     maxObjectChildren?: number,
   |} = {}
 ): string {
-  function extraProps(str: string): string {
-    const obj: ?{ [string]: mixed } =
-      printExtraProps &&
-      ((typeof value === "object" && value != null) ||
-        typeof value === "function")
-        ? value
-        : undefined;
-
-    if (obj == null) {
-      return str;
-    }
-
-    const keys = Object.keys(obj);
-
-    const filteredKeys =
-      // Don't print the indexes of arrays, typed arrays and array-like objects.
-      typeof obj.length === "number"
-        ? keys.filter(key2 => !/^\d+$/.test(key2))
-        : keys;
-
-    // Use a for-loop instead of `.reduce` so Flow understands that `obj` is an
-    // object, not `mixed`.
-    const obj2 = {};
-    for (let index = 0; index < filteredKeys.length; index++) {
-      const key2 = filteredKeys[index];
-      obj2[key2] = obj[key2];
-    }
-
-    return filteredKeys.length > 0
-      ? `${str} (properties: ${repr(obj2, { key, printExtraProps: false })})`
-      : str;
-  }
-
   const type = Object.prototype.toString
     .call(value)
     .replace(/^\[object\s+(.+)\]$/, "$1");
@@ -297,29 +262,20 @@ export function repr(
       value === undefined ||
       value === null ||
       typeof value === "number" ||
-      typeof value === "boolean"
+      typeof value === "boolean" ||
+      // $FlowIgnore: Flow doesn't know about Symbols yet.
+      typeof value === "symbol" ||
+      type === "RegExp"
     ) {
-      return String(value);
+      return truncate(String(value));
     }
 
     if (typeof value === "string") {
       return printString(value);
     }
 
-    // $FlowIgnore: Flow doesn't know about Symbols yet.
-    if (typeof value === "symbol") {
-      // This could use `Symbol.prototype.description` when it has gained better
-      // support.
-      const description = String(value).replace(/^Symbol\(|\)$/g, "");
-      return `${type}(${printString(description)})`;
-    }
-
     if (typeof value === "function") {
-      return extraProps(`function ${printString(value.name)}`);
-    }
-
-    if (type === "RegExp") {
-      return extraProps(truncate(String(value)));
+      return `function ${printString(value.name)}`;
     }
 
     if (Array.isArray(value)) {
@@ -343,9 +299,7 @@ export function repr(
 
       for (let index = start; index <= end; index++) {
         const item =
-          index in value
-            ? repr(value[index], { recurse: false, printExtraProps: false })
-            : "<empty>";
+          index in value ? repr(value[index], { recurse: false }) : "<empty>";
         items.push(index === key ? `(index ${index}) ${item}` : item);
       }
 
@@ -353,7 +307,7 @@ export function repr(
         items.push(`(${lastIndex - end} more)`);
       }
 
-      return extraProps(`[${items.join(", ")}]`);
+      return `[${items.join(", ")}]`;
     }
 
     if (
@@ -382,10 +336,7 @@ export function repr(
         .slice(0, maxObjectChildren)
         .map(
           key2 =>
-            `${printString(key2)}: ${repr(value[key2], {
-              recurse: false,
-              printExtraProps: false,
-            })}`
+            `${printString(key2)}: ${repr(value[key2], { recurse: false })}`
         )
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);
 
@@ -393,7 +344,7 @@ export function repr(
       return `${prefix}{${items.join(", ")}}`;
     }
 
-    return extraProps(type);
+    return type;
   } catch (_error) {
     return type;
   }

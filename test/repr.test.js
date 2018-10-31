@@ -65,12 +65,12 @@ test("string", () => {
 });
 
 test("symbol", () => {
-  expect(repr(Symbol())).toMatchInlineSnapshot(`Symbol("")`);
+  expect(repr(Symbol())).toMatchInlineSnapshot(`Symbol()`);
   expect(repr(Symbol("description"))).toMatchInlineSnapshot(
-    `Symbol("description")`
+    `Symbol(description)`
   );
   expect(repr(Symbol('"), "key": "other value"'))).toMatchInlineSnapshot(
-    `Symbol("\\"), \\"ke… value\\"")`
+    `Symbol("),…r value")`
   );
 });
 
@@ -112,15 +112,11 @@ test("Error", () => {
       this.name = "CustomError";
     }
   }
-  expect(repr(new CustomError("custom"))).toMatchInlineSnapshot(
-    `Error (properties: {"name": "CustomError"})`
-  );
+  expect(repr(new CustomError("custom"))).toMatchInlineSnapshot(`Error`);
 
   const error = new Error();
   error.name = '"), "key": "other value"';
-  expect(repr(error)).toMatchInlineSnapshot(
-    `Error (properties: {"name": "\\"), \\"ke… value\\""})`
-  );
+  expect(repr(error)).toMatchInlineSnapshot(`Error`);
 });
 
 /* eslint-disable no-new-wrappers */
@@ -162,7 +158,7 @@ test("array", () => {
       { maxArrayChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `[undefined, <empty>, null, true, NaN, "string", Symbol("desc"), function "repr", /test/gm, Date, Error, String, Array(0), Object(0), Array(1), Object(1), Point(2)]`
+    `[undefined, <empty>, null, true, NaN, "string", Symbol(desc), function "repr", /test/gm, Date, Error, String, Array(0), Object(0), Array(1), Object(1), Point(2)]`
   );
 });
 
@@ -230,7 +226,7 @@ test("object", () => {
       { maxObjectChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "string", "f": Symbol("desc"), "g": function "repr", "h": /test/gm, "i": Date, "j": Error, "k": String, "l": Array(0), "m": Object(0), "o": Array(1), "p": Object(1), "r": Point(2)}`
+    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "string", "f": Symbol(desc), "g": function "repr", "h": /test/gm, "i": Date, "j": Error, "k": String, "l": Array(0), "m": Object(0), "o": Array(1), "p": Object(1), "r": Point(2)}`
   );
   expect(repr({ '"), "key": "other value"': 1 })).toMatchInlineSnapshot(
     `{"\\"), \\"ke… value\\"": 1}`
@@ -291,57 +287,6 @@ test("misc", () => {
       })(1, 2)
     )
   ).toMatchInlineSnapshot(`Arguments`);
-});
-
-test("extra properties", () => {
-  // eslint-disable-next-line no-empty-function
-  function fn() {}
-  fn.prop = 1;
-  expect(repr(fn)).toMatchInlineSnapshot(
-    `function "fn" (properties: {"prop": 1})`
-  );
-
-  const regex = /test/;
-  // $FlowIgnore: Unknown prop for testing.
-  regex.prop = 1;
-  expect(repr(regex)).toMatchInlineSnapshot(`/test/ (properties: {"prop": 1})`);
-
-  const date = new Date("2018-10-27T16:07:33.978Z");
-  // $FlowIgnore: Unknown prop for testing.
-  date.prop = 1;
-  expect(repr(date)).toMatchInlineSnapshot(`Date (properties: {"prop": 1})`);
-
-  const error = new Error();
-  // $FlowIgnore: Unknown prop for testing.
-  error.prop = 1;
-  expect(repr(error)).toMatchInlineSnapshot(`Error (properties: {"prop": 1})`);
-
-  const array = [];
-  // $FlowIgnore: Unknown prop for testing.
-  array.prop = 1;
-  expect(repr(array)).toMatchInlineSnapshot(`[] (properties: {"prop": 1})`);
-
-  const set = new Set();
-  // $FlowIgnore: Unknown prop for testing.
-  set.prop = 1;
-  expect(repr(set)).toMatchInlineSnapshot(`Set (properties: {"prop": 1})`);
-
-  // eslint-disable-next-line no-empty-function
-  function fn2() {}
-  fn2.a = 1;
-  fn2["long key is truncated as usual"] = 2;
-  // Does not print extra properties for children.
-  fn2.noNested = fn2;
-  fn2.hidden = "initially";
-  expect(repr(fn2)).toMatchInlineSnapshot(
-    `function "fn2" (properties: {"a": 1, "long key …as usual": 2, "noNested": function "fn2", (1 more)})`
-  );
-  expect(repr(fn2, { key: "hidden" })).toMatchInlineSnapshot(
-    `function "fn2" (properties: {"hidden": "initially", "a": 1, "long key …as usual": 2, (1 more)})`
-  );
-  expect(repr(fn2, { printExtraProps: false })).toMatchInlineSnapshot(
-    `function "fn2"`
-  );
 });
 
 test("catch errors", () => {
