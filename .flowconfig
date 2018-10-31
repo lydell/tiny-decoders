@@ -20,4 +20,5 @@ unnecessary-invariant
 
 [ignore]
 <PROJECT_ROOT>/\..*
+<PROJECT_ROOT>/dist/.*
 <PROJECT_ROOT>/node_modules/.*
