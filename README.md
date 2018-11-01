@@ -15,12 +15,13 @@ TODO
 
 ## Comparison with [nvie/decoders]
 
-|                | decoders                                  | tiny-decoders                  |
-| -------------- | ----------------------------------------- | ------------------------------ |
-| Size           | ~28 kB minified (~6 kB gzipped)           | ~5 kB minified (<2 kB gzipped) |
-| Dependencies   | Yes                                       | No                             |
-| Error messages | Really fancy                              | Kinda good (size tradeoff)    |
-| Built-in functions      | Type checking + validation (regex, email) | Type checking only (validation can be plugged in)             |
+|                    | decoders                                  | tiny-decoders                                     |
+| ------------------ | ----------------------------------------- | ------------------------------------------------- |
+| Size               | <28 kB minified (~6 kB gzipped)           | <5 kB minified (<2 kB gzipped)                    |
+| Dependencies       | Yes                                       | No                                                |
+| Error messages     | Really fancy                              | Kinda good (size tradeoff)                        |
+| Built-in functions | Type checking + validation (regex, email) | Type checking only (validation can be plugged in) |
+| Decoders…          | …return values or throw errors            | …only throw errors                                |
 
 ## Development
 
