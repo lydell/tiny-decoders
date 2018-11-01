@@ -11,6 +11,7 @@ import {
   fieldAndThen,
   fieldDeep,
   group,
+  lazy,
   map,
   mixedArray,
   mixedDict,
@@ -73,6 +74,8 @@ import {
 (either(either(boolean, string), either(number, mixedDict))(
   undefined
 ): boolean);
+// $ExpectError
+(lazy(() => string)(undefined): boolean);
 /* eslint-enable no-unused-expressions */
 
 constant(undefined);
@@ -141,3 +144,7 @@ andThen(string, () => string);
 // Decoder instead of `mixed => decoder`:
 // $ExpectError
 andThen(string, string);
+
+// Decoder instead of `() => decoder`:
+// $ExpectError
+lazy(string);

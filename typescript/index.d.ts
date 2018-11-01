@@ -79,6 +79,8 @@ export function either<T, U>(
   decoder2: (value: unknown) => U
 ): (value: unknown) => T | U;
 
+export function lazy<T>(fn: () => (value: unknown) => T): (value: unknown) => T;
+
 export function repr(
   value: unknown,
   options?: {

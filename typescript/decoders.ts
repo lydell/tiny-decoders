@@ -1,5 +1,6 @@
 import {
   boolean,
+  lazy,
   number,
   string,
   mixedArray,
@@ -89,6 +90,8 @@ fieldAndThen(0, string, () => string)(undefined);
 either(string, number)(undefined);
 // $ExpectType string | number | boolean | { [key: string]: unknown; }
 either(either(boolean, string), either(number, mixedDict))(undefined);
+// $ExpectType string
+lazy(() => string)(undefined);
 
 constant(undefined);
 constant(null);
@@ -156,3 +159,7 @@ andThen(string, () => string);
 // Decoder instead of `mixed => decoder`:
 // $ExpectError
 andThen(string, string);
+
+// Decoder instead of `() => decoder`:
+// $ExpectError
+lazy(string);

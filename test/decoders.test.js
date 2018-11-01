@@ -11,6 +11,7 @@ import {
   fieldAndThen,
   fieldDeep,
   group,
+  lazy,
   map,
   mixedArray,
   mixedDict,
@@ -458,5 +459,32 @@ Several decoders failed:
 object["a"]: Expected a number, but got: true
 at "a" in {"a": true}
 Expected a string, but got: {"a": true}
+`);
+});
+
+test("lazy", () => {
+  expect(lazy(() => string)("string")).toMatchInlineSnapshot(`"string"`);
+
+  const decodeNestedNumber: mixed => number = field(
+    0,
+    either(number, lazy(() => decodeNestedNumber))
+  );
+  expect(decodeNestedNumber([[[[[[[1337]]]]]]])).toMatchInlineSnapshot(`1337`);
+
+  expect(() => decodeNestedNumber([[[[]]]]))
+    .toThrowErrorMatchingInlineSnapshot(`
+array[0]: Several decoders failed:
+Expected a number, but got: [Array(1)]
+array[0]: Several decoders failed:
+Expected a number, but got: [Array(0)]
+array[0]: Several decoders failed:
+Expected a number, but got: []
+array[0]: Several decoders failed:
+Expected a number, but got: undefined
+Expected an array, but got: undefined
+at 0 (out of bounds) in []
+at 0 in [(index 0) Array(0)]
+at 0 in [(index 0) Array(1)]
+at 0 in [(index 0) Array(1)]
 `);
 });
