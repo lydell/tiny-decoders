@@ -41,7 +41,9 @@ Object {
     active: boolean,
   |};
 
-  // One way is to use `group` and `field`.
+  // One way is to use `group` and `field`. This is the clearest way, but if you
+  // really want to avoid duplication of field names there are a few other
+  // approaches below.
   const userCamelCaseDecoder1: mixed => UserCamelCase = group({
     firstName: field("first_name", string),
     lastName: field("last_name", string),
@@ -77,7 +79,7 @@ Object {
 `);
 
   // A third way is to use `record`, `group`, `field` and `map` all at once.
-  // TODO and WARNING: If you misspell field using this approach Flow doesn’t
+  // TODO and WARNING: If you misspell fields using this approach Flow doesn’t
   // catch it! This seems to be a bug in Flow, because TypeScript does catch it.
   const userCamelCaseDecoder3: mixed => UserCamelCase = map(
     group({

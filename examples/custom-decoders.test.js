@@ -33,7 +33,7 @@ test("custom decoders", () => {
       case "left":
         return value;
       default:
-        throw new TypeError(`Expected a Alignment, but got: ${repr(value)}`);
+        throw new TypeError(`Expected an Alignment, but got: ${repr(value)}`);
     }
   }
 

@@ -13,7 +13,7 @@ import {
 } from "../src";
 
 test("distinguishing between undefined, null and missing values", () => {
-  // When decoding objects, arrays and tuple, the value for a proerty or index
+  // When decoding objects, arrays and tuples, the value for a property or index
   // can be missing in three ways:
   //
   // - The value is `null`.
