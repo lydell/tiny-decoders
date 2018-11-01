@@ -28,7 +28,7 @@ export function dict<T>(
 // https://github.com/nvie/decoders/blob/1dc791f1df8e33110941baf5820f99318660f60f/src/object.d.ts#L4-L9
 export type ExtractDecoderType<T> = T extends ((value: unknown) => infer V)
   ? V
-  : unknown;
+  : never;
 
 export function group<T extends { [key: string]: (value: unknown) => unknown }>(
   mapping: T
