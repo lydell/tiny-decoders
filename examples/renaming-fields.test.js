@@ -84,6 +84,8 @@ Object {
       firstName: field("first_name", string),
       lastName: field("last_name", string),
       rest: record({
+        // TODO: Flow errors on this line, even though it is correct.
+        // $FlowIgnore
         age: number,
         active: boolean,
       }),

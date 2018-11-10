@@ -383,12 +383,12 @@ function keyErrorMessage(
         ? " (out of bounds)"
         : ""
       : value == null || typeof value !== "object"
-        ? /* istanbul ignore next */ ""
-        : Object.prototype.hasOwnProperty.call(value, key)
-          ? ""
-          : key in value
-            ? " (prototype)"
-            : " (missing)";
+      ? /* istanbul ignore next */ ""
+      : Object.prototype.hasOwnProperty.call(value, key)
+      ? ""
+      : key in value
+      ? " (prototype)"
+      : " (missing)";
   return [
     `${prefix}[${at}]`,
     keyErrorPrefixRegex.test(message) ? "" : ": ",

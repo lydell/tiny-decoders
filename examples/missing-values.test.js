@@ -63,10 +63,10 @@ Expected the value null, but got: undefined
         !("age" in obj)
           ? () => "missing"
           : obj.age === null
-            ? () => null
-            : obj.age === undefined
-              ? () => undefined
-              : field("age", number)
+          ? () => null
+          : obj.age === undefined
+          ? () => undefined
+          : field("age", number)
     ),
   });
   expect(userDecoder({ name: "John" })).toMatchInlineSnapshot(`

@@ -75,6 +75,8 @@ verifyCamel(
     group({
       firstName: field("first_name", string),
       rest: record({
+        // TODO: Flow errors on this line, even though it is correct.
+        // $FlowIgnore
         age: number,
       }),
     }),
