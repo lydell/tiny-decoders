@@ -28,14 +28,7 @@
     "prettier": "prettier --write \"*.md\" \"typescript/*.{ts,json}\"",
     "jest": "jest",
     "coverage": "jest --coverage",
-    "clean": "rimraf dist",
-    "postclean": "node -e \"try { require('fs').mkdirSync('dist') } catch {}\"",
-    "prebuild": "npm run clean",
-    "build": "run-p \"build:*\"",
-    "build:commonjs": "babel src/index.js --out-file dist/index.js",
-    "build:esm": "babel --env-name esm src/index.js --out-file dist/index.mjs",
-    "build:flow": "node -e \"require('fs').copyFileSync('src/index.js', 'dist/index.js.flow')\"",
-    "build:typescript": "node -e \"require('fs').copyFileSync('typescript/index.d.ts', 'dist/index.d.ts')\"",
+    "build": "node build.script.js",
     "test": "run-s eslint dtslint coverage build",
     "prepublishOnly": "npm test"
   },
@@ -60,6 +53,6 @@
     "jest": "23.6.0",
     "npm-run-all": "4.1.3",
     "prettier": "1.15.2",
-    "rimraf": "2.6.2"
+    "shelljs": "0.8.2"
   }
 }
