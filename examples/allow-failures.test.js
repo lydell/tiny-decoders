@@ -18,7 +18,7 @@ test("allowing decoders, such as fieldDeep, to fail", () => {
   expect(() => decoder(incompleteData)).toThrowErrorMatchingInlineSnapshot(`
 object["store"]["products"][0]["accessories"][0]: Expected an object, but got: undefined
 at 0 (out of bounds) in []
-at "accessories" in {"accessories": Array(0)}
+at "accessories" in {"accessories": []}
 at 0 in [(index 0) Object(1)]
 at "products" in {"products": Array(1)}
 at "store" in {"store": Object(1)}
@@ -45,7 +45,7 @@ at "store" in {"store": Object(1)}
     .toThrowErrorMatchingInlineSnapshot(`
 (optional) object["store"]["products"][0]["accessories"][0]: Expected an object, but got: undefined
 at 0 (out of bounds) in []
-at "accessories" in {"accessories": Array(0)}
+at "accessories" in {"accessories": []}
 at 0 in [(index 0) Object(1)]
 at "products" in {"products": Array(1)}
 at "store" in {"store": Object(1)}

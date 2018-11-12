@@ -306,12 +306,12 @@ at "store" (missing) in {}
   expect(() => decoder({ store: {} })).toThrowErrorMatchingInlineSnapshot(`
 object["store"]["products"]: Expected an array, but got: undefined
 at "products" (missing) in {}
-at "store" in {"store": Object(0)}
+at "store" in {"store": {}}
 `);
   expect(() => decoder({ store: { products: [{}] } }))
     .toThrowErrorMatchingInlineSnapshot(`
 object["store"]["products"][1]: Expected an object, but got: undefined
-at 1 (out of bounds) in [Object(0)]
+at 1 (out of bounds) in [{}]
 at "products" in {"products": Array(1)}
 at "store" in {"store": Object(1)}
 `);
@@ -322,7 +322,7 @@ object["store"]["products"][1]["accessories"][0]["price"]: Expected a number, bu
 at "price" in {"price": null}
 at 0 in [(index 0) Object(1)]
 at "accessories" in {"accessories": Array(1)}
-at 1 in [Object(0), (index 1) Object(1)]
+at 1 in [{}, (index 1) Object(1)]
 at "products" in {"products": Array(2)}
 at "store" in {"store": Object(1)}
 `);
@@ -476,14 +476,14 @@ test("lazy", () => {
 array[0]: Several decoders failed:
 Expected a number, but got: [Array(1)]
 array[0]: Several decoders failed:
-Expected a number, but got: [Array(0)]
+Expected a number, but got: [[]]
 array[0]: Several decoders failed:
 Expected a number, but got: []
 array[0]: Several decoders failed:
 Expected a number, but got: undefined
 Expected an array, but got: undefined
 at 0 (out of bounds) in []
-at 0 in [(index 0) Array(0)]
+at 0 in [(index 0) []]
 at 0 in [(index 0) Array(1)]
 at 0 in [(index 0) Array(1)]
 `);

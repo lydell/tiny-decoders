@@ -158,7 +158,7 @@ test("array", () => {
       { maxArrayChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `[undefined, <empty>, null, true, NaN, "string", Symbol(desc), function "repr", /test/gm, Date, Error, String, Array(0), Object(0), Array(1), Object(1), Point(2)]`
+    `[undefined, <empty>, null, true, NaN, "string", Symbol(desc), function "repr", /test/gm, Date, Error, String, [], {}, Array(1), Object(1), Point(2)]`
   );
 });
 
@@ -226,7 +226,7 @@ test("object", () => {
       { maxObjectChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "string", "f": Symbol(desc), "g": function "repr", "h": /test/gm, "i": Date, "j": Error, "k": String, "l": Array(0), "m": Object(0), "o": Array(1), "p": Object(1), "r": Point(2)}`
+    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "string", "f": Symbol(desc), "g": function "repr", "h": /test/gm, "i": Date, "j": Error, "k": String, "l": [], "m": {}, "o": Array(1), "p": Object(1), "r": Point(2)}`
   );
   expect(repr({ '"), "key": "other value"': 1 })).toMatchInlineSnapshot(
     `{"\\"), \\"ke… value\\"": 1}`

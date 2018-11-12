@@ -286,7 +286,7 @@ export function repr(
 
     if (Array.isArray(value)) {
       const arr: Array<mixed> = value;
-      if (!recurse) {
+      if (!recurse && arr.length > 0) {
         return `${toStringType}(${arr.length})`;
       }
 
@@ -324,7 +324,7 @@ export function repr(
       // `class Foo {}` has `toStringType === "Object"` and `rawName === "Foo"`.
       const { name } = obj.constructor;
 
-      if (!recurse) {
+      if (!recurse && keys.length > 0) {
         return `${name}(${keys.length})`;
       }
 
