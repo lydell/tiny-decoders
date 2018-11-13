@@ -52,7 +52,9 @@ Supports [Flow] and [TypeScript].
 
 ## Installation
 
-Not yet :)
+```
+npm install tiny-decoders
+```
 
 ## Example
 
