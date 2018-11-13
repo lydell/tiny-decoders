@@ -102,7 +102,7 @@ The error can look like this:
 ## Intro
 
 The central concept in tiny-decoders is the _decoder._ It’s a function that
-turns `mixed` into some narrower type (`(mixed) => T`), or throws an error.
+turns `mixed` into some narrower type, or throws an error.
 
 For example, there’s a decoder called `string` (`(mixed) => string`) that
 returns a string if the input is a string, and throws a `TypeError` otherwise.
@@ -235,8 +235,8 @@ Takes a “Mapping” as input, and returns a decoder. The new decoder checks th
 `value` is an object, and then goes through all the key-decoder pairs in the
 _Mapping._ For every key, the value of `value[key]` must match the key’s
 decoder. If all of that succeeds it returns “Result,” otherwise it throws a
-`TypeError`. The Result is identical to the Mapping, except all the `(mixed) =>`
-are gone, so to speak.
+`TypeError`. The Result is identical to the Mapping, except all of the
+`(mixed) =>` are gone, so to speak.
 
 Example:
 
@@ -432,7 +432,7 @@ Takes a “Mapping” as input, and returns a decoder. The new decoder goes thro
 all the key-decoder pairs in the _Mapping._ For every key-decoder pair, `value`
 must match the decoder. (The keys don’t matter – all their decoders are run on
 the same `value`). If all of that succeeds it returns “Result,” otherwise it
-throws a `TypeError`. The Result is identical to the Mapping, except all the
+throws a `TypeError`. The Result is identical to the Mapping, except all of the
 `(mixed) =>` are gone, so to speak.
 
 As you might have noticed, `group` has the exact same type annotation as
