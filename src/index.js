@@ -233,16 +233,16 @@ export function either<T, U>(
   };
 }
 
-export function lazy<T>(fn: () => mixed => T): mixed => T {
-  return function lazyDecoder(value: mixed): T {
-    return fn()(value);
-  };
-}
-
 function stripPrefix(prefix: string, str: string): string {
   return str.slice(0, prefix.length) === prefix
     ? str.slice(prefix.length)
     : str;
+}
+
+export function lazy<T>(fn: () => mixed => T): mixed => T {
+  return function lazyDecoder(value: mixed): T {
+    return fn()(value);
+  };
 }
 
 export function repr(
