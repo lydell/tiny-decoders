@@ -780,7 +780,7 @@ Decoding error:
 ```
 
 The errors of tiny-decoders are shorter and a little bit more cryptic. As
-opposed to [nive/decoders], it stops at the _first_ error in a record (instead
+opposed to [nvie/decoders], it stops at the _first_ error in a record (instead
 of showing them all). First, the missing “id” field:
 
 ```
