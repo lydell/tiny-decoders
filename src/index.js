@@ -156,9 +156,9 @@ export function fieldDeep<T>(
 export function optional<T, U>(
   decoder: mixed => T,
   // This parameter is implicitly optional since `U` is allowed to be `void`
-  // (undefined), but don’ mark it with a question mark `defaultValue?: U`
+  // (undefined), but don’ mark it with a question mark (`defaultValue?: U`)
   // because that causes `name: optional(string)` in the `User` test in
-  // `flow/user.js` to match `match: string`!
+  // `flow/user.js` not to be an error for a `name: string` type annotation!
   defaultValue: U
 ): mixed => T | U {
   return function optionalDecoder(value: mixed): T | U {
