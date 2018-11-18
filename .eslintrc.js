@@ -8,19 +8,22 @@ module.exports = {
     "import",
     "jest",
     "prettier",
-    "sort-imports-es6-autofix",
+    "simple-import-sort",
   ],
   env: { es6: true },
   rules: Object.assign({}, baseRules({ import: true }), {
     "no-console": "error",
     "prettier/prettier": "error",
-    "sort-imports-es6-autofix/sort-imports-es6": "error",
+    "simple-import-sort/sort": "error",
     "symbol-description": "off",
   }),
   overrides: [
     {
       files: [".*.js", "*.{config,script}.js"],
       env: { node: true },
+      rules: {
+        "import/order": ["error", { "newlines-between": "always" }],
+      },
     },
     {
       files: ["{src,flow,examples,test}/*.js"],
