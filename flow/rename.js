@@ -86,7 +86,6 @@ verifyCamel(
 
 // Forgot to spread:
 verifyCamel(
-  // $ExpectError
   map(
     group({
       firstName: field("first_name", string),

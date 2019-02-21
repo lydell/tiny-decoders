@@ -6,6 +6,7 @@ include_warnings=true
 
 [lints]
 all=error
+dynamic-export=off
 
 [strict]
 sketchy-null

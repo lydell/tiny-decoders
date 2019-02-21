@@ -1,5 +1,15 @@
 function presets({ modules }) {
-  return ["@babel/preset-flow", ["@babel/env", { loose: true, modules }]];
+  return [
+    "@babel/preset-flow",
+    [
+      "@babel/env",
+      {
+        loose: true,
+        modules,
+        exclude: ["@babel/plugin-transform-regenerator"],
+      },
+    ],
+  ];
 }
 
 module.exports = {
