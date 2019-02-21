@@ -345,11 +345,10 @@ type Person = {|
 |};
 
 // You can use `field` with `group` to rename keys on a record.
-const personDecoder = (mixed) =>
-  (Person = group({
-    firstName: field("first_name", string),
-    lastName: field("last_name", string),
-  }));
+const personDecoder: (mixed) => Person = group({
+  firstName: field("first_name", string),
+  lastName: field("last_name", string),
+});
 
 type Point = {|
   x: number,
@@ -820,7 +819,7 @@ like expanding objects and arrays in the browser devtools (but in your head):
 
 ## Development
 
-You can need [Node.js] 10 and npm 6.
+You need [Node.js] 10 and npm 6.
 
 ### npm scripts
 
