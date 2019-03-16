@@ -6,9 +6,9 @@ include_warnings=true
 
 [lints]
 all=error
-dynamic-export=off
 
 [strict]
+dynamic-export
 sketchy-null
 sketchy-number
 untyped-type-import
