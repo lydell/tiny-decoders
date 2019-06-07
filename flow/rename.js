@@ -36,11 +36,11 @@ verifyCamel(
 verifyCamel(
   // $ExpectError
   map(
-    // $ExpectError
     record({
       first_name: string,
       age: number,
     }),
+    // $ExpectError
     ({ fist_name: firstName, ...rest }) => ({ firstName, ...rest })
   )
 );

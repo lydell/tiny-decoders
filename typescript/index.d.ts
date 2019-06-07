@@ -8,9 +8,9 @@ export function number(value: unknown): number;
 
 export function string(value: unknown): string;
 
-export function mixedArray(value: unknown): Array<unknown>;
+export function mixedArray(value: unknown): ReadonlyArray<unknown>;
 
-export function mixedDict(value: unknown): { [key: string]: unknown };
+export function mixedDict(value: unknown): { readonly [key: string]: unknown };
 
 export function constant<
   T extends boolean | number | string | undefined | null

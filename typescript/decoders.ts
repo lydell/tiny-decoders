@@ -26,9 +26,9 @@ boolean(undefined);
 number(undefined);
 // $ExpectType string
 string(undefined);
-// $ExpectType unknown[]
+// $ExpectType readonly unknown[]
 mixedArray(undefined);
-// $ExpectType { [key: string]: unknown; }
+// $ExpectType { readonly [key: string]: unknown; }
 mixedDict(undefined);
 // $ExpectType true
 constant(true)(undefined);
@@ -88,7 +88,7 @@ fieldAndThen("", string, () => string)(undefined);
 fieldAndThen(0, string, () => string)(undefined);
 // $ExpectType string | number
 either(string, number)(undefined);
-// $ExpectType string | number | boolean | { [key: string]: unknown; }
+// $ExpectType string | number | boolean | { readonly [key: string]: unknown; }
 either(either(boolean, string), either(number, mixedDict))(undefined);
 // $ExpectType string
 lazy(() => string)(undefined);

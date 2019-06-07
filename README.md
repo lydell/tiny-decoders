@@ -650,7 +650,7 @@ const personDecoder: (mixed) => Person = record({
 
 #### `mixedArray`
 
-`(value: mixed) => Array<mixed>`
+`(value: mixed) => $ReadOnlyArray<mixed>`
 
 Usually you want to use [array] instead. `array` actually uses this decoder
 behind the scenes, to verify that `value` is an array (before proceeding to
@@ -663,7 +663,7 @@ undefined, null and missing values][example-missing-values].
 
 #### `mixedDict`
 
-`(value: mixed) => { [string]: mixed }`
+`(value: mixed) => { +[string]: mixed }`
 
 Usually you want to use [dict] or [record] instead. `dict` and `record` actually
 use this decoder behind the scenes, to verify that `value` is an object (before

@@ -21,14 +21,14 @@ export function string(value: mixed): string {
   return value;
 }
 
-export function mixedArray(value: mixed): Array<mixed> {
+export function mixedArray(value: mixed): $ReadOnlyArray<mixed> {
   if (!Array.isArray(value)) {
     throw new TypeError(`Expected an array, but got: ${repr(value)}`);
   }
   return value;
 }
 
-export function mixedDict(value: mixed): { [string]: mixed } {
+export function mixedDict(value: mixed): { +[string]: mixed } {
   if (typeof value !== "object" || value == null || Array.isArray(value)) {
     throw new TypeError(`Expected an object, but got: ${repr(value)}`);
   }
