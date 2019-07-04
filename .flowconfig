@@ -9,6 +9,7 @@ all=error
 
 [strict]
 dynamic-export
+implicit-inexact-object
 sketchy-null
 sketchy-number
 untyped-type-import

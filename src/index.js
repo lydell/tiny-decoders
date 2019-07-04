@@ -28,7 +28,7 @@ export function mixedArray(value: mixed): $ReadOnlyArray<mixed> {
   return value;
 }
 
-export function mixedDict(value: mixed): { +[string]: mixed } {
+export function mixedDict(value: mixed): { +[string]: mixed, ... } {
   if (typeof value !== "object" || value == null || Array.isArray(value)) {
     throw new TypeError(`Expected an object, but got: ${repr(value)}`);
   }
@@ -63,8 +63,8 @@ export function array<T>(decoder: mixed => T): mixed => Array<T> {
   };
 }
 
-export function dict<T>(decoder: mixed => T): mixed => { [string]: T } {
-  return function dictDecoder(value: mixed): { [string]: T } {
+export function dict<T>(decoder: mixed => T): mixed => { [string]: T, ... } {
+  return function dictDecoder(value: mixed): { [string]: T, ... } {
     const obj = mixedDict(value);
     const keys = Object.keys(obj);
     // Using a for-loop rather than `.reduce` gives a nicer stack trace.
@@ -79,7 +79,7 @@ export function dict<T>(decoder: mixed => T): mixed => { [string]: T } {
 
 type ExtractDecoderType = <T, U>((mixed) => T | U) => T | U;
 
-export function group<T: {}>(
+export function group<T: { ... }>(
   mapping: T
 ): mixed => $ObjMap<T, ExtractDecoderType> {
   return function groupDecoder(value: mixed): $ObjMap<T, ExtractDecoderType> {
@@ -95,7 +95,7 @@ export function group<T: {}>(
   };
 }
 
-export function record<T: {}>(
+export function record<T: { ... }>(
   mapping: T
 ): mixed => $ObjMap<T, ExtractDecoderType> {
   return function recordDecoder(value: mixed): $ObjMap<T, ExtractDecoderType> {
@@ -318,7 +318,7 @@ export function repr(
     }
 
     if (toStringType === "Object") {
-      const obj: { [string]: mixed } = value;
+      const obj: { [string]: mixed, ... } = value;
       const keys = Object.keys(obj);
 
       // `class Foo {}` has `toStringType === "Object"` and `rawName === "Foo"`.

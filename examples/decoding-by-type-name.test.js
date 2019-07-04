@@ -36,7 +36,7 @@ test("decoding based on a field", () => {
   type Category = {|
     type: "Category",
     name: string,
-    tags: { [string]: string },
+    tags: { [string]: string, ... },
   |};
 
   const categoryDecoder: mixed => Category = record({
