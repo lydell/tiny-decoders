@@ -1,25 +1,30 @@
 // @flow strict
 
 import {
-  andThen,
   array,
+  autoRecord,
   boolean,
   constant,
+  deep,
   dict,
   either,
-  field,
-  fieldAndThen,
-  fieldDeep,
-  group,
   lazy,
   map,
   mixedArray,
   mixedDict,
   number,
   optional,
+  pair,
   record,
   string,
+  triple,
+  tuple,
 } from "../src";
+
+function use(value: mixed) {
+  // eslint-disable-next-line no-void
+  return void value;
+}
 
 /* eslint-disable no-unused-expressions */
 // $ExpectError
@@ -43,31 +48,29 @@ import {
 // $ExpectError
 (dict(string)(undefined): { [string]: boolean });
 // $ExpectError
-(group({})(undefined): boolean);
+(record(() => "")(undefined): boolean);
 // $ExpectError
-(group({ a: string })(undefined): {| a: boolean |});
+(record(field => ({ a: field("a", string) }))(undefined): {| a: boolean |});
 // $ExpectError
-(record({})(undefined): boolean);
+(tuple(() => "")(undefined): boolean);
 // $ExpectError
-(record({ a: string })(undefined): {| a: boolean |});
+(tuple(item => [item(0, string)])(undefined): [boolean]);
 // $ExpectError
-(field("", string)(undefined): boolean);
+(pair(string, boolean)(undefined): [boolean, boolean]);
 // $ExpectError
-(field(0, string)(undefined): boolean);
+(triple(string, boolean, boolean)(undefined): [boolean, boolean, boolean]);
 // $ExpectError
-(fieldDeep([], string)(undefined): boolean);
+(autoRecord({})(undefined): boolean);
+// $ExpectError
+(autoRecord({ a: string })(undefined): {| a: boolean |});
+// $ExpectError
+(deep([], string)(undefined): boolean);
 // $ExpectError
 (optional(string)(undefined): boolean);
 // $ExpectError
 (optional(string)(undefined): string);
 // $ExpectError
 (map(string, string)(undefined): boolean);
-// $ExpectError
-(andThen(string, () => string)(undefined): boolean);
-// $ExpectError
-(fieldAndThen("", string, () => string)(undefined): boolean);
-// $ExpectError
-(fieldAndThen(0, string, () => string)(undefined): boolean);
 // $ExpectError
 (either(string, number)(undefined): boolean);
 // $ExpectError
@@ -77,6 +80,57 @@ import {
 // $ExpectError
 (lazy(() => string)(undefined): boolean);
 /* eslint-enable no-unused-expressions */
+
+// $ExpectError
+boolean(undefined, []);
+// $ExpectError
+number(undefined, []);
+// $ExpectError
+string(undefined, []);
+// $ExpectError
+mixedArray(undefined, []);
+// $ExpectError
+mixedDict(undefined, []);
+// $ExpectError
+constant("const")(undefined, []);
+// $ExpectError
+constant("const")(undefined, {});
+array(string)(undefined, []);
+// $ExpectError
+array(string)(undefined, {});
+dict(string)(undefined, []);
+// $ExpectError
+dict(string)(undefined, {});
+record(() => "")(undefined, []);
+// $ExpectError
+record(() => "")(undefined, {});
+tuple(() => "")(undefined, []);
+// $ExpectError
+tuple(() => "")(undefined, {});
+pair(string, boolean)(undefined, []);
+// $ExpectError
+pair(string, boolean)(undefined, {});
+triple(string, boolean, boolean)(undefined, []);
+// $ExpectError
+triple(string, boolean, boolean)(undefined, {});
+autoRecord({})(undefined, []);
+// $ExpectError
+autoRecord({})(undefined, {});
+deep([], string)(undefined, []);
+// $ExpectError
+deep({}, string)(undefined, []);
+optional(string)(undefined, []);
+// $ExpectError
+optional(string)(undefined, {});
+map(string, string)(undefined, []);
+// $ExpectError
+map(string, string)(undefined, {});
+either(string, number)(undefined, []);
+// $ExpectError
+either(string, number)(undefined, {});
+lazy(() => string)(undefined, []);
+// $ExpectError
+lazy(() => string)(undefined, {});
 
 constant(undefined);
 constant(null);
@@ -94,56 +148,129 @@ constant({ type: "user" });
 // $ExpectError
 constant(string);
 
-field("", string);
-field(0, string);
+array(string);
+array(string, "throw");
+array(string, "skip");
+array(string, { default: "" });
+array(string, { default: [1] });
+// Wrong mode:
+// $ExpectError
+array(string, "nope");
+
+dict(string);
+dict(string, "throw");
+dict(string, "skip");
+dict(string, { default: "" });
+dict(string, { default: [1] });
+// Wrong mode:
+// $ExpectError
+dict(string, "nope");
+
+// Accidentally passed an object instead of a callback:
+// $ExpectError
+record({
+  a: string,
+});
+record(field => field("", string));
+record(field => field("", string, "throw"));
+record(field => field("", string, { default: "" }));
+record(field => field("", string, { default: null }));
 // Wrong key type:
 // $ExpectError
-field(null, string);
+record(field => field(0, string));
 // Wrong order:
 // $ExpectError
-field(string, "");
-// Wrong order:
-// $ExpectError
-field(string, 0);
+record(field => field(string, ""));
 // Missing key:
 // $ExpectError
-field(string);
+record(field => field(string));
+// Wrong mode:
+// $ExpectError
+record(field => field("", string, "skip"));
+// Accidentally passed bare default:
+// $ExpectError
+record(field => field("", string, null));
 
-fieldDeep([], string);
-fieldDeep([""], string);
-fieldDeep([0], string);
+record((field, fieldError) => fieldError("key", "message"));
+// Forgot key:
+// $ExpectError
+record((field, fieldError) => fieldError("message"));
 // Wrong key type:
 // $ExpectError
-fieldDeep([null], string);
-// Wrong order:
+record((field, fieldError) => fieldError(0, "message"));
+// Wrong message type:
 // $ExpectError
-fieldDeep(string, []);
-// Missing key:
-// $ExpectError
-fieldDeep(string);
+record((field, fieldError) => fieldError("key", new TypeError("message")));
 
-fieldAndThen("", string, () => string);
-fieldAndThen(0, string, () => string);
+record((field, fieldError, obj, errors) => {
+  use(obj.test);
+  // Field values are mixed.
+  // $ExpectError
+  obj.test.toUpperCase();
+  // errors can be null.
+  // $ExpectError
+  errors.slice();
+  if (errors != null) {
+    errors.slice();
+  }
+});
+
+tuple(item => item(0, string));
+tuple(item => item(0, string, "throw"));
+tuple(item => item(0, string, { default: "" }));
+tuple(item => item(0, string, { default: null }));
 // Wrong key type:
 // $ExpectError
-fieldAndThen(null, string, () => string);
+tuple(item => item("", string));
 // Wrong order:
 // $ExpectError
-fieldAndThen(string, "", () => string);
-// Wrong order:
-// $ExpectError
-fieldAndThen(string, 0, () => string);
+tuple(item => item(string, 0));
 // Missing key:
 // $ExpectError
-fieldAndThen(string, () => string);
-// Decoder instead of `mixed => decoder`:
+tuple(item => item(string));
+// Wrong mode:
 // $ExpectError
-fieldAndThen("", string, string);
+tuple(item => item(0, string, "skip"));
+// Accidentally passed bare default:
+// $ExpectError
+tuple(item => item(0, string, null));
 
-andThen(string, () => string);
-// Decoder instead of `mixed => decoder`:
+tuple((item, itemError) => itemError(0, "message"));
+// Forgot key:
 // $ExpectError
-andThen(string, string);
+tuple((item, itemError) => itemError("message"));
+// Wrong key type:
+// $ExpectError
+tuple((item, itemError) => itemError("key", "message"));
+// Wrong message type:
+// $ExpectError
+tuple((item, itemError) => itemError(0, new TypeError("message")));
+
+tuple((item, itemError, arr, errors) => {
+  arr.slice();
+  // arr is an array, not an object.
+  // $ExpectError
+  use(arr.test);
+  // errors can be null.
+  // $ExpectError
+  errors.slice();
+  if (errors != null) {
+    errors.slice();
+  }
+});
+
+deep([], string);
+deep([""], string);
+deep([0], string);
+// Wrong key type:
+// $ExpectError
+deep([null], string);
+// Wrong order:
+// $ExpectError
+deep(string, []);
+// Missing path:
+// $ExpectError
+deep(string);
 
 // Decoder instead of `() => decoder`:
 // $ExpectError

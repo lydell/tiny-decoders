@@ -1,6 +1,6 @@
 // @flow strict
 
-import { map, number, record, repr, string } from "../src";
+import { type Decoder, autoRecord, map, number, repr, string } from "../src";
 
 test("custom decoders", () => {
   function finite(value: number): number {
@@ -13,7 +13,7 @@ test("custom decoders", () => {
   // Want `number` but want to disallow `Infinity`, `-Infinity` and `NaN`?
   // Compose `number` with a custom function using `map`. `map` is not only for
   // transforming values, but also for chaining decoders!
-  const finiteNumber: mixed => number = map(number, finite);
+  const finiteNumber: Decoder<number> = map(number, finite);
   expect(finiteNumber(1)).toMatchInlineSnapshot(`1`);
   expect(() => finiteNumber(Infinity)).toThrowErrorMatchingInlineSnapshot(
     `Expected a finite number, but got: Infinity`
@@ -37,7 +37,7 @@ test("custom decoders", () => {
     }
   }
 
-  const shapeDecoder = record({
+  const shapeDecoder = autoRecord({
     width: number,
     height: number,
     // Now `map` comes in handy again to chain decoders!
@@ -45,13 +45,10 @@ test("custom decoders", () => {
   });
   expect(shapeDecoder({ width: 100, height: 100, align: "left" }))
     .toMatchInlineSnapshot(`
-Object {
-  "align": "left",
-  "height": 100,
-  "width": 100,
-}
-`);
-
-  // There’s also a custom decoder in `examples/missing-values.test.js` that you
-  // might be interested in.
+      Object {
+        "align": "left",
+        "height": 100,
+        "width": 100,
+      }
+    `);
 });

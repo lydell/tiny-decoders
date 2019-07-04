@@ -3,7 +3,7 @@
 Type-safe data decoding for the minimalist, inspired by [nvie/decoders] and
 [Elm’s JSON Decoders][elm-json].
 
-Supports [Flow] and [TypeScript].
+Supports [TypeScript] and [Flow].
 
 ## Contents
 
@@ -15,26 +15,26 @@ Supports [Flow] and [TypeScript].
 - [Installation](#installation)
 - [Example](#example)
 - [Intro](#intro)
+- [A note on type annotations](#a-note-on-type-annotations)
 - [API](#api)
-  - [Decoding primitive values](#decoding-primitive-values)
+  - [The `Decoder<T>` type](#the-decodert-type)
+  - [Primitive decoders](#primitive-decoders)
     - [`boolean`](#boolean)
     - [`number`](#number)
     - [`string`](#string)
     - [`constant`](#constant)
-  - [Decoding combined values](#decoding-combined-values)
+  - [Functions that _return_ a decoder](#functions-that-_return_-a-decoder)
+    - [Tolerant decoding](#tolerant-decoding)
     - [`array`](#array)
     - [`dict`](#dict)
     - [`record`](#record)
+    - [`tuple`](#tuple)
+    - [`pair`](#pair)
+    - [`triple`](#triple)
+    - [`autoRecord`](#autorecord)
+    - [`deep`](#deep)
     - [`optional`](#optional)
-  - [Decoding specific fields](#decoding-specific-fields)
-    - [`field`](#field)
-    - [`fieldDeep`](#fielddeep)
-    - [`group`](#group)
-  - [Chaining](#chaining)
     - [`either`](#either)
-    - [`map`](#map)
-    - [`andThen`](#andthen)
-    - [`fieldAndThen`](#fieldandthen)
   - [Less common decoders](#less-common-decoders)
     - [`lazy`](#lazy)
     - [`mixedArray`](#mixedarray)
@@ -58,8 +58,9 @@ npm install tiny-decoders
 
 ## Example
 
-```js
+```ts
 import {
+  Decoder,
   array,
   boolean,
   either,
@@ -69,23 +70,25 @@ import {
   string,
 } from "tiny-decoders";
 
-type User = {|
-  name: string,
-  active: boolean,
-  age: ?number,
-  interests: Array<string>,
-  id: string | number,
-|};
+type User = {
+  name: string;
+  active: boolean;
+  age: number | undefined;
+  interests: Array<string>;
+  id: string | number;
+};
 
-const userDecoder: (mixed) => User = record({
-  name: string,
-  active: boolean,
-  age: optional(number),
-  interests: array(string),
-  id: either(string, number),
-});
+const userDecoder = record(
+  (field): User => ({
+    name: field("full_name", string),
+    active: field("is_active", boolean),
+    age: field("age", optional(number)),
+    interests: field("interests", array(string)),
+    id: field("id", either(string, number)),
+  })
+);
 
-const payload: mixed = getSomeJSON();
+const payload: unknown = getSomeJSON();
 
 const user: User = userDecoder(payload);
 
@@ -104,63 +107,146 @@ The error can look like this:
 ## Intro
 
 The central concept in tiny-decoders is the _decoder._ It’s a function that
-turns `mixed` into some narrower type, or throws an error.
+turns `unknown` (for Flow users: `mixed`) into some narrower type, or throws an
+error.
 
-For example, there’s a decoder called `string` (`(mixed) => string`) that
-returns a string if the input is a string, and throws a `TypeError` otherwise.
-That’s all there is to a decoder!
+For example, there’s a decoder called `string` (`(value: unknown) => string`)
+that returns a string if the input is a string, and throws a `TypeError`
+otherwise. That’s all there is to a decoder!
 
 tiny-decoders contains:
 
-- A bunch of decoders (such as `(mixed) => string`).
-- A bunch of functions that _return_ a decoder (such as `array`:
-  `((mixed) => T) => (mixed) => Array<T>`).
+- [A bunch of decoders.][primitive-decoders]
+- [A bunch of functions that _return_ a decoder.][returns-decoders]
 
 Composing those functions together, you can _describe_ the shape of your objects
-and let tiny-decoders verify that a given input matches that description.
+and let tiny-decoders extract data that matches that description from a given
+input.
+
+Note that tiny-decoders is all about _extracting data,_ not validating that
+input _exactly matches_ a schema.
+
+## A note on type annotations
+
+Most of the time, you don’t need to write any type annotations for decoders (but
+some examples in the API documentation show them explicitly for clarity).
+
+However, adding type annotations for record decoders results in much better
+error messages. The following is the recommended way of annotating record
+decoders, in both TypeScript and Flow:
+
+```ts
+import { record, autoRecord } from "tiny-decoders";
+
+type Person = {
+  name: string;
+  age: number;
+};
+
+const personDecoder = record(
+  (field): Person => ({
+    name: field("name", string),
+    age: field("age", number),
+  })
+);
+
+const personDecoderAuto = autoRecord<Person>({
+  name: string,
+  age: number,
+});
+```
+
+In TypeScript, you can also write it like this:
+
+```ts
+const personDecoder = record(field => ({
+  name: field("name", string),
+  age: field("age", number),
+}));
+
+const personDecoderAuto = autoRecord({
+  name: string,
+  age: number,
+});
+
+type Person = ReturnType<typeof personDecoder>;
+// or:
+type Person = ReturnType<typeof personDecoderAuto>;
+```
+
+See the [TypeScript type annotations example][typescript-type-annotations] and
+the [Flow type annotations example][example-type-annotations] for more
+information.
 
 ## API
 
-### Decoding primitive values
+### The `Decoder<T>` type
+
+```ts
+export type Decoder<T> = (value: unknown, errors?: Array<string>) => T;
+```
+
+This is a handy type alias for decoder functions.
+
+Note that simple decoders that do not take an optional `errors` array are also
+allowed by the above defintion:
+
+```ts
+(value: unknown) => T;
+```
+
+The type definition does not show that decoder functions throw `TypeError`s when
+the input is invalid, but do keep that in mind.
+
+### Primitive decoders
 
 > Booleans, numbers and strings, plus [constant].
 
 #### `boolean`
 
-`(value: mixed) => boolean`
+```ts
+export function boolean(value: unknown): boolean;
+```
 
 Returns `value` if it is a boolean and throws a `TypeError` otherwise.
 
 #### `number`
 
-`(value: mixed) => number`
+```ts
+export function number(value: unknown): number;
+```
 
 Returns `value` if it is a number and throws a `TypeError` otherwise.
 
 #### `string`
 
-`(value: mixed) => string`
+```ts
+export function string(value: unknown): string;
+```
 
 Returns `value` if it is a string and throws a `TypeError` otherwise.
 
 #### `constant`
 
-`(constantValue: T) => (value: mixed) => T`
-
-`T` must be one of `boolean | number | string | undefined | null`.
+```ts
+export function constant<
+  T extends boolean | number | string | undefined | null
+>(constantValue: T): (value: unknown) => T;
+```
 
 Returns a decoder. That decoder returns `value` if `value === constantValue` and
 throws a `TypeError` otherwise.
 
-Commonly used when [Decoding by type name][example-decoding-by-type-name].
+Commonly used when [Decoding by type name][example-decoding-by-type-name] to
+prevent mixups.
 
-### Decoding combined values
+### Functions that _return_ a decoder
 
-> Arrays, objects and optional values.
+> Decode arrays, objects and optional values. Combine decoders and functions.
 
 For an array, you need to not just make sure that the value is an array, but
 also that every item _inside_ the array has the correct type. Same thing for
-objects (the values need to be checked). For this kind of cases you need to
+objects (the values need to be checked). For these kinds of cases you need to
 _combine_ decoders. This is done through functions that take a decoder as input
 and returns a new decoder. For example, `array(string)` returns a decoder that
 handles arrays of strings.
@@ -168,90 +254,377 @@ handles arrays of strings.
 Note that there is no `object` decoder, because there are two ways of decoding
 objects:
 
-- If you know all the keys, use [record].
+- If you know all the keys, use [record] or [autoRecord].
 - If the keys are dynamic and all values have the same type, use [dict].
 
-Related:
+Some languages also have _tuples_ in addition to arrays. Both TypeScript and
+Flow lets you use arrays as tuples if you want, which is also common in JSON.
+Use [tuple], [pair] and [triple] to decode tuples.
 
-- [Decoding tuples][example-tuples]
-- The less common decoders [mixedArray] and [mixedDict].
+(Related: The less common decoders [mixedArray] and [mixedDict].)
+
+#### Tolerant decoding
+
+Since arrays and objects can hold multiple values, their decoders allow opting
+into tolerant decoding, where you can recover from errors, either by skipping
+values or providing defaults. Whenever that happens, the message of the error
+that would otherwise have been thrown is pushed to an `errors` array
+(`Array<string>`, if provided), allowing you to inspect what was ignored.
+(Perhaps not the most beautiful API, but very simple.)
+
+For example, if you pass an `errors` array to a [record] decoder, it will both
+push to the array and pass it along to its sub-decoders so they can push to it
+as well.
 
 #### `array`
 
-`(decoder: (mixed) => T) => (value: mixed) => Array<T>`
+```ts
+export function array<T, U = T>(
+  decoder: Decoder<T>,
+  mode?: "throw" | "skip" | { default: U }
+): Decoder<Array<T | U>>;
+```
 
 Takes a decoder as input, and returns a new decoder. The new decoder checks that
-`value` is an array, and then runs the _input_ decoder on every item. If all of
-that succeeds it returns `Array<T>`, otherwise it throws a `TypeError`.
+its `unknown` input is an array, and then runs the _input_ decoder on every
+item. What happens if decoding one of the items fails depends on the `mode`:
+
+- `"throw"` (default): Throws a `TypeError` on the first invalid item.
+- `"skip"`: Items that fail are ignored. This means that the decoded array can
+  be shorter than the input array – even empty! Error messages are pushed to the
+  `errors` array, if present.
+- `{ default: U }`: The passed default value is used for items that fail. The
+  decoded array will always have the same length as the input array. Error
+  messages are pushed to the `errors` array, if present.
+
+If no error was thrown, `Array<T>` is returned (or `Array<T | U>` if you use the
+`{ default: U }` mode).
 
 Example:
 
-```js
+```ts
 import { array, string } from "tiny-decoders";
 
-const arrayOfStringsDecoder: (mixed) => Array<string> = array(string);
+const arrayOfStringsDecoder1: Decoder<Array<string>> = array(string);
+const arrayOfStringsDecoder2: Decoder<Array<string>> = array(string, "skip");
+const arrayOfStringsDecoder3: Decoder<Array<string>> = array(string, {
+  default: "",
+});
+
+// Decode an array of strings:
+arrayOfStringsDecoder1(["a", "b", "c"]);
+
+// Optionally collect error messages when `mode` isn’t `"throw"`:
+const errors = [];
+arrayOfStringsDecoder2(["a", 0, "c"], errors);
 ```
 
 #### `dict`
 
-`(decoder: (mixed) => T) => (value: mixed) => { [string]: T }`
+```ts
+export function dict<T, U = T>(
+  decoder: Decoder<T>,
+  mode?: "throw" | "skip" | { default: U }
+): Decoder<{ [key: string]: T | U }>;
+```
 
 Takes a decoder as input, and returns a new decoder. The new decoder checks that
-`value` is an object, and then goes through all keys in the object and runs the
-_input_ decoder on every value. If all of that succeeds it returns
-`{ [string]: T }`, otherwise it throws a `TypeError`.
+its `unknown` input is an object, and then goes through all keys in the object
+and runs the _input_ decoder on every value. What happens if decoding one of the
+key-values fails depends on the `mode`:
 
-```js
+- `"throw"` (default): Throws a `TypeError` on the first invalid item.
+- `"skip"`: Items that fail are ignored. This means that the decoded object can
+  have fewer keys than the input object – it can even be empty! Error messages
+  are pushed to the `errors` array, if present.
+- `{ default: U }`: The passed default value is used for items that fail. The
+  decoded object will always have the same set of keys as the input object.
+  Error messages are pushed to the `errors` array, if present.
+
+If no error was thrown, `{ [key: string]: T }` is returned (or
+`{ [key: string]: T | U }` if you use the `{ default: U }` mode).
+
+```ts
 import { dict, string } from "tiny-decoders";
 
-const dictOfStringsDecoder: (mixed) => { [string]: T } = dict(string);
+const dictOfStringsDecoder1: Decoder<{ [key: string]: string }> = dict(string);
+const dictOfStringsDecoder2: Decoder<{ [key: string]: string }> = dict(
+  string,
+  "skip"
+);
+const dictOfStringsDecoder3: Decoder<{ [key: string]: string }> = dict(string, {
+  default: "",
+});
+
+// Decode an object of strings:
+dictOfStringsDecoder1({ a: "1", b: "2" });
+
+// Optionally collect error messages when `mode` isn’t `"throw"`:
+const errors = [];
+dictOfStringsDecoder2({ a: "1", b: 0 }, errors);
 ```
 
 #### `record`
 
-`(mapping: Mapping) => (value: mixed) => Result`
+```ts
+export function record<T>(
+  callback: (
+    field: <U, V = U>(
+      key: string,
+      decoder: Decoder<U>,
+      mode?: "throw" | { default: V }
+    ) => U | V,
+    fieldError: (key: string, message: string) => TypeError,
+    obj: { readonly [key: string]: unknown },
+    errors?: Array<string>
+  ) => T
+): Decoder<T>;
+```
 
-- `Mapping`:
+Takes a callback function as input, and returns a new decoder. The new decoder
+checks that its `unknown` input is an object, and then calls the callback (the
+object is passed as the `obj` parameter). The callback receives a `field`
+function that is used to pluck values out of object. The callback is allowed to
+return anything, and that is the `T` of the decoder.
 
-  ```
-  {
-    key1: (mixed) => A,
-    key2: (mixed) => B,
-    ...
-    keyN: (mixed) => C,
+`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better
+error messages and automatic handling of the `errors` array, if provided. The
+nice thing about `field` is that it does _not_ return a new decoder – but the
+value of that field! This means that you can do for instance
+`const type: string = field("type", string)` and then use `type` however you
+want inside your callback.
+
+`fieldError("key", "message")` creates an error message for a certain key.
+`throw fieldError("key", "message")` gives an error that lets you know that
+something is wrong with `"key"`, while `throw new TypeError("message")` would
+not be as clear. Useful when [Decoding by type
+name][example-decoding-by-type-name].
+
+`obj` and `errors` are passed in case you’d need them for some edge case, such
+as if you need to [distinguish between undefined, null and missing
+values][example-missing-values].
+
+Note that if your input object and the decoded object look exactly the same and
+you don’t need any advanced features it’s often more convenient to use
+[autoRecord].
+
+```ts
+import {
+  Decoder,
+  record,
+  boolean,
+  number,
+  string,
+  optional,
+  repr,
+} from "tiny-decoders";
+
+type User = {
+  age: number;
+  active: boolean;
+  name: string;
+  description: string | undefined;
+  legacyId: string | undefined;
+  version: 1;
+};
+
+const userDecoder = record(
+  (field): User => ({
+    // Simple field:
+    age: field("age", number),
+    // Renaming a field:
+    active: field("is_active", boolean),
+    // Combining two fields:
+    name: `${field("first_name", string)} ${field("last_name", string)}`,
+    // Optional field:
+    description: field("description", optional(string)),
+    // Allowing a field to fail:
+    legacyId: field("extra_data", number, { default: undefined }),
+    // Hardcoded field:
+    version: 1,
+  })
+);
+
+const userData: unknown = {
+  age: 30,
+  is_active: true,
+  first_name: "John",
+  last_name: "Doe",
+};
+
+// Decode a user:
+userDecoder(userData);
+
+// Optionally collect error messages from fields where `mode` isn’t `"throw"`:
+const errors = [];
+userDecoder(userData, errors);
+
+type Shape =
+  | {
+      type: "Circle";
+      radius: number;
+    }
+  | {
+      type: "Rectangle";
+      width: number;
+      height: number;
+    };
+
+// Decoding by type name:
+const shapeDecoder = record(
+  (field): Shape => {
+    const type = field("type", string);
+    switch (type) {
+      case "Circle":
+        return {
+          type: "Circle",
+          radius: field("radius", number),
+        };
+
+      case "Rectangle":
+        return {
+          type: "Rectangle",
+          width: field("width", number),
+          height: field("height", number),
+        };
+
+      default:
+        throw fieldError("type", `Invalid Shape type: ${repr(type)}`);
+    }
   }
-  ```
+);
 
-- `Result`:
+// Plucking a single field out of an object:
+const ageDecoder: Decoder<number> = record(field => field("age", number));
+```
 
-  ```
-  {
-    key1: A,
-    key2: B,
-    ...
-    keyN: C,
-  }
-  ```
+#### `tuple`
 
-Takes a “Mapping” as input, and returns a decoder. The new decoder checks that
-`value` is an object, and then goes through all the key-decoder pairs in the
-_Mapping._ For every key, the value of `value[key]` must match the key’s
-decoder. If all of that succeeds it returns “Result,” otherwise it throws a
-`TypeError`. The Result is identical to the Mapping, except all of the
-`(mixed) =>` are gone, so to speak.
+```ts
+export function tuple<T>(
+  callback: (
+    item: <U, V = U>(
+      index: number,
+      decoder: Decoder<U>,
+      mode?: "throw" | { default: V }
+    ) => U | V,
+    itemError: (key: number, message: string) => TypeError,
+    arr: ReadonlyArray<unknown>,
+    errors?: Array<string>
+  ) => T
+): Decoder<T>;
+```
+
+Takes a callback function as input, and returns a new decoder. The new decoder
+checks that its `unknown` input is an array, and then calls the callback.
+`tuple` is just like `record`, but for tuples (arrays) instead of for records
+(objects). Instead of a `field` function, there’s an `item` function that let’s
+you pluck out items of the tuple/array.
+
+Note that you can return any type from the callback, not just tuples. If you’d
+rather have a record you could return that.
+
+```ts
+import { Decoder, tuple, number, string } from "tiny-decoders";
+
+type Person = {
+  firstName: string;
+  lastName: string;
+  age: number;
+  description: string;
+};
+
+// Decoding a tuple into a record:
+const personDecoder = tuple(
+  (item): Person => ({
+    firstName: item(0, string),
+    lastName: item(1, string),
+    age: item(2, number),
+    description: item(3, string),
+  })
+);
+
+// Taking the first number from an array:
+const firstNumberDecoder: Decoder<number> = tuple(item => item(0, number));
+```
+
+See also [Decoding tuples][example-tuples].
+
+Most tuples are 2 or 3 in length. If you want to decode such a tuple into a
+TypeScript/Flow tuple it’s usually more convenient to use [pair] and [triple].
+
+#### `pair`
+
+```ts
+export function pair<T1, T2>(
+  decoder1: Decoder<T1>,
+  decoder2: Decoder<T2>
+): Decoder<[T1, T2]>;
+```
+
+A convenience function around [tuple] when you want to decode `[x, y]` into
+`[T1, T2]`.
+
+```ts
+import { Decoder, pair, number } from "tiny-decoders";
+
+const pointDecoder: Decoder<[number, number]> = pair(number, number);
+```
+
+See also [Decoding tuples][example-tuples].
+
+#### `triple`
+
+```ts
+export function triple<T1, T2, T3>(
+  decoder1: Decoder<T1>,
+  decoder2: Decoder<T2>,
+  decoder3: Decoder<T3>
+): Decoder<[T1, T2, T3]>;
+```
+
+A convenience function around [tuple] when you want to decode `[x, y, z]` into
+`[T1, T2, T3]`.
+
+```ts
+import { Decoder, triple, number } from "tiny-decoders";
+
+const coordinateDecoder: Decoder<[number, number, number]> = pair(
+  number,
+  number,
+  number
+);
+```
+
+See also [Decoding tuples][example-tuples].
+
+#### `autoRecord`
+
+```ts
+export function autoRecord<T>(
+  mapping: { [key in keyof T]: Decoder<T[key]> }
+): Decoder<T>;
+```
+
+Suppose you have a record `T`. Now make an object that looks just like `T`, but
+where every value is a decoder for its key. `autoRecord` takes such an object –
+called `mapping` – as input and returns a new decoder. The new decoder checks
+that its `unknown` input is an object, and then goes through all the key-decoder
+pairs in the `mapping`. For every key, `mapping[key](value[key])` is run. If all
+of that succeeds it returns a `T`, otherwise it throws a `TypeError`.
 
 Example:
 
-```js
-import { record, string, number, boolean } from "tiny-decoders";
+```ts
+import { autoRecord, boolean, number, string } from "tiny-decoders";
 
-type User = {|
-  name: string,
-  age: number,
-  active: boolean,
-|};
+type User = {
+  name: string;
+  age: number;
+  active: boolean;
+};
 
-const userDecoder: (mixed) => User = record({
+const userDecoder = autoRecord<User>({
   name: string,
   age: number,
   active: boolean,
@@ -260,45 +633,84 @@ const userDecoder: (mixed) => User = record({
 
 Notes:
 
-- `record` is a convenience function around [group] and [field]. Check those out
+- `autoRecord` is a convenience function instead of [record]. Check out [record]
   if you need more flexibility, such as renaming fields!
 
-- The `value` we’re decoding is allowed to have extra keys not mentioned in the
-  `record` mapping. I haven’t found a use case where it is useful to disallow
-  extra keys. This package is about extracting data in a type-safe way, not
-  validation.
+- The `unknown` input value we’re decoding is allowed to have extra keys not
+  mentioned in the `mapping`. I haven’t found a use case where it is useful to
+  disallow extra keys. This package is about extracting data in a type-safe way,
+  not validation.
 
 - Want to _add_ some extra keys? Checkout the [extra
   fields][example-extra-fields] example.
 
-- There’s a way to let Flow infer types from your record decoders (or any
-  decoder actually) if you want to take the DRY principle to the extreme – see
-  the [inference example][example-inference].
+#### `deep`
 
-- The _actual_ type annotation for this function is a bit weird but does its job
-  (with good error messages!) – check out the source code if you’re interested.
+```ts
+export function deep<T>(
+  path: Array<string | number>,
+  decoder: Decoder<T>
+): Decoder<T>;
+```
+
+Takes an array of keys (object keys, and array indexes) and a decoder as input,
+and returns a new decoder. It repeatedly goes deeper and deeper into its
+`unknown` input using the given `path`. If all of those checks succeed it
+returns `T`, otherwise it throws a `TypeError`.
+
+`deep` is used to pick a one-off value from a deep structure, rather than having
+to decode each level manually with [record] and [tuple]. See the [Deep
+example][example-deep].
+
+Note that `deep([], decoder)` is equivalent to just `decoder`.
+
+You might want to [combine `deep` with `either`][example-deep] since reaching
+deeply into structures is likely to fail.
+
+Examples:
+
+```ts
+import { deep, number, either } from "tiny-decoders";
+
+const accessoryPriceDecoder: Decoder<number> = deep(
+  ["store", "products", 0, "accessories", 0, "price"],
+  number
+);
+
+const accessoryPriceDecoderWithDefault: Decoder<number> = either(
+  accessoryPriceDecoder,
+  () => 0
+);
+```
 
 #### `optional`
 
-`(decoder: (mixed) => T, defaultValue?: U) => (value: mixed) => Array<T | U>`
+```ts
+export function optional<T>(decoder: Decoder<T>): Decoder<T | undefined>;
+export function optional<T, U>(
+  decoder: (value: unknown) => T,
+  defaultValue: U
+): (value: unknown) => T | U;
+```
 
 Takes a decoder as input, and returns a new decoder. The new decoder returns
-`defaultValue` if `value` is undefined or null, and runs the _input_ decoder on
-`value` otherwise. (If you don’t supply `defaultValue`, undefined is used as the
-default.)
+`defaultValue` if its `unknown` input is undefined or null, and runs the _input_
+decoder on the `unknown` otherwise. (If you don’t supply `defaultValue`,
+undefined is used as the default.)
 
-This is especially useful to mark fields as optional in a [record]:
+This is especially useful to mark fields as optional in a [record] or
+[autoRecord]:
 
-```js
-import { optional, record, string, number, boolean } from "tiny-decoders";
+```ts
+import { autoRecord, optional, boolean, number, string } from "tiny-decoders";
 
-type User = {|
-  name: string,
-  age: ?number,
-  active: boolean,
-|};
+type User = {
+  name: string;
+  age: number | undefined;
+  active: boolean;
+};
 
-const userDecoder: (mixed) => User = record({
+const userDecoder = autoRecord<User>({
   name: string,
   age: optional(number),
   active: optional(boolean, true),
@@ -316,293 +728,111 @@ between undefined, null and missing values][example-missing-values].
 tiny-decoders treats undefined, null and missing values the same by default, to
 keep things simple.
 
-### Decoding specific fields
-
-> Parts of objects and arrays, plus [group].
-
-#### `field`
-
-`(key: string | number, decoder: (mixed) => T) => (value: mixed) => T`
-
-Takes a key (object key, or array index) and a decoder as input, and returns a
-new decoder. The new decoder checks that `value` is an object (if key is a
-string) or an array (if key is a number), and runs the _input_ decoder on
-`value[key]`. If both of those checks succeed it returns `T`, otherwise it
-throws a `TypeError`.
-
-This lets you pick a single value out of an object or array.
-
-`field` is typically used with [group].
-
-Examples:
-
-```js
-import { field, group, string, number } from "tiny-decoders";
-
-type Person = {|
-  firstName: string,
-  lastName: string,
-|};
-
-// You can use `field` with `group` to rename keys on a record.
-const personDecoder: (mixed) => Person = group({
-  firstName: field("first_name", string),
-  lastName: field("last_name", string),
-});
-
-type Point = {|
-  x: number,
-  y: number,
-|};
-
-// If you want to pick out items at certain indexes of an array, treating it
-// is a tuple, use `field` and save the results in a `group`.
-// This will decode `[4, 7]` into `{ x: 4, y: 7 }`.
-const pointDecoder: (mixed) => Point = group({
-  x: field(0, number),
-  y: field(1, number),
-});
-```
-
-Full examples:
-
-- [Decoding tuples][example-tuples]
-- [Renaming fields][example-renaming-fields]
-- [Decoding by type name][example-decoding-by-type-name]
-
-#### `fieldDeep`
-
-`(keys: Array<string | number>, decoder: (mixed) => T) => (value: mixed) => T`
-
-Takes an array of keys (object keys, and array indexes) and a decoder as input,
-and returns a new decoder. It works like `field`, but repeatedly goes deeper and
-deeper using the given `keys`. If all of those checks succeed it returns `T`,
-otherwise it throws a `TypeError`.
-
-`fieldDeep` is used to pick a one-off value from a deep structure, rather than
-having to decode each level manually with [record] and [array].
-
-Note that `fieldDeep([], decoder)` is equivalent to just `decoder`.
-
-You probably want to [combine `fieldDeep` with `either`][example-allow-failures]
-since reaching deeply into structures is likely to fail.
-
-Examples:
-
-```js
-import { fieldDeep, number, either } from "tiny-decoders";
-
-const accessoryPriceDecoder: (mixed) => number = fieldDeep(
-  ["store", "products", 0, "accessories", 0, "price"],
-  number
-);
-
-const accessoryPriceDecoderWithDefault: (mixed) => number = either(
-  accessoryPriceDecoder,
-  () => 0
-);
-```
-
-#### `group`
-
-`(mapping: Mapping) => (value: mixed) => Result`
-
-- `Mapping`:
-
-  ```
-  {
-    key1: (mixed) => A,
-    key2: (mixed) => B,
-    ...
-    keyN: (mixed) => C,
-  }
-  ```
-
-- `Result`:
-
-  ```
-  {
-    key1: A,
-    key2: B,
-    ...
-    keyN: C,
-  }
-  ```
-
-Takes a “Mapping” as input, and returns a decoder. The new decoder goes through
-all the key-decoder pairs in the _Mapping._ For every key-decoder pair, `value`
-must match the decoder. (The keys don’t matter – all their decoders are run on
-the same `value`). If all of that succeeds it returns “Result,” otherwise it
-throws a `TypeError`. The Result is identical to the Mapping, except all of the
-`(mixed) =>` are gone, so to speak.
-
-As you might have noticed, `group` has the exact same type annotation as
-[record]. So what’s the difference? [record] is all about decoding objects with
-certain keys. `group` is all about running several decoders on _the same value_
-and saving the results. If all of the decoders in the Mapping succeed, an object
-with named values is returned. Otherwise, a `TypeError` is thrown.
-
-If you’re familiar with [Elm’s mapping functions][elm-map], `group` plus [map]
-replaces all of those. For example, Elm’s `map3` function lets you run three
-decoders. You are then given the result values in the same order, allowing you
-to do something with them. With `group` you combine _any_ number of decoders,
-and it lets you refer to the result values by name instead of order (reducing
-the risk of mix-ups).
-
-`group` is typically used with [field] to decode objects where you want to
-rename the fields.
-
-Example:
-
-```js
-import { group, field, string, number, boolean } from "tiny-decoders";
-
-const userDecoder = group({
-  firstName: field("first_name", string),
-  lastName: field("last_name", string),
-  age: field("age", number),
-  active: field("active", boolean),
-});
-```
-
-It’s also possible to [rename only some fields][example-renaming-fields] without
-repetition if you’d like.
-
-The _actual_ type annotation for this function is a bit weird but does its job
-(with good error messages!) – check out the source code if you’re interested.
-
-### Chaining
-
-> Two decoders chained together in different ways, plus [map].
-
-#### `either`
-
-`(decoder1: (mixed) => T, decoder2: (mixed) => U) => (value: mixed) => T | U`
-
-Takes two decoders as input, and returns a new decoder. The new decoder tries to
-run the _first_ input decoder on `value`. If that succeeds, it returns `T`,
-otherwise it tries the _second_ input decoder. If _that_ succeeds it returns
-`U`, otherwise it throws a `TypeError`.
-
-Example:
-
-```js
-import { either, string, number } from "tiny-decoders";
-
-const stringOrNumberDecoder: (mixed) => string | number = either(
-  string,
-  number
-);
-```
-
-What if you want to try _three_ (or more) decoders? You’ll need to nest another
-`either`:
-
-```js
-import { either, string, number, boolean } from "tiny-decoders";
-
-const weirdDecoder: (mixed) => string | number | boolean = either(
-  string,
-  either(number, boolean)
-);
-```
-
-That’s perhaps not very pretty, but not very common either. It’s possible to
-make `either2`, `either3`, etc functions, but I don’t think it’s worth it.
-
-You can also use `either` to [allow decoders to fail][example-allow-failures]
-and to [distinguish between undefined, null and missing
-values][example-missing-values].
-
 #### `map`
 
-`(decoder: (mixed) => T, fn: (T) => U): (value: mixed) => U`
+```ts
+export function map<T, U>(
+  decoder: Decoder<T>,
+  fn: (value: T, errors?: Array<string>) => U
+): Decoder<U>;
+```
 
 Takes a decoder and a function as input, and returns a new decoder. The new
-decoder runs the _input_ decoder on `value`, and then passes the result to the
-provided function. That function can return a transformed result. It can also be
-another decoder. If all of that succeeds it returns `U` (the return value of
-`fn`), otherwise it throws a `TypeError`.
+decoder runs the _input_ decoder on its `unknown` input, and then passes the
+result to the provided function. That function can return a transformed result.
+It can also be another decoder. If all of that succeeds it returns `U` (the
+return value of `fn`), otherwise it throws a `TypeError`.
 
 Example:
 
-```js
-import { map, array, number } from "tiny-decoders";
+```ts
+import { Decoder, map, array, number } from "tiny-decoders";
 
-const numberSetDecoder: (mixed) => Set<number> = map(
+const numberSetDecoder: Decoder<Set<number>> = map(
   array(number),
-  (arr) => new Set(arr)
+  arr => new Set(arr)
 );
 
-const nameDecoder: (mixed) => string = map(
-  record({
+const nameDecoder: Decoder<string> = map(
+  autoRecord({
     firstName: string,
     lastName: string,
   }),
   ({ firstName, lastName }) => `${firstName} ${lastName}`
+);
+
+// But the above is actually easier with `record`:
+const nameDecoder2: Decoder<string> = record(
+  field => `${field("firstName", string)} ${field("lastName", string)}`
 );
 ```
 
 Full examples:
 
 - [Decoding Sets][example-sets]
-- [Decoding tuples][example-custom-decoders]
+- [Decoding tuples][example-tuples]
 - [Adding extra fields][example-extra-fields]
-- [Renaming fields][example-custom-decoders]
+- [Renaming fields][example-renaming-fields]
 - [Custom decoders][example-custom-decoders]
 
-#### `andThen`
+#### `either`
 
-`(decoder: (mixed) => T, fn: (T) => (mixed) => U): (value: mixed) => U`
+```ts
+export function either<T, U>(
+  decoder1: Decoder<T>,
+  decoder2: Decoder<U>
+): Decoder<T | U>;
+```
 
-Takes a decoder and a function as input, and returns a new decoder. The new
-decoder runs the _input_ decoder on `value`, and then passes the result to the
-provided function. That function must return yet another decoder. That final
-decoder is then run on the same `value` as before. If all of that succeeds it
-returns `U`, otherwise it throws a `TypeError`.
+Takes two decoders as input, and returns a new decoder. The new decoder tries to
+run the _first_ input decoder on its `unknown` input. If that succeeds, it
+returns `T`, otherwise it tries the _second_ input decoder. If _that_ succeeds
+it returns `U`, otherwise it throws a `TypeError`.
 
-This is used when you need to decode a value a little bit, _and then_ decode it
-some more based on the first decoding result.
+Example:
 
-The most common case is to first decode a “type” field of an object, and then
-choose a decoder based on that. Since that is so common, there’s actually a
-special decoder for that – [fieldAndThen] – with a better error message.
+```ts
+import { Decoder, either, number, string } from "tiny-decoders";
 
-So when do you need `andThen`? Here are some examples:
+const stringOrNumberDecoder: Decoder<string | number> = either(string, number);
+```
 
-- When `fieldAndThen` isn’t enough: The second example in [Decoding by type
-  name][example-decoding-by-type-name].
-- If you ever have to [distinguish between undefined, null and missing
-  values][example-missing-values].
+What if you want to try _three_ (or more) decoders? You’ll need to nest another
+`either`:
 
-#### `fieldAndThen`
+```ts
+import { Decoder, either, boolean, number, string } from "tiny-decoders";
 
-`(key: string | number, decoder: (mixed) => T, fn: (T) => (mixed) => U) => (value: mixed) => U`
+const weirdDecoder: Decoder<string | number | boolean> = either(
+  string,
+  either(number, boolean)
+);
+```
 
-`fieldAndThen(key, decoder, fn)` is equivalent to
-`andThen(field(key, decoder), fn)` but has a better error message. In other
-words, it takes the combined parameters of [field] and [andThen] and returns a
-new decoder.
+That’s perhaps not very pretty, but not very common either. It would of course
+be possible to add functions like `either2`, `either3`, etc, but I don’t think
+it’s worth it.
 
-See [Decoding by type name][example-decoding-by-type-name] for an example and
-comparison with `andThen(field(key, decoder), fn)`.
+You can also use `either` [distinguish between undefined, null and missing
+values][example-missing-values].
 
 ### Less common decoders
 
-> Recursive structures, and less precise objects and arrays.
+> Recursive structures, as well as less precise objects and arrays.
 
-Related:
-
-- [Decoding `mixed` values][example-mixed]
+Related: [Decoding `unknown` values.][example-mixed]
 
 #### `lazy`
 
-`(fn: () => (mixed) => T) => (value: mixed) => T`
+```ts
+export function lazy<T>(callback: () => Decoder<T>): Decoder<T>;
+```
 
-Takes a function that returns a decoder as input, and returns a new decoder. The
-new decoder runs the function to get the _input_ decoder, and then runs the
-input decoder on `value`. If that succeeds it returns `T` (the return value of
-the input decoder), otherwise it throws a `TypeError`.
+Takes a callback function that returns a decoder as input, and returns a new
+decoder. The new decoder runs the callback function to get the _input_ decoder,
+and then runs the input decoder on its `unknown` input. If that succeeds it
+returns `T` (the return value of the input decoder), otherwise it throws a
+`TypeError`.
 
 `lazy` lets you decode recursive structures. `lazy(() => decoder)` is equivalent
 to just `decoder`, but let’s you use `decoder` before it has been defined yet
@@ -611,88 +841,72 @@ you to wrap a decoder in an “unnecessary” arrow function, delaying the refer
 to the decoder until it’s safe to access in JavaScript. In other words, you make
 a _lazy_ reference – one that does not evaluate until the last minute.
 
-Examples:
+Since [record] and [tuple] take callbacks themselves, lazy is not needed most of
+the time. But `lazy` can come in handy for [array] and [dict].
 
-```js
-import { lazy, record, array, string } from "tiny-decoders";
-
-// A recursive data structure:
-type Person = {|
-  name: string,
-  friends: Array<Person>,
-|};
-
-// Attempt one:
-const personDecoder: (mixed) => Person = record({
-  name: string,
-  friends: array(personDecoder), // ReferenceError: personDecoder is not defined
-});
-
-// Attempt two:
-const personDecoder: (mixed) => Person = record({
-  name: string,
-  friends: lazy(() => array(personDecoder)), // No errors!
-});
-```
-
-[Full recursive example][example-recursive]
-
-If you use the [no-use-before-define] ESLint rule, you need to disable it for
-the `lazy` line:
-
-```js
-const personDecoder: (mixed) => Person = record({
-  name: string,
-  // eslint-disable-next-line no-use-before-define
-  friends: lazy(() => array(personDecoder)),
-});
-```
+See the [Recursive example][example-recursive] to learn when and how to use this
+decoder.
 
 #### `mixedArray`
 
-`(value: mixed) => $ReadOnlyArray<mixed>`
+```ts
+export function mixedArray(value: unknown): ReadonlyArray<unknown>;
+```
 
 Usually you want to use [array] instead. `array` actually uses this decoder
-behind the scenes, to verify that `value` is an array (before proceeding to
-decode every item of the array). `mixedArray` _only_ checks that `value` is an
-array, but does not care about what’s _inside_ the array – all those values stay
-as `mixed`.
+behind the scenes, to verify that its `unknown` input is an array (before
+proceeding to decode every item of the array). `mixedArray` _only_ checks that
+its `unknown` input is an array, but does not care about what’s _inside_ the
+array – all those values stay as `unknown`.
 
 This can be useful for custom decoders, such as when [distinguishing between
 undefined, null and missing values][example-missing-values].
 
 #### `mixedDict`
 
-`(value: mixed) => { +[string]: mixed }`
+```ts
+export function mixedDict(value: unknown): { readonly [key: string]: unknown };
+```
 
 Usually you want to use [dict] or [record] instead. `dict` and `record` actually
-use this decoder behind the scenes, to verify that `value` is an object (before
-proceeding to decode values of the object). `mixedDict` _only_ checks that
-`value` is an object, but does not care about what’s _inside_ the object – all
-the keys remain unknown and their values stay as `mixed`.
+use this decoder behind the scenes, to verify that its `unknown` input is an
+object (before proceeding to decode values of the object). `mixedDict` _only_
+checks that its `unknown` input is an object, but does not care about what’s
+_inside_ the object – all the keys remain unknown and their values stay as
+`unknown`.
 
 This can be useful for custom decoders, such as when [distinguishing between
 undefined, null and missing values][example-missing-values].
 
 ### `repr`
 
-`(value: mixed, options?: Options) => string`
+```ts
+export function repr(
+  value: unknown,
+  options?: {
+    key?: string | number;
+    recurse?: boolean;
+    maxArrayChildren?: number;
+    maxObjectChildren?: number;
+  }
+): string;
+```
 
 Takes any value, and returns a string representation of it for use in error
 messages. Useful when making [custom decoders][example-custom-decoders].
 
 Options:
 
-| name              | type                                          | default     | description                                                                                 |
-| ----------------- | --------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
-| key               | <code>string &vert; number &vert; void</code> | `undefined` | An object key or array index to highlight when `repr`ing objects or arrays.                 |
-| recurse           | `boolean`                                     | `true`      | Whether to recursively call `repr` on array items and object values. It only recurses once. |
-| maxArrayChildren  | `number`                                      | `5`         | The number of array items to print (when `recurse` is `true`.)                              |
-| maxObjectChildren | `number`                                      | `3`         | The number of object key-values to print (when `recurse` is `true`.)                        |
+| name              | type                                               | default     | description                                                                                 |
+| ----------------- | -------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
+| key               | <code>string &vert; number &vert; undefined</code> | `undefined` | An object key or array index to highlight when `repr`ing objects or arrays.                 |
+| recurse           | `boolean`                                          | `true`      | Whether to recursively call `repr` on array items and object values. It only recurses once. |
+| maxArrayChildren  | `number`                                           | `5`         | The number of array items to print (when `recurse` is `true`.)                              |
+| maxObjectChildren | `number`                                           | `3`         | The number of object key-values to print (when `recurse` is `true`.)                        |
 
 Example:
 
-```js
+```ts
 import { repr } from "tiny-decoders";
 
 type Alignment = "top" | "right" | "bottom" | "left";
@@ -726,8 +940,8 @@ the public API.
 In other words:
 
 - [nvie/decoders]: Larger API, fancier error messages, larger size.
-- tiny-decoders: Smaller (slightly different) API, kinda good error messages,
-  smaller size.
+- tiny-decoders: Smaller (and slightly different) API, kinda good error
+  messages, smaller size.
 
 ### Error messages
 
@@ -819,7 +1033,7 @@ like expanding objects and arrays in the browser devtools (but in your head):
 
 ## Development
 
-You need [Node.js] 10 and npm 6.
+You need [Node.js] 12 and npm 6.
 
 ### npm scripts
 
@@ -852,8 +1066,8 @@ You need [Node.js] 10 and npm 6.
 [MIT](LICENSE)
 
 <!-- prettier-ignore-start -->
-[andThen]: #andThen
 [array]: #array
+[autoRecord]: #autoRecord
 [babel]: https://babeljs.io/
 [bundlephobia-decoders]: https://bundlephobia.com/result?p=decoders
 [bundlephobia-tiny-decoders]: https://bundlephobia.com/result?p=tiny-decoders
@@ -869,8 +1083,8 @@ You need [Node.js] 10 and npm 6.
 [example-allow-failures]: https://github.com/lydell/tiny-decoders/blob/master/examples/allow-failures.test.js
 [example-custom-decoders]: https://github.com/lydell/tiny-decoders/blob/master/examples/custom-decoders.test.js
 [example-decoding-by-type-name]: https://github.com/lydell/tiny-decoders/blob/master/examples/decoding-by-type-name.test.js
+[example-deep]: https://github.com/lydell/tiny-decoders/blob/master/examples/deep.test.js
 [example-extra-fields]: https://github.com/lydell/tiny-decoders/blob/master/examples/extra-fields.test.js
-[example-inference]: https://github.com/lydell/tiny-decoders/blob/master/examples/inference.test.js
 [example-missing-values]: https://github.com/lydell/tiny-decoders/blob/master/examples/missing-values.test.js
 [example-mixed]: https://github.com/lydell/tiny-decoders/blob/master/examples/mixed.test.js
 [example-readme]: https://github.com/lydell/tiny-decoders/blob/master/examples/readme.test.js
@@ -878,10 +1092,8 @@ You need [Node.js] 10 and npm 6.
 [example-renaming-fields]: https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-fields.test.js
 [example-sets]: https://github.com/lydell/tiny-decoders/blob/master/examples/sets.test.js
 [example-tuples]: https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.js
-[field]: #field
-[fieldandthen]: #fieldandthen
+[example-type-annotations]: https://github.com/lydell/tiny-decoders/blob/master/examples/type-annotations.test.js
 [flow]: https://flow.org/
-[group]: #group
 [jest]: https://jestjs.io/
 [map]: #map
 [min-decoders]: https://img.shields.io/bundlephobia/min/decoders.svg
@@ -890,14 +1102,19 @@ You need [Node.js] 10 and npm 6.
 [minzip-tiny-decoders]: https://img.shields.io/bundlephobia/minzip/tiny-decoders.svg
 [mixedarray]: #mixedarray
 [mixeddict]: #mixeddict
-[no-use-before-define]: https://eslint.org/docs/rules/no-use-before-define
 [node.js]: https://nodejs.org/en/
 [npm]: https://www.npmjs.com/
 [nvie/decoders]: https://github.com/nvie/decoders
+[pair]: #pair
 [prettier]: https://prettier.io/
+[primitive-decoders]: #primitive-decoders
 [record]: #record
 [result]: https://github.com/nvie/lemons.js#result
+[returns-decoders]: #functions-that-return-a-decoder
 [travis-badge]: https://travis-ci.com/lydell/tiny-decoders.svg?branch=master
 [travis-link]: https://travis-ci.com/lydell/tiny-decoders
+[triple]: #triple
+[tuple]: #tuple
+[typescript-type-annotations]: https://github.com/lydell/tiny-decoders/blob/master/typescript/type-annotations.ts
 [typescript]: https://www.typescriptlang.org/
 <!-- prettier-ignore-end -->

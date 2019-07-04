@@ -1,8 +1,7 @@
 import {
+  autoRecord,
   boolean,
   either,
-  field,
-  group,
   number,
   optional,
   record,
@@ -19,7 +18,7 @@ interface User {
 const verifyUser = (decoder: (value: unknown) => User): User =>
   decoder(undefined);
 
-const userDecoder: (value: unknown) => User = record({
+const userDecoder: (value: unknown) => User = autoRecord({
   name: string,
   age: number,
   active: boolean,
@@ -28,18 +27,18 @@ const userDecoder: (value: unknown) => User = record({
 
 verifyUser(userDecoder);
 
-const userDecoder2: (value: unknown) => User = group({
+const userDecoder2: (value: unknown) => User = record(field => ({
   name: field("name", string),
   age: field("age", number),
   active: field("active", boolean),
   id: field("id", either(string, number)),
-});
+}));
 
 verifyUser(userDecoder2);
 
 // `id: string` also satisfies `string | number`.
 verifyUser(
-  record({
+  autoRecord({
     id: string,
     name: string,
     age: number,
@@ -47,18 +46,18 @@ verifyUser(
   })
 );
 verifyUser(
-  group({
+  record(field => ({
     id: field("id", string),
     name: field("name", string),
     age: field("age", number),
     active: field("active", boolean),
-  })
+  }))
 );
 
 // Missing "name":
 verifyUser(
   // $ExpectError
-  record({
+  autoRecord({
     age: number,
     active: boolean,
     id: either(string, number),
@@ -66,39 +65,42 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  group({
+  record(field => ({
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
-  })
+  }))
 );
 
 // Missing "name" and "id":
 verifyUser(
   // $ExpectError
-  record({
+  autoRecord({
     age: number,
     active: boolean,
   })
 );
 verifyUser(
   // $ExpectError
-  group({
+  record(field => ({
     age: field("age", number),
     active: field("active", boolean),
-  })
+  }))
 );
 
 // All fields missing:
 // $ExpectError
-verifyUser(record({}));
+verifyUser(autoRecord({}));
 // $ExpectError
-verifyUser(group({}));
+verifyUser(record(field => ({})));
 
 // Extra field:
-// TODO: Can this be made an error, just like in Flow?
+// Unlike Flow, TypeScript does not have exact objects/interfaces.
+// Instead, one can specify the wanted type instead of using inference.
+// But unfortunately not for `record` – unless you specify it as the callback
+// return value.
 verifyUser(
-  record({
+  autoRecord({
     extra: string,
     name: string,
     age: number,
@@ -107,19 +109,49 @@ verifyUser(
   })
 );
 verifyUser(
-  group({
+  autoRecord<User>({
+    // $ExpectError
+    extra: string,
+    name: string,
+    age: number,
+    active: boolean,
+    id: either(string, number),
+  })
+);
+verifyUser(
+  record(field => ({
     extra: field("extra", string),
     name: field("name", string),
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
-  })
+  }))
+);
+verifyUser(
+  record<User>(field => ({
+    extra: field("extra", string),
+    name: field("name", string),
+    age: field("age", number),
+    active: field("active", boolean),
+    id: field("id", either(string, number)),
+  }))
+);
+verifyUser(
+  record(
+    (field): User => ({
+      // $ExpectError
+      extra: field("extra", string),
+      name: field("name", string),
+      age: field("age", number),
+      active: field("active", boolean),
+      id: field("id", either(string, number)),
+    })
+  )
 );
 
 // Extra fields:
-// TODO: Can this be made an error, just like in Flow?
 verifyUser(
-  record({
+  autoRecord({
     extra: string,
     extra2: () => undefined,
     name: string,
@@ -129,20 +161,41 @@ verifyUser(
   })
 );
 verifyUser(
-  group({
+  autoRecord<User>({
+    // $ExpectError
+    extra: string,
+    extra2: () => undefined,
+    name: string,
+    age: number,
+    active: boolean,
+    id: either(string, number),
+  })
+);
+verifyUser(
+  record(field => ({
     extra: field("extra", string),
     extra2: field("extra2", () => undefined),
     name: field("name", string),
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
-  })
+  }))
+);
+verifyUser(
+  record<User>(field => ({
+    extra: field("extra", string),
+    extra2: field("extra2", () => undefined),
+    name: field("name", string),
+    age: field("age", number),
+    active: field("active", boolean),
+    id: field("id", either(string, number)),
+  }))
 );
 
 // Misspelled field ("naem" instead of "name"):
 verifyUser(
   // $ExpectError
-  record({
+  autoRecord({
     naem: string,
     age: number,
     active: boolean,
@@ -151,18 +204,18 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  group({
+  record(field => ({
     naem: field("naem", string),
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
-  })
+  }))
 );
 
 // Wrong type for "name":
 verifyUser(
   // $ExpectError
-  record({
+  autoRecord({
     name: number,
     age: number,
     active: boolean,
@@ -171,18 +224,18 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  group({
+  record(field => ({
     name: field("name", number),
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
-  })
+  }))
 );
 
 // "name" isn’t optional:
 verifyUser(
   // $ExpectError
-  record({
+  autoRecord({
     name: optional(string),
     age: number,
     active: boolean,
@@ -191,10 +244,10 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  group({
+  record(field => ({
     name: field("name", optional(string)),
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
-  })
+  }))
 );

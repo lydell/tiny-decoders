@@ -1,14 +1,12 @@
 // @flow strict
 
 import {
-  andThen,
+  type Decoder,
   constant,
   either,
-  field,
-  group,
-  mixedArray,
-  mixedDict,
   number,
+  optional,
+  record,
   string,
 } from "../src";
 
@@ -25,7 +23,7 @@ test("distinguishing between undefined, null and missing values", () => {
   // tiny-decoders makes no attempt to distinguish between those cases. It never
   // checks if a property or index exists before trying to access it, and
   // `optional` treats `null` and `undefined` the same. Luckily, there’s
-  // seldomly any need to distingush the three cases so that’s whay
+  // seldomly any need to distingush the three cases so that’s why
   // tiny-decoders have kept things simple, rather than providing three or more
   // confusingly similar functions. I wouldn’t want to have to learn the
   // difference between `optional`, `maybe`, `nullable`, etc.
@@ -45,7 +43,7 @@ Expected a number, but got: undefined
 Expected the value null, but got: undefined
 `);
 
-  // If you also need to consider missing values, there are a couple of approaches.
+  // If you also need to consider missing values, here’s how to do it.
 
   type Age = "missing" | void | null | number;
 
@@ -54,89 +52,42 @@ Expected the value null, but got: undefined
     age: Age,
   |};
 
-  const userDecoder: mixed => User = group({
+  const userDecoder: Decoder<User> = record((field, fieldError, obj) => ({
     name: field("name", string),
-    age: andThen(
-      mixedDict,
-      // This manual checking is ugly but also kind of clear in what it is doing.
-      obj =>
-        !("age" in obj)
-          ? () => "missing"
-          : obj.age === null
-          ? () => null
-          : obj.age === undefined
-          ? () => undefined
-          : field("age", number)
-    ),
-  });
+    // This manual checking is little bit ugly but also kind of clear in what it
+    // is doing.
+    age: !("age" in obj)
+      ? "missing"
+      : obj.age === null
+      ? null
+      : obj.age === undefined
+      ? undefined
+      : // `optional` isn’t needed here, but adds `(optional)` to the error message.
+        field("age", optional(number)),
+  }));
+
   expect(userDecoder({ name: "John" })).toMatchInlineSnapshot(`
-Object {
-  "age": "missing",
-  "name": "John",
-}
-`);
+    Object {
+      "age": "missing",
+      "name": "John",
+    }
+  `);
   expect(userDecoder({ name: "John", age: undefined })).toMatchInlineSnapshot(`
-Object {
-  "age": undefined,
-  "name": "John",
-}
-`);
+    Object {
+      "age": undefined,
+      "name": "John",
+    }
+  `);
   expect(userDecoder({ name: "John", age: null })).toMatchInlineSnapshot(`
-Object {
-  "age": null,
-  "name": "John",
-}
-`);
+    Object {
+      "age": null,
+      "name": "John",
+    }
+  `);
   expect(userDecoder({ name: "John", age: 30 })).toMatchInlineSnapshot(`
-Object {
-  "age": 30,
-  "name": "John",
-}
-`);
-
-  // You could also make a custom decoder.
-  function maybeField<T, U>(
-    key: string | number,
-    decoder: mixed => T,
-    valueIfMissing: U
-  ): mixed => ?T | U {
-    return function maybeFieldDecoder(value: mixed): T | U {
-      const obj = either(mixedDict, mixedArray)(value);
-      return !(key in obj)
-        ? valueIfMissing
-        : field(
-            key,
-            either(decoder, either(constant(null), constant(undefined)))
-          )(obj);
-    };
-  }
-
-  const userDecoder2: mixed => User = group({
-    name: field("name", string),
-    age: maybeField("age", number, "missing"),
-  });
-  expect(userDecoder2({ name: "John" })).toMatchInlineSnapshot(`
-Object {
-  "age": "missing",
-  "name": "John",
-}
-`);
-  expect(userDecoder2({ name: "John", age: undefined })).toMatchInlineSnapshot(`
-Object {
-  "age": undefined,
-  "name": "John",
-}
-`);
-  expect(userDecoder2({ name: "John", age: null })).toMatchInlineSnapshot(`
-Object {
-  "age": null,
-  "name": "John",
-}
-`);
-  expect(userDecoder2({ name: "John", age: 30 })).toMatchInlineSnapshot(`
-Object {
-  "age": 30,
-  "name": "John",
-}
-`);
+    Object {
+      "age": 30,
+      "name": "John",
+    }
+  `);
 });

@@ -4,6 +4,7 @@ import * as d from "decoders";
 
 import {
   array,
+  autoRecord,
   boolean,
   either,
   number,
@@ -21,43 +22,43 @@ test("the main readme example", () => {
     id: string | number,
   |};
 
-  const userDecoder: mixed => User = record({
-    name: string,
-    active: boolean,
-    age: optional(number),
-    interests: array(string),
-    id: either(string, number),
-  });
+  const userDecoder = record((field): User => ({
+    name: field("full_name", string),
+    active: field("is_active", boolean),
+    age: field("age", optional(number)),
+    interests: field("interests", array(string)),
+    id: field("id", either(string, number)),
+  }));
 
   const payload: mixed = getSomeJSON();
 
   const user: User = userDecoder(payload);
 
   expect(user).toMatchInlineSnapshot(`
-Object {
-  "active": true,
-  "age": 30,
-  "id": 1,
-  "interests": Array [
-    "Programming",
-    "Cooking",
-  ],
-  "name": "John Doe",
-}
-`);
+    Object {
+      "active": true,
+      "age": 30,
+      "id": 1,
+      "interests": Array [
+        "Programming",
+        "Cooking",
+      ],
+      "name": "John Doe",
+    }
+  `);
 
   const payload2: mixed = getSomeInvalidJSON();
 
   expect(() => userDecoder(payload2)).toThrowErrorMatchingInlineSnapshot(`
 object["age"]: (optional) Expected a number, but got: "30"
-at "age" in {"age": "30", "name": "John Doe", "active": true, (2 more)}
+at "age" in {"age": "30", "full_name": "John Doe", "is_active": true, (2 more)}
 `);
 });
 
 function getSomeJSON(): mixed {
   return {
-    name: "John Doe",
-    active: true,
+    full_name: "John Doe",
+    is_active: true,
     age: 30,
     interests: ["Programming", "Cooking"],
     id: 1,
@@ -66,8 +67,8 @@ function getSomeJSON(): mixed {
 
 function getSomeInvalidJSON(): mixed {
   return {
-    name: "John Doe",
-    active: true,
+    full_name: "John Doe",
+    is_active: true,
     age: "30",
     interests: [],
     id: 1,
@@ -84,7 +85,7 @@ test("error messages", () => {
     print: value => value,
   });
 
-  const accessoryDecoder1 = record({
+  const accessoryDecoder1 = autoRecord({
     id: string,
     name: string,
     discount: optional(number),
@@ -95,7 +96,7 @@ test("error messages", () => {
     discount: d.nullable(d.number),
   });
 
-  const productDecoder1 = record({
+  const productDecoder1 = autoRecord({
     id: string,
     name: string,
     price: number,

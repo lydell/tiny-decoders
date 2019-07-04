@@ -1,10 +1,10 @@
 // @flow strict
 
-import { map, number, record, string } from "../src";
+import { type Decoder, autoRecord, map, number, record, string } from "../src";
 
 test("adding extra fields to records", () => {
-  // Want to add an extra field to the result of `record`, that doesn’t look at
-  // the input at all?
+  // Want to add an extra field to a record, that doesn’t look at the input at
+  // all?
   type Product = {|
     name: string,
     price: number,
@@ -13,37 +13,51 @@ test("adding extra fields to records", () => {
 
   const data: mixed = { name: "Comfortable Bed", price: 10e3 };
 
-  // One way is to do it with `map`.
-  const productDecoder1: mixed => Product = map(
-    record({
+  // It’s easy to do with `record`.
+  const productDecoder1: Decoder<Product> = record(field => ({
+    name: field("name", string),
+    price: field("price", number),
+    version: 1,
+  }));
+
+  expect((productDecoder1(data): Product)).toMatchInlineSnapshot(`
+    Object {
+      "name": "Comfortable Bed",
+      "price": 10000,
+      "version": 1,
+    }
+  `);
+
+  // If you use `autoRecord`, one way is to add a decoder that always succeeds
+  // (a function that ignores its input and always returns the same value).
+  const productDecoder2: Decoder<Product> = autoRecord({
+    name: string,
+    price: number,
+    version: () => 1,
+  });
+
+  expect(productDecoder2(data)).toEqual(productDecoder1(data));
+
+  // If you like, you can define one of these helper functions:
+  const hardcoded = value => () => value;
+  const always = hardcoded;
+
+  const productDecoder3: Decoder<Product> = autoRecord({
+    name: string,
+    price: number,
+    version: always(1),
+  });
+
+  expect(productDecoder3(data)).toEqual(productDecoder2(data));
+
+  // Finally, you can do it with `map`.
+  const productDecoder4: Decoder<Product> = map(
+    autoRecord({
       name: string,
       price: number,
     }),
     props => ({ ...props, version: 1 })
   );
-  expect((productDecoder1(data): Product)).toMatchInlineSnapshot(`
-Object {
-  "name": "Comfortable Bed",
-  "price": 10000,
-  "version": 1,
-}
-`);
 
-  // Another way is to add a decoder that always succeeds (a function that
-  // ignores its input and always returns the same value).
-  const productDecoder2: mixed => Product = record({
-    name: string,
-    price: number,
-    version: () => 1,
-  });
-  expect((productDecoder2(data): Product)).toMatchInlineSnapshot(`
-Object {
-  "name": "Comfortable Bed",
-  "price": 10000,
-  "version": 1,
-}
-`);
-
-  // If you don’t like that arrow function, you can use `always(1)` or
-  // `hardcoded(1)` as mentioned in `examples/allow-failures.test.js`.
+  expect(productDecoder4(data)).toEqual(productDecoder3(data));
 });

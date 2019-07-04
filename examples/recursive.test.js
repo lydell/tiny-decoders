@@ -1,5 +1,17 @@
 // @flow
-import { array, lazy, optional, record, string } from "../src";
+
+import {
+  type Decoder,
+  array,
+  autoRecord,
+  dict,
+  either,
+  lazy,
+  number,
+  optional,
+  record,
+  string,
+} from "../src";
 
 test("recursive data structure", () => {
   // Consider this recursive data sctructure:
@@ -8,19 +20,28 @@ test("recursive data structure", () => {
     friends: Array<Person>,
   |};
 
-  // This wouldn't work to decode it, because we're trying to use
+  // When using `record` there won’t be any trouble decoding it:
+  const personDecoder1: Decoder<Person> = record(field => ({
+    name: field("name", string),
+    friends: field("friends", array(personDecoder1)),
+  }));
+
+  // But when using `autoRecord` you might run into some minor problems.
+  // This wouldn’t work to decode it, because we’re trying to use
   // `personDecoder` in the definition of `personDecoder` itself.
   /*
-  const personDecoder: mixed => Person = record({
+  const personDecoder2: Decoder<Person> = record({
     name: string,
-    friends: array(personDecoder), // ReferenceError: personDecoder is not defined
+    friends: array(personDecoder2), // ReferenceError: personDecoder2 is not defined
   });
   */
 
-  // With `lazy` we can delay the reference to `personDecoder`.
-  const personDecoder: mixed => Person = record({
+  // With `lazy` we can delay the reference to `personDecoder2`.
+  // (You can of course also switch from `autoRecord` to `record` instead of
+  // using `lazy` if you want.)
+  const personDecoder2: Decoder<Person> = autoRecord({
     name: string,
-    friends: lazy(() => array(personDecoder)),
+    friends: lazy(() => array(personDecoder2)),
   });
 
   const data: mixed = {
@@ -42,30 +63,70 @@ test("recursive data structure", () => {
     ],
   };
 
-  expect(personDecoder(data)).toMatchInlineSnapshot(`
-Object {
-  "friends": Array [
-    Object {
-      "friends": Array [],
-      "name": "Alice",
-    },
+  expect(personDecoder1(data)).toMatchInlineSnapshot(`
     Object {
       "friends": Array [
         Object {
           "friends": Array [],
-          "name": "Charlie",
+          "name": "Alice",
+        },
+        Object {
+          "friends": Array [
+            Object {
+              "friends": Array [],
+              "name": "Charlie",
+            },
+          ],
+          "name": "Bob",
         },
       ],
-      "name": "Bob",
+      "name": "John",
+    }
+  `);
+
+  expect(personDecoder1(data)).toEqual(personDecoder2(data));
+});
+
+test("recurse non-record", () => {
+  // In the case of records, you can switch from `autoRecord` to `record` to fix
+  // the recursiveness issue. But if you for example have a recursive dict, you
+  // _have_ to use `lazy`.
+
+  type Dict = { [key: string]: number | Dict };
+
+  const dictDecoder: Decoder<Dict> = dict(
+    either(number, lazy(() => dictDecoder))
+  );
+
+  const data: mixed = {
+    t: {
+      i: {
+        n: {
+          y: 1,
+          t: 2,
+        },
+        e: 3,
+      },
     },
-  ],
-  "name": "John",
-}
-`);
+  };
+
+  expect(dictDecoder(data)).toMatchInlineSnapshot(`
+    Object {
+      "t": Object {
+        "i": Object {
+          "e": 3,
+          "n": Object {
+            "t": 2,
+            "y": 1,
+          },
+        },
+      },
+    }
+  `);
 });
 
 test("indirectly recursive data structure", () => {
-  // Here's a silly example of an indirectly recursive data structure.
+  // Here’s a silly example of an indirectly recursive data structure.
   type Person = {|
     name: string,
     // eslint-disable-next-line no-use-before-define
@@ -77,19 +138,29 @@ test("indirectly recursive data structure", () => {
     person: Person,
   |};
 
-  // This time, `relationshipDecoder` isn't defined yet, so that has to be lazy.
-  // You can re-order `personDecoder` and `relationshipDecoder` to fix the issue
-  // either – that just flips the problem.
-  const personDecoder: mixed => Person = record({
+  // Again, when using `record` you shouldn’t encounter any problems, other than
+  // maybe having to disable an ESLint rule.
+  const personDecoder1: Decoder<Person> = record(field => ({
+    name: field("name", string),
+    // eslint-disable-next-line no-use-before-define
+    relationship: field("relationship", optional(relationshipDecoder)),
+  }));
+
+  // When using `autoRecord`, since `relationshipDecoder` isn’t defined yet that
+  // has to be lazy. You can’t re-order `personDecoder2` and
+  // `relationshipDecoder` to fix the issue either – that just flips the
+  // problem.
+  const personDecoder2: Decoder<Person> = autoRecord({
     name: string,
     // eslint-disable-next-line no-use-before-define
     relationship: optional(lazy(() => relationshipDecoder)),
   });
 
-  // This one doesn't need `lazy` since `personDecoder` was just defined.
-  const relationshipDecoder: mixed => Relationship = record({
+  // This one doesn’t need `lazy` since `personDecoder1` (and `personDecoder2`)
+  // is already defined.
+  const relationshipDecoder: Decoder<Relationship> = autoRecord({
     type: string,
-    person: personDecoder,
+    person: personDecoder1,
   });
 
   const data: mixed = {
@@ -109,37 +180,44 @@ test("indirectly recursive data structure", () => {
     },
   };
 
-  expect(personDecoder(data)).toMatchInlineSnapshot(`
-Object {
-  "name": "John",
-  "relationship": Object {
-    "person": Object {
-      "name": "Alice",
+  expect(personDecoder1(data)).toMatchInlineSnapshot(`
+    Object {
+      "name": "John",
       "relationship": Object {
         "person": Object {
-          "name": "Bob",
-          "relationship": undefined,
+          "name": "Alice",
+          "relationship": Object {
+            "person": Object {
+              "name": "Bob",
+              "relationship": undefined,
+            },
+            "type": "sisterTo",
+          },
         },
-        "type": "sisterTo",
+        "type": "fatherOf",
       },
-    },
-    "type": "fatherOf",
-  },
-}
-`);
+    }
+  `);
+
+  expect(personDecoder1(data)).toEqual(personDecoder2(data));
 });
 
 test("circular objects", () => {
   // This data structure is impossible to create without mutation, because you
-  // can't create a Person without creating a Person.
+  // can’t create a Person without creating a Person.
   type Person = {|
     name: string,
     likes: Person,
   |};
 
-  const personDecoder: mixed => Person = record({
+  const personDecoder1: Decoder<Person> = record(field => ({
+    name: field("name", string),
+    likes: field("likes", personDecoder1),
+  }));
+
+  const personDecoder2: Decoder<Person> = autoRecord({
     name: string,
-    likes: lazy(() => personDecoder),
+    likes: lazy(() => personDecoder2),
   });
 
   const alice = {
@@ -155,10 +233,14 @@ test("circular objects", () => {
   // Make the object circular:
   alice.likes = bob;
 
-  // Be careful: Calling this function would cause infinite recursion!
-  const wouldCauseInfiniteRecursion: () => Person = jest.fn(() =>
-    personDecoder(alice)
+  // Be careful: Calling these functions would cause infinite recursion!
+  const wouldCauseInfiniteRecursion1: () => Person = jest.fn(() =>
+    personDecoder1(alice)
+  );
+  const wouldCauseInfiniteRecursion2: () => Person = jest.fn(() =>
+    personDecoder2(alice)
   );
 
-  expect(wouldCauseInfiniteRecursion).not.toHaveBeenCalled();
+  expect(wouldCauseInfiniteRecursion1).not.toHaveBeenCalled();
+  expect(wouldCauseInfiniteRecursion2).not.toHaveBeenCalled();
 });

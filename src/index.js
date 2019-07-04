@@ -1,5 +1,7 @@
 // @flow strict
 
+export type Decoder<T> = (value: mixed, errors?: Array<string>) => T;
+
 export function boolean(value: mixed): boolean {
   if (typeof value !== "boolean") {
     throw new TypeError(`Expected a boolean, but got: ${repr(value)}`);
@@ -21,6 +23,19 @@ export function string(value: mixed): string {
   return value;
 }
 
+export function constant<T: boolean | number | string | void | null>(
+  constantValue: T
+): (value: mixed) => T {
+  return function constantDecoder(value: mixed): T {
+    if (value !== constantValue) {
+      throw new TypeError(
+        `Expected the value ${repr(constantValue)}, but got: ${repr(value)}`
+      );
+    }
+    return constantValue;
+  };
+}
+
 export function mixedArray(value: mixed): $ReadOnlyArray<mixed> {
   if (!Array.isArray(value)) {
     throw new TypeError(`Expected an array, but got: ${repr(value)}`);
@@ -35,21 +50,14 @@ export function mixedDict(value: mixed): { +[string]: mixed, ... } {
   return value;
 }
 
-export function constant<T: boolean | number | string | void | null>(
-  constantValue: T
-): mixed => T {
-  return function constantDecoder(value: mixed): T {
-    if (value !== constantValue) {
-      throw new TypeError(
-        `Expected the value ${repr(constantValue)}, but got: ${repr(value)}`
-      );
-    }
-    return constantValue;
-  };
-}
-
-export function array<T>(decoder: mixed => T): mixed => Array<T> {
-  return function arrayDecoder(value: mixed): Array<T> {
+export function array<T, U>(
+  decoder: Decoder<T>,
+  mode?: "throw" | "skip" | {| default: U |} = "throw"
+): Decoder<Array<T | U>> {
+  return function arrayDecoder(
+    value: mixed,
+    errors?: Array<string>
+  ): Array<T | U> {
     const arr = mixedArray(value);
     // Use a for-loop instead of `.map` to handle `array holes (`[1, , 2]`).
     // A nicer way would be to use `Array.from(arr, (_, index) => ...)` but that
@@ -57,48 +65,196 @@ export function array<T>(decoder: mixed => T): mixed => Array<T> {
     // Also, not using a callback function gives a nicer stack trace.
     const result = [];
     for (let index = 0; index < arr.length; index++) {
-      result.push(field(index, decoder)(arr));
+      try {
+        const localErrors = [];
+        result.push(decoder(arr[index], localErrors));
+        if (errors != null) {
+          for (let index2 = 0; index2 < localErrors.length; index2++) {
+            errors.push(keyErrorMessage(index, arr, localErrors[index2]));
+          }
+        }
+      } catch (error) {
+        const message = keyErrorMessage(index, arr, error.message);
+        if (mode === "throw") {
+          error.message = message;
+          throw error;
+        }
+        if (errors != null) {
+          errors.push(keyErrorMessage(index, arr, error.message));
+        }
+        if (typeof mode !== "string") {
+          result.push(mode.default);
+        }
+      }
     }
     return result;
   };
 }
 
-export function dict<T>(decoder: mixed => T): mixed => { [string]: T, ... } {
-  return function dictDecoder(value: mixed): { [string]: T, ... } {
+export function dict<T, U>(
+  decoder: Decoder<T>,
+  mode?: "throw" | "skip" | {| default: U |} = "throw"
+): Decoder<{ [key: string]: T | U, ... }> {
+  return function dictDecoder(
+    value: mixed,
+    errors?: Array<string>
+  ): { [key: string]: T | U, ... } {
     const obj = mixedDict(value);
     const keys = Object.keys(obj);
     // Using a for-loop rather than `.reduce` gives a nicer stack trace.
     const result = {};
     for (let index = 0; index < keys.length; index++) {
       const key = keys[index];
-      result[key] = field(key, decoder)(obj);
+      try {
+        const localErrors = [];
+        result[key] = decoder(obj[key], localErrors);
+        if (errors != null) {
+          for (let index2 = 0; index2 < localErrors.length; index2++) {
+            errors.push(keyErrorMessage(key, obj, localErrors[index2]));
+          }
+        }
+      } catch (error) {
+        const message = keyErrorMessage(key, obj, error.message);
+        if (mode === "throw") {
+          error.message = message;
+          throw error;
+        }
+        if (errors != null) {
+          errors.push(message);
+        }
+        if (typeof mode !== "string") {
+          result[key] = mode.default;
+        }
+      }
     }
     return result;
   };
 }
 
-type ExtractDecoderType = <T, U>((mixed) => T | U) => T | U;
-
-export function group<T: { ... }>(
-  mapping: T
-): mixed => $ObjMap<T, ExtractDecoderType> {
-  return function groupDecoder(value: mixed): $ObjMap<T, ExtractDecoderType> {
-    const keys = Object.keys(mapping);
-    // Using a for-loop rather than `.reduce` gives a nicer stack trace.
-    const result = {};
-    for (let index = 0; index < keys.length; index++) {
-      const key = keys[index];
-      const decoder = mapping[key];
-      result[key] = decoder(value);
+export function record<T>(
+  callback: (
+    field: <U, V>(
+      key: string,
+      decoder: Decoder<U>,
+      mode?: "throw" | {| default: V |}
+    ) => U | V,
+    fieldError: (key: string, message: string) => TypeError,
+    obj: { +[string]: mixed, ... },
+    errors?: Array<string>
+  ) => T
+): Decoder<T> {
+  return function recordDecoder(value: mixed, errors?: Array<string>): T {
+    const obj = mixedDict(value);
+    function field<U, V>(
+      key: string,
+      decoder: Decoder<U>,
+      mode?: "throw" | {| default: V |} = "throw"
+    ): U | V {
+      try {
+        const localErrors = [];
+        const result = decoder(obj[key], localErrors);
+        if (errors != null) {
+          for (let index2 = 0; index2 < localErrors.length; index2++) {
+            errors.push(keyErrorMessage(key, obj, localErrors[index2]));
+          }
+        }
+        return result;
+      } catch (error) {
+        const message = keyErrorMessage(key, obj, error.message);
+        if (mode === "throw") {
+          error.message = message;
+          throw error;
+        }
+        if (errors != null) {
+          errors.push(message);
+        }
+        return mode.default;
+      }
     }
-    return result;
+    function fieldError(key: string, message: string): TypeError {
+      return new TypeError(keyErrorMessage(key, obj, message));
+    }
+    return callback(field, fieldError, obj, errors);
   };
 }
 
-export function record<T: { ... }>(
+export function tuple<T>(
+  callback: (
+    item: <U, V>(
+      index: number,
+      decoder: Decoder<U>,
+      mode?: "throw" | {| default: V |}
+    ) => U | V,
+    itemError: (index: number, message: string) => TypeError,
+    arr: $ReadOnlyArray<mixed>,
+    errors?: Array<string>
+  ) => T
+): Decoder<T> {
+  return function tupleDecoder(value: mixed, errors?: Array<string>): T {
+    const arr = mixedArray(value);
+    function item<U, V>(
+      index: number,
+      decoder: Decoder<U>,
+      mode?: "throw" | {| default: V |} = "throw"
+    ): U | V {
+      try {
+        const localErrors = [];
+        const result = decoder(arr[index], localErrors);
+        if (errors != null) {
+          for (let index2 = 0; index2 < localErrors.length; index2++) {
+            errors.push(keyErrorMessage(index, arr, localErrors[index2]));
+          }
+        }
+        return result;
+      } catch (error) {
+        const message = keyErrorMessage(index, arr, error.message);
+        if (mode === "throw") {
+          error.message = message;
+          throw error;
+        }
+        if (errors != null) {
+          errors.push(message);
+        }
+        return mode.default;
+      }
+    }
+    function itemError(index: number, message: string): TypeError {
+      return new TypeError(keyErrorMessage(index, arr, message));
+    }
+    return callback(item, itemError, arr, errors);
+  };
+}
+
+export function pair<T1, T2>(
+  decoder1: Decoder<T1>,
+  decoder2: Decoder<T2>
+): Decoder<[T1, T2]> {
+  // eslint-disable-next-line flowtype/require-parameter-type
+  return tuple(function pairDecoder(item): [T1, T2] {
+    return [item(0, decoder1), item(1, decoder2)];
+  });
+}
+
+export function triple<T1, T2, T3>(
+  decoder1: Decoder<T1>,
+  decoder2: Decoder<T2>,
+  decoder3: Decoder<T3>
+): Decoder<[T1, T2, T3]> {
+  // eslint-disable-next-line flowtype/require-parameter-type
+  return tuple(function tripleDecoder(item): [T1, T2, T3] {
+    return [item(0, decoder1), item(1, decoder2), item(2, decoder3)];
+  });
+}
+
+type DecoderType = <T, U>(Decoder<T | U>) => T | U;
+
+export function autoRecord<T: { ... }>(
   mapping: T
-): mixed => $ObjMap<T, ExtractDecoderType> {
-  return function recordDecoder(value: mixed): $ObjMap<T, ExtractDecoderType> {
+): Decoder<$ObjMap<T, DecoderType>> {
+  return function autoRecordDecoder(
+    value: mixed,
+    errors?: Array<string>
+  ): $ObjMap<T, DecoderType> {
     const obj = mixedDict(value);
     const keys = Object.keys(mapping);
     // Using a for-loop rather than `.reduce` gives a nicer stack trace.
@@ -107,7 +263,13 @@ export function record<T: { ... }>(
       const key = keys[index];
       const decoder = mapping[key];
       try {
-        result[key] = decoder(obj[key]);
+        const localErrors = [];
+        result[key] = decoder(obj[key], localErrors);
+        if (errors != null) {
+          for (let index2 = 0; index2 < localErrors.length; index2++) {
+            errors.push(keyErrorMessage(key, obj, localErrors[index2]));
+          }
+        }
       } catch (error) {
         error.message = keyErrorMessage(key, obj, error.message);
         throw error;
@@ -117,56 +279,39 @@ export function record<T: { ... }>(
   };
 }
 
-export function field<T>(
-  key: string | number,
-  decoder: mixed => T
-): mixed => T {
-  return function fieldDecoder(value: mixed): T {
-    let obj = undefined;
-    let fieldValue = undefined;
-    if (typeof key === "string") {
-      obj = mixedDict(value);
-      fieldValue = obj[key];
-    } else {
-      obj = mixedArray(value);
-      fieldValue = obj[key];
-    }
-    try {
-      return decoder(fieldValue);
-    } catch (error) {
-      error.message = keyErrorMessage(key, obj, error.message);
-      throw error;
-    }
-  };
-}
-
-export function fieldDeep<T>(
-  keys: Array<string | number>,
-  decoder: mixed => T
-): mixed => T {
-  return function fieldDeepDecoder(value: mixed): T {
-    const chainedDecoder = keys.reduceRight(
-      (childDecoder, key) => field(key, childDecoder),
-      decoder
-    );
-    return chainedDecoder(value);
-  };
+export function deep<T>(
+  path: Array<string | number>,
+  decoder: Decoder<T>
+): Decoder<T> {
+  return path.reduceRight(
+    (nextDecoder, keyOrIndex) =>
+      typeof keyOrIndex === "string"
+        ? // eslint-disable-next-line flowtype/require-parameter-type
+          record(function deepRecord(field): T {
+            return field(keyOrIndex, nextDecoder);
+          })
+        : // eslint-disable-next-line flowtype/require-parameter-type
+          tuple(function deepTuple(item): T {
+            return item(keyOrIndex, nextDecoder);
+          }),
+    decoder
+  );
 }
 
 export function optional<T, U>(
-  decoder: mixed => T,
+  decoder: Decoder<T>,
   // This parameter is implicitly optional since `U` is allowed to be `void`
   // (undefined), but don’ mark it with a question mark (`defaultValue?: U`)
   // because that causes `name: optional(string)` in the `User` test in
   // `flow/user.js` not to be an error for a `name: string` type annotation!
   defaultValue: U
-): mixed => T | U {
-  return function optionalDecoder(value: mixed): T | U {
+): Decoder<T | U> {
+  return function optionalDecoder(value: mixed, errors?: Array<string>): T | U {
     if (value == null) {
       return defaultValue;
     }
     try {
-      return decoder(value);
+      return decoder(value, errors);
     } catch (error) {
       error.message = `(optional) ${error.message}`;
       throw error;
@@ -174,52 +319,27 @@ export function optional<T, U>(
   };
 }
 
-export function map<T, U>(decoder: mixed => T, fn: T => U): mixed => U {
-  return function mapDecoder(value: mixed): U {
-    return fn(decoder(value));
-  };
-}
-
-export function andThen<T, U>(
-  decoder: mixed => T,
-  fn: T => mixed => U
-): mixed => U {
-  return function andThenDecoder(value: mixed): U {
-    // Run `value` through `decoder`, pass the result of that to `fn` and then
-    // run `value` through the return value of `fn`.
-    return fn(decoder(value))(value);
-  };
-}
-
-export function fieldAndThen<T, U>(
-  key: string | number,
-  decoder: mixed => T,
-  fn: T => mixed => U
-): mixed => U {
-  return function fieldAndThenDecoder(value: mixed): U {
-    const keyValue = field(key, decoder)(value);
-    let finalDecoder = undefined;
-    try {
-      finalDecoder = fn(keyValue);
-    } catch (error) {
-      throw new TypeError(keyErrorMessage(key, value, error.message));
-    }
-    return finalDecoder(value);
+export function map<T, U>(
+  decoder: Decoder<T>,
+  fn: (value: T, errors?: Array<string>) => U
+): Decoder<U> {
+  return function mapDecoder(value: mixed, errors?: Array<string>): U {
+    return fn(decoder(value, errors), errors);
   };
 }
 
 const eitherPrefix = "Several decoders failed:\n";
 
 export function either<T, U>(
-  decoder1: mixed => T,
-  decoder2: mixed => U
-): mixed => T | U {
-  return function eitherDecoder(value: mixed): T | U {
+  decoder1: Decoder<T>,
+  decoder2: Decoder<U>
+): Decoder<T | U> {
+  return function eitherDecoder(value: mixed, errors?: Array<string>): T | U {
     try {
-      return decoder1(value);
+      return decoder1(value, errors);
     } catch (error1) {
       try {
-        return decoder2(value);
+        return decoder2(value, errors);
       } catch (error2) {
         error2.message = [
           eitherPrefix,
@@ -239,9 +359,9 @@ function stripPrefix(prefix: string, str: string): string {
     : str;
 }
 
-export function lazy<T>(fn: () => mixed => T): mixed => T {
-  return function lazyDecoder(value: mixed): T {
-    return fn()(value);
+export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
+  return function lazyDecoder(value: mixed, errors?: Array<string>): T {
+    return callback()(value, errors);
   };
 }
 
@@ -318,10 +438,10 @@ export function repr(
     }
 
     if (toStringType === "Object") {
-      const obj: { [string]: mixed, ... } = value;
+      const obj: { [key: string]: mixed, ... } = value;
       const keys = Object.keys(obj);
 
-      // `class Foo {}` has `toStringType === "Object"` and `rawName === "Foo"`.
+      // `class Foo {}` has `toStringType === "Object"` and `name === "Foo"`.
       const { name } = obj.constructor;
 
       if (!recurse && keys.length > 0) {
@@ -362,7 +482,7 @@ function truncate(str: string): string {
   // cut out the middle (replacing it with a separator). Explaining the magic
   // numbers: 20 is the maximum length and: `20 = 10 + "…".length + 9`.
   // `maxLength` and `separator` could be taken as parameters and the offset
-  // could be calculated from them, but I've hardcoded them to save some bytes.
+  // could be calculated from them, but I’ve hardcoded them to save some bytes.
   return str.length <= 20
     ? str
     : [str.slice(0, 10), "…", str.slice(-9)].join("");

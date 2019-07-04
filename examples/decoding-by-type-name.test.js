@@ -1,23 +1,23 @@
 // @flow strict
 
 import {
-  andThen,
+  type Decoder,
   array,
+  autoRecord,
   boolean,
   constant,
   dict,
   either,
-  field,
-  fieldAndThen,
-  group,
+  map,
   number,
   optional,
   record,
+  repr,
   string,
 } from "../src";
 
 test("decoding based on a field", () => {
-  // First, some types and their decoders:
+  // First, some types:
 
   type Product = {|
     type: "Product",
@@ -26,24 +26,11 @@ test("decoding based on a field", () => {
     categories: Array<string>,
   |};
 
-  const productDecoder: mixed => Product = record({
-    type: constant("Product"),
-    name: string,
-    price: number,
-    categories: array(string),
-  });
-
   type Category = {|
     type: "Category",
     name: string,
-    tags: { [string]: string, ... },
+    tags?: { [string]: string, ... },
   |};
-
-  const categoryDecoder: mixed => Category = record({
-    type: constant("Category"),
-    name: string,
-    tags: dict(string),
-  });
 
   type Offer = {|
     type: "Offer",
@@ -52,27 +39,50 @@ test("decoding based on a field", () => {
     isActive: boolean,
   |};
 
-  const offerDecoder: mixed => Offer = record({
+  type SearchResult = Product | Category | Offer;
+
+  // Then, the decoders.
+
+  // For some reason, we already had an Offer decoder in our code base.
+  const offerDecoder: Decoder<Offer> = autoRecord({
     type: constant("Offer"),
     discount: number,
     message: string,
     isActive: boolean,
   });
 
-  type SearchResult = Product | Category | Offer;
+  const searchResultDecoder1: Decoder<SearchResult> = record(
+    (field, fieldError, obj, errors) => {
+      const type = field("type", string);
 
-  function getSearchResultDecoder(type: string): mixed => SearchResult {
-    switch (type) {
-      case "Product":
-        return productDecoder;
-      case "Category":
-        return categoryDecoder;
-      case "Offer":
-        return offerDecoder;
-      default:
-        throw new TypeError(`Expected a SearchResult type, but got: ${type}`);
+      switch (type) {
+        case "Product":
+          return {
+            type: "Product",
+            name: field("name", string),
+            price: field("price", number),
+            categories: field("categories", array(string)),
+          };
+
+        case "Category":
+          return {
+            type: "Category",
+            name: field("name", string),
+            tags: field("tags", optional(dict(string))),
+          };
+
+        case "Offer":
+          // Here we reuse the decoder we already had.
+          return offerDecoder(obj, errors);
+
+        default:
+          throw fieldError(
+            "type",
+            `Expected a SearchResult type, but got: ${repr(type)}`
+          );
+      }
     }
-  }
+  );
 
   // Then, some sample data to decode:
 
@@ -94,69 +104,49 @@ test("decoding based on a field", () => {
     lastName: "Doe",
   };
 
-  // Finally, three approaches of decoding search results:
-
-  // This is the recommended way.
-  const searchResultDecoder: mixed => SearchResult = fieldAndThen(
-    "type",
-    string,
-    getSearchResultDecoder
-  );
-  expect((searchResultDecoder(offer): SearchResult)).toMatchInlineSnapshot(`
-Object {
-  "discount": 0.25,
-  "isActive": true,
-  "message": "25% off on all Ergonomic Keyboards!",
-  "type": "Offer",
-}
-`);
-  expect(() => searchResultDecoder(incompleteProduct))
+  expect((searchResultDecoder1(offer): SearchResult)).toMatchInlineSnapshot(`
+    Object {
+      "discount": 0.25,
+      "isActive": true,
+      "message": "25% off on all Ergonomic Keyboards!",
+      "type": "Offer",
+    }
+  `);
+  expect(() => searchResultDecoder1(incompleteProduct))
     .toThrowErrorMatchingInlineSnapshot(`
 object["price"]: Expected a number, but got: undefined
 at "price" (missing) in {"type": "Product", "name": "Ergonomic Keyboard"}
 `);
-  expect(() => searchResultDecoder(user)).toThrowErrorMatchingInlineSnapshot(`
-object["type"]: Expected a SearchResult type, but got: User
+  expect(() => searchResultDecoder1(user)).toThrowErrorMatchingInlineSnapshot(`
+object["type"]: Expected a SearchResult type, but got: "User"
 at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 `);
 
-  // This works the same way, but has worse error messages when "type" is invalid.
-  const searchResultDecoder2: mixed => SearchResult = andThen(
-    field("type", string),
-    getSearchResultDecoder
-  );
-  expect((searchResultDecoder2(offer): SearchResult)).toMatchInlineSnapshot(`
-Object {
-  "discount": 0.25,
-  "isActive": true,
-  "message": "25% off on all Ergonomic Keyboards!",
-  "type": "Offer",
-}
-`);
-  expect(() => searchResultDecoder2(incompleteProduct))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["price"]: Expected a number, but got: undefined
-at "price" (missing) in {"type": "Product", "name": "Ergonomic Keyboard"}
-`);
-  expect(() => searchResultDecoder2(user)).toThrowErrorMatchingInlineSnapshot(
-    `Expected a SearchResult type, but got: User`
-  );
+  // Finally, if let’s say we already had decoders for products and categories as well.
 
+  const productDecoder: Decoder<Product> = autoRecord({
+    type: constant("Product"),
+    name: string,
+    price: number,
+    categories: array(string),
+  });
+
+  const categoryDecoder: Decoder<Category> = autoRecord({
+    type: constant("Category"),
+    name: string,
+    tags: optional(dict(string)),
+  });
+
+  // Then it might seem reasonable to use `either` to decode search results. But
   // `either` is not very good in this case since it gives very confusing error
   // messages.
-  const searchResultDecoder3: mixed => SearchResult = either(
+
+  const searchResultDecoder2: Decoder<SearchResult> = either(
     productDecoder,
     either(categoryDecoder, offerDecoder)
   );
-  expect((searchResultDecoder3(offer): SearchResult)).toMatchInlineSnapshot(`
-Object {
-  "discount": 0.25,
-  "isActive": true,
-  "message": "25% off on all Ergonomic Keyboards!",
-  "type": "Offer",
-}
-`);
-  expect(() => searchResultDecoder3(incompleteProduct))
+  expect(searchResultDecoder2(offer)).toEqual(searchResultDecoder1(offer));
+  expect(() => searchResultDecoder2(incompleteProduct))
     .toThrowErrorMatchingInlineSnapshot(`
 Several decoders failed:
 object["price"]: Expected a number, but got: undefined
@@ -166,7 +156,7 @@ at "type" in {"type": "Product", "name": "Ergonomic Keyboard"}
 object["type"]: Expected the value "Offer", but got: "Product"
 at "type" in {"type": "Product", "name": "Ergonomic Keyboard"}
 `);
-  expect(() => searchResultDecoder3(user)).toThrowErrorMatchingInlineSnapshot(`
+  expect(() => searchResultDecoder2(user)).toThrowErrorMatchingInlineSnapshot(`
 Several decoders failed:
 object["type"]: Expected the value "Product", but got: "User"
 at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
@@ -175,12 +165,88 @@ at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 object["type"]: Expected the value "Offer", but got: "User"
 at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 `);
+
+  // This is a better approach:
+
+  function getSearchResultDecoder(
+    type: string
+  ): Decoder<Product> | Decoder<Category> | Decoder<Offer> {
+    switch (type) {
+      case "Product":
+        return productDecoder;
+      case "Category":
+        return categoryDecoder;
+      case "Offer":
+        return offerDecoder;
+      default:
+        throw new TypeError(
+          `Expected a SearchResult type, but got: ${repr(type)}`
+        );
+    }
+  }
+
+  const searchResultDecoder3 = record((field, fieldError, obj, errors) => {
+    const decoder = field("type", map(string, getSearchResultDecoder));
+    return decoder(obj, errors);
+  });
+
+  expect(searchResultDecoder3(offer)).toEqual(searchResultDecoder1(offer));
+
+  expect(() => searchResultDecoder3(incompleteProduct))
+    .toThrowErrorMatchingInlineSnapshot(`
+object["price"]: Expected a number, but got: undefined
+at "price" (missing) in {"type": "Product", "name": "Ergonomic Keyboard"}
+`);
+  expect(() => searchResultDecoder3(user)).toThrowErrorMatchingInlineSnapshot(`
+object["type"]: Expected a SearchResult type, but got: "User"
+at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
+`);
+
+  // `searchResultDecoder3` could also have been written like this, but that
+  // gives a worse error message when `type` is invalid (which doesn’t indicate
+  // that the error happened in the `type` field).
+  const searchResultDecoder4 = record((field, fieldError, obj, errors) => {
+    const decoder = getSearchResultDecoder(field("type", string));
+    return decoder(obj, errors);
+  });
+  expect(() => searchResultDecoder4(user)).toThrowErrorMatchingInlineSnapshot(
+    `Expected a SearchResult type, but got: "User"`
+  );
+
+  // Finally, a note abount `constant`. Note how the above decoders used
+  // `constant` for the `type` field. What’s the point of that? Wouldn’t this
+  // work just as well?
+  const categoryDecoder2: Decoder<Category> = autoRecord({
+    type: () => "Category",
+    name: string,
+    tags: optional(dict(string)),
+  });
+
+  // The difference is that if you accidentally run `categoryDecoder2` on a
+  // product it will still succeed, while `categoryDecoder` throws an error,
+  // saving you from your mistake.
+  const product: mixed = {
+    type: "Product",
+    name: "Pineapple",
+    price: 9,
+    categories: ["Fruit"],
+  };
+  expect(categoryDecoder2(product)).toMatchInlineSnapshot(`
+    Object {
+      "name": "Pineapple",
+      "tags": undefined,
+      "type": "Category",
+    }
+  `);
+  expect(() => categoryDecoder(product)).toThrowErrorMatchingInlineSnapshot(`
+object["type"]: Expected the value "Category", but got: "Product"
+at "type" in {"type": "Product", "name": "Pineapple", "price": 9, (1 more)}
+`);
 });
 
-test("when fieldAndThen isn’t enough", () => {
+test("using several fields to decide how to decode", () => {
   // In this case one needs to look at several boolean fields to decide how to
-  // decode the rest of the object. So we can’t use `fieldAndThen` as in the
-  // last test. Instead we use the more general `andThen`.
+  // decode the rest of the object.
   const persons: mixed = [
     {
       isUser: true,
@@ -237,110 +303,97 @@ test("when fieldAndThen isn’t enough", () => {
     |},
   |};
 
-  type Roles = {|
-    isUser: boolean,
-    isAdmin: boolean,
-    isPartner: boolean,
-  |};
+  const personDecoder: Decoder<Person> = record(field => {
+    // First get the roles, and then decode based on those.
+    const isUser = field("isUser", optional(boolean, false));
+    const isAdmin = field("isAdmin", optional(boolean, false));
+    const isPartner = field("isPartner", optional(boolean, false));
 
-  const rolesDecoder: mixed => Roles = record({
-    isUser: optional(boolean, false),
-    isAdmin: optional(boolean, false),
-    isPartner: optional(boolean, false),
+    return {
+      user: isUser
+        ? {
+            name: field("name", string),
+            email: field("email", string),
+          }
+        : null,
+      admin: isAdmin
+        ? {
+            privileges: field("privileges", array(string)),
+          }
+        : null,
+      partner: isPartner
+        ? {
+            affiliation: field("affiliation", string),
+          }
+        : null,
+    };
   });
 
-  function getPersonDecoder(roles: Roles): mixed => Person {
-    return group({
-      user: roles.isUser
-        ? record({
-            name: string,
-            email: string,
-          })
-        : () => null,
-      admin: roles.isAdmin
-        ? record({
-            privileges: array(string),
-          })
-        : () => null,
-      partner: roles.isPartner
-        ? record({
-            affiliation: string,
-          })
-        : () => null,
-    });
-  }
-
-  // First get the roles, and then get a person decoder based on the roles.
-  const personDecoder: mixed => Person = andThen(
-    rolesDecoder,
-    getPersonDecoder
-  );
-
   expect(array(personDecoder)(persons)).toMatchInlineSnapshot(`
-Array [
-  Object {
-    "admin": null,
-    "partner": null,
-    "user": Object {
-      "email": "john@example.com",
-      "name": "John Doe",
-    },
-  },
-  Object {
-    "admin": Object {
-      "privileges": Array [
-        "edit",
-        "delete",
-      ],
-    },
-    "partner": null,
-    "user": Object {
-      "email": "jane@example.com",
-      "name": "Jane Doe",
-    },
-  },
-  Object {
-    "admin": Object {
-      "privileges": Array [
-        "publish",
-      ],
-    },
-    "partner": null,
-    "user": null,
-  },
-  Object {
-    "admin": Object {
-      "privileges": Array [
-        "publish",
-      ],
-    },
-    "partner": Object {
-      "affiliation": "investor",
-    },
-    "user": null,
-  },
-  Object {
-    "admin": Object {
-      "privileges": Array [
-        "edit",
-      ],
-    },
-    "partner": Object {
-      "affiliation": "investor",
-    },
-    "user": Object {
-      "email": "don@example.org",
-      "name": "Donald Duck",
-    },
-  },
-  Object {
-    "admin": null,
-    "partner": null,
-    "user": Object {
-      "email": "john@example.com",
-      "name": "John Doe",
-    },
-  },
-]
-`);
+    Array [
+      Object {
+        "admin": null,
+        "partner": null,
+        "user": Object {
+          "email": "john@example.com",
+          "name": "John Doe",
+        },
+      },
+      Object {
+        "admin": Object {
+          "privileges": Array [
+            "edit",
+            "delete",
+          ],
+        },
+        "partner": null,
+        "user": Object {
+          "email": "jane@example.com",
+          "name": "Jane Doe",
+        },
+      },
+      Object {
+        "admin": Object {
+          "privileges": Array [
+            "publish",
+          ],
+        },
+        "partner": null,
+        "user": null,
+      },
+      Object {
+        "admin": Object {
+          "privileges": Array [
+            "publish",
+          ],
+        },
+        "partner": Object {
+          "affiliation": "investor",
+        },
+        "user": null,
+      },
+      Object {
+        "admin": Object {
+          "privileges": Array [
+            "edit",
+          ],
+        },
+        "partner": Object {
+          "affiliation": "investor",
+        },
+        "user": Object {
+          "email": "don@example.org",
+          "name": "Donald Duck",
+        },
+      },
+      Object {
+        "admin": null,
+        "partner": null,
+        "user": Object {
+          "email": "john@example.com",
+          "name": "John Doe",
+        },
+      },
+    ]
+  `);
 });
