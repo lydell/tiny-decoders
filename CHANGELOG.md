@@ -1,3 +1,8 @@
+### Version 3.0.1 (2019-08-08)
+
+- Fixed an oversight regarding the recommended type annotation for `autoRecord`
+  decoders in Flow. No code changes.
+
 ### Version 3.0.0 (2019-08-08)
 
 After using this library for a while in a real project, I found a bunch of
