@@ -109,16 +109,6 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  autoRecord<User>({
-    extra: string,
-    name: string,
-    age: number,
-    active: boolean,
-    id: either(string, number),
-  })
-);
-verifyUser(
-  // $ExpectError
   record(field => ({
     extra: field("extra", string),
     name: field("name", string),
@@ -152,17 +142,6 @@ verifyUser(
 verifyUser(
   // $ExpectError
   autoRecord({
-    extra: string,
-    extra2: () => undefined,
-    name: string,
-    age: number,
-    active: boolean,
-    id: either(string, number),
-  })
-);
-verifyUser(
-  // $ExpectError
-  autoRecord<User>({
     extra: string,
     extra2: () => undefined,
     name: string,

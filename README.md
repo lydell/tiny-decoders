@@ -133,7 +133,7 @@ some examples in the API documentation show them explicitly for clarity).
 
 However, adding type annotations for record decoders results in much better
 error messages. The following is the recommended way of annotating record
-decoders, in both TypeScript and Flow:
+decoders in TypeScript:
 
 ```ts
 import { record, autoRecord } from "tiny-decoders";
@@ -172,6 +172,32 @@ const personDecoderAuto = autoRecord({
 type Person = ReturnType<typeof personDecoder>;
 // or:
 type Person = ReturnType<typeof personDecoderAuto>;
+```
+
+In Flow, annotate like this:
+
+```js
+import { record, autoRecord } from "tiny-decoders";
+
+type Person = {|
+  name: string,
+  age: number,
+|};
+
+const personDecoder = record((field): Person => ({
+  name: field("name", string),
+  age: field("age", number),
+}));
+// or:
+const personDecoder2: Decoder<Person> = record(field => ({
+  name: field("name", string),
+  age: field("age", number),
+}));
+
+const personDecoderAuto: Decoder<Person> = autoRecord({
+  name: string,
+  age: number,
+});
 ```
 
 See the [TypeScript type annotations example][typescript-type-annotations] and

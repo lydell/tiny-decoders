@@ -74,7 +74,7 @@ test("type annotations", () => {
   greet(personDecoder2Auto(testPerson));
 
   // Here’s a shorter way of writing the above – which also gives better error
-  // messages!
+  // messages! Note that unlike in TypeScript, `autoRecord<Person>({...})` cannot be used in Flow.
   // $ExpectError
   const personDecoder3 = record<Person>(field => ({
     name: field("name", string),
@@ -82,15 +82,7 @@ test("type annotations", () => {
   }));
   // ^
   // Cannot call `record` with function bound to `callback` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
-  // $ExpectError
-  const personDecoder3Auto = autoRecord<Person>({
-    name: string,
-    aye: number,
-  });
-  // ^
-  // Cannot call `autoRecord` with object literal bound to the first parameter because  string [1] is incompatible with  `Decoder` [2].
   greet(personDecoder3(testPerson));
-  greet(personDecoder3Auto(testPerson));
 
   // For, `record` there’s yet a way of annotating the type:
   // $ExpectError
@@ -155,16 +147,7 @@ test("type annotations", () => {
   }));
   // ^
   // Cannot call `record` with function bound to `callback` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
-  // $ExpectError
-  const personDecoder7Auto = autoRecord<Person>({
-    name: string,
-    age: number,
-    extra: string,
-  });
-  // ^
-  // Cannot call `autoRecord` with object literal bound to the first parameter because  number [1] is incompatible with  `Decoder` [2].
   greet(personDecoder7(testPerson));
-  greet(personDecoder7Auto(testPerson));
 
   // The last type annotation style for `record` produces the best error message:
   // $ExpectError
@@ -231,13 +214,11 @@ test("type annotations", () => {
 
   // If it feels like you are specifying everything twice – once in a `type` or
   // `interface`, and once in the decoder – you might find this `$ReturnType`
-  // technique interesting. If annotating your decoders like shown earlier in this
-  // file (`record((field): MyType => ({...}))` and `autoRecord<MyType>({...})`),
-  // Flow will make sure that your type definition and decoders stay in
-  // sync, so there’s little room for error there. But with the `$ReturnType`
-  // approach you don’t have to write what your records look like “twice.”
-  // Personally I don’t mind the “duplication,” but if you do – try out the
-  // `$ReturnType` approach!
+  // technique interesting. Flow will make sure that your type definition and
+  // decoders stay in sync, so there’s little room for error there. But with the
+  // `$ReturnType` approach you don’t have to write what your records look like
+  // “twice.” Personally I don’t mind the “duplication,” but if you do – try out
+  // the `$ReturnType` approach!
 
   // Here’s a more complex example for trying out Flow’s inference.
   const userDecoder = autoRecord({
