@@ -1,4 +1,4 @@
-### Version 3.0.0 (not released yet)
+### Version 3.0.0 (2019-08-08)
 
 After using this library for a while in a real project, I found a bunch of
 things that could be better. This version brings some bigger changes to the API,
