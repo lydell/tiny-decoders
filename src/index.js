@@ -80,7 +80,7 @@ export function array<T, U>(
           throw error;
         }
         if (errors != null) {
-          errors.push(keyErrorMessage(index, arr, error.message));
+          errors.push(message);
         }
         if (typeof mode !== "string") {
           result.push(mode.default);
