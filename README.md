@@ -40,6 +40,7 @@ Supports [TypeScript] and [Flow].
     - [`mixedArray`](#mixedarray)
     - [`mixedDict`](#mixeddict)
   - [`repr`](#repr)
+    - [Short output (for sensitive data)](#short-output-for-sensitive-data)
 - [Comparison with nvie/decoders](#comparison-with-nviedecoders)
   - [Error messages](#error-messages)
 - [Development](#development)
@@ -952,6 +953,41 @@ function alignmentDecoder(value: string): Alignment {
 
 This function returns _a_ string, but what that string looks like is not part of
 the public API.
+
+#### Short output (for sensitive data)
+
+By default, the tiny-decoder’s error messages try to be helpful by showing you
+the actual values that failed decoding to make it easier to understand what
+happened. However, if you’re dealing with sensitive data, such as email
+addresses, passwords or social security numbers, you might not want that data to
+potentially appear in error logs. Another use case is if you simply prefer a
+shorter, oneline message.
+
+By setting `repr.short = true` you will get shorter error messages, containing
+only _where_ the error happened and the actual and expected types, but not
+showing any actual values.
+
+Standard:
+
+```
+object["details"]["ssn"]: Expected a string, but got: 123456789
+at "ssn" in {"ssn": 123456789, "email": "john.doe@…mple.com"}
+at "details" in {"details": Object(2), "name": "John Doe"}
+```
+
+With `repr.short = true`:
+
+```
+object["details"]["ssn"]: Expected a string, but got: number
+```
+
+All decoders use `repr` internally when making their error messages, so setting
+`repr.short` affect them too. This is admittedly not the most beautiful API, but
+it is tiny.
+
+If you need _both_ standard _and_ short output in the same application –
+remember that `repr.short = true` globally affects everything. You’ll need to
+flip `repr.short` back and forth as needed.
 
 ## Comparison with nvie/decoders
 

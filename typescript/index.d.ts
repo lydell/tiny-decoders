@@ -92,12 +92,15 @@ export function either<T, U>(
 
 export function lazy<T>(callback: () => Decoder<T>): Decoder<T>;
 
-export function repr(
-  value: unknown,
-  options?: {
-    key?: string | number;
-    recurse?: boolean;
-    maxArrayChildren?: number;
-    maxObjectChildren?: number;
-  }
-): string;
+export const repr: {
+  (
+    value: unknown,
+    options?: {
+      key?: string | number;
+      recurse?: boolean;
+      maxArrayChildren?: number;
+      maxObjectChildren?: number;
+    }
+  ): string;
+  short: boolean;
+};

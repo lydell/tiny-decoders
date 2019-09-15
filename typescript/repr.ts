@@ -26,3 +26,10 @@ repr([null, "", repr], {
   // $ExpectError
   maxObjetChildren: 10,
 });
+
+repr.short = true;
+repr.short = false;
+// $ExpectError
+repr.short = "true";
+// $ExpectError
+repr.shorts = false;

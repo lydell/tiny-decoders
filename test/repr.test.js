@@ -11,6 +11,10 @@ expect.addSnapshotSerializer({
   print: value => value,
 });
 
+beforeEach(() => {
+  repr.short = false;
+});
+
 class Point {
   /*::
     x: number;
@@ -299,4 +303,108 @@ test("catch errors", () => {
     `failed for whatever reason`
   );
   expect(repr(regex)).toMatchInlineSnapshot(`RegExp`);
+});
+
+test("short output", () => {
+  repr.short = true;
+
+  expect(repr(undefined)).toMatchInlineSnapshot(`undefined`);
+  expect(repr(null)).toMatchInlineSnapshot(`null`);
+
+  expect(repr(0)).toMatchInlineSnapshot(`number`);
+  expect(repr(Infinity)).toMatchInlineSnapshot(`number`);
+  expect(repr(NaN)).toMatchInlineSnapshot(`number`);
+
+  expect(repr(true)).toMatchInlineSnapshot(`boolean`);
+  expect(repr(false)).toMatchInlineSnapshot(`boolean`);
+
+  expect(repr(Symbol())).toMatchInlineSnapshot(`symbol`);
+  expect(repr(Symbol("description"))).toMatchInlineSnapshot(`symbol`);
+
+  expect(repr(/.*/)).toMatchInlineSnapshot(`regexp`);
+
+  expect(repr("")).toMatchInlineSnapshot(`string`);
+  expect(repr("test")).toMatchInlineSnapshot(`string`);
+
+  expect(repr(repr)).toMatchInlineSnapshot(`function "repr"`);
+  /* eslint-disable no-empty-function, prefer-arrow-callback, flowtype/require-return-type */
+  expect(repr(() => {})).toMatchInlineSnapshot(`function ""`);
+  expect(repr(function named() {})).toMatchInlineSnapshot(`function "named"`);
+  /* eslint-enable no-empty-function, prefer-arrow-callback, flowtype/require-return-type */
+
+  expect(repr(new Date("2018-10-27T16:07:33.978Z"))).toMatchInlineSnapshot(
+    `Date`
+  );
+  expect(repr(new Error("error"))).toMatchInlineSnapshot(`Error`);
+  /* eslint-disable no-new-wrappers */
+  expect(repr(new Boolean(true))).toMatchInlineSnapshot(`Boolean`);
+  expect(repr(new Boolean(false))).toMatchInlineSnapshot(`Boolean`);
+  expect(repr(new Number(0))).toMatchInlineSnapshot(`Number`);
+  expect(repr(new String("string"))).toMatchInlineSnapshot(`String`);
+  /* eslint-enable no-new-wrappers */
+
+  expect(repr([])).toMatchInlineSnapshot(`[]`);
+  expect(repr([1])).toMatchInlineSnapshot(`[number]`);
+  expect(repr([1], { recurse: false })).toMatchInlineSnapshot(`Array(1)`);
+  expect(
+    repr(
+      // eslint-disable-next-line no-sparse-arrays
+      [
+        undefined,
+        ,
+        null,
+        true,
+        NaN,
+        "string",
+        Symbol("desc"),
+        repr,
+        /test/gm,
+        new Date("2018-10-27T16:07:33.978Z"),
+        new RangeError(),
+        // eslint-disable-next-line no-new-wrappers
+        new String("wrap"),
+        [],
+        {},
+        [1],
+        { a: 1 },
+        new Point(10, 235.8),
+      ],
+      { maxArrayChildren: Infinity }
+    )
+  ).toMatchInlineSnapshot(
+    `[undefined, <empty>, null, boolean, number, string, symbol, function "repr", regexp, Date, Error, String, [], {}, Array(1), Object(1), Point(2)]`
+  );
+
+  expect(repr({})).toMatchInlineSnapshot(`{}`);
+  expect(repr({ a: 1 })).toMatchInlineSnapshot(`{"a": number}`);
+  expect(repr({ a: 1 }, { recurse: false })).toMatchInlineSnapshot(`Object(1)`);
+  expect(
+    repr(
+      {
+        a: undefined,
+        b: null,
+        c: true,
+        d: NaN,
+        e: "string",
+        f: Symbol("desc"),
+        g: repr,
+        h: /test/gm,
+        i: new Date("2018-10-27T16:07:33.978Z"),
+        j: new RangeError(),
+        // eslint-disable-next-line no-new-wrappers
+        k: new String("wrap"),
+        l: [],
+        m: {},
+        o: [1],
+        p: { a: 1 },
+        r: new Point(10, 235.8),
+      },
+      { maxObjectChildren: Infinity }
+    )
+  ).toMatchInlineSnapshot(
+    `{"a": undefined, "b": null, "c": boolean, "d": number, "e": string, "f": symbol, "g": function "repr", "h": regexp, "i": Date, "j": Error, "k": String, "l": [], "m": {}, "o": Array(1), "p": Object(1), "r": Point(2)}`
+  );
+  expect(repr(new Point(10, 235.8))).toMatchInlineSnapshot(
+    `Point {"x": number, "y": number}`
+  );
 });

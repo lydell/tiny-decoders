@@ -10,8 +10,13 @@ import {
   number,
   optional,
   record,
+  repr,
   string,
 } from "../src";
+
+beforeEach(() => {
+  repr.short = false;
+});
 
 test("the main readme example", () => {
   type User = {|
@@ -223,3 +228,32 @@ function getProducts({
     },
   ];
 }
+
+test("default vs short error messages", () => {
+  const userDecoder = autoRecord({
+    name: string,
+    details: autoRecord({
+      email: string,
+      ssn: string,
+    }),
+  });
+
+  const data: mixed = {
+    name: "John Doe",
+    details: {
+      email: "john.doe@example.com",
+      ssn: 123456789,
+    },
+  };
+
+  expect(() => userDecoder(data)).toThrowErrorMatchingInlineSnapshot(`
+object["details"]["ssn"]: Expected a string, but got: 123456789
+at "ssn" in {"ssn": 123456789, "email": "john.doe@…mple.com"}
+at "details" in {"details": Object(2), "name": "John Doe"}
+`);
+
+  repr.short = true;
+  expect(() => userDecoder(data)).toThrowErrorMatchingInlineSnapshot(
+    `object["details"]["ssn"]: Expected a string, but got: number`
+  );
+});

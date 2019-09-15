@@ -365,6 +365,8 @@ export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
   };
 }
 
+repr.short = false;
+
 export function repr(
   // $FlowIgnore: Using `any` rather than `mixed` here to cut down on the bytes.
   value: any,
@@ -393,11 +395,11 @@ export function repr(
       type === "symbol" ||
       toStringType === "RegExp"
     ) {
-      return truncate(String(value));
+      return repr.short ? toStringType.toLowerCase() : truncate(String(value));
     }
 
     if (type === "string") {
-      return printString(value);
+      return repr.short ? type : printString(value);
     }
 
     if (type === "function") {
@@ -513,6 +515,6 @@ function keyErrorMessage(
     `${prefix}[${at}]`,
     keyErrorPrefixRegex.test(message) ? "" : ": ",
     message.replace(keyErrorPrefixRegex, ""),
-    `\nat ${at}${missing} in ${repr(value, { key })}`,
+    repr.short ? "" : `\nat ${at}${missing} in ${repr(value, { key })}`,
   ].join("");
 }

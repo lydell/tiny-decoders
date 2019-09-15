@@ -17,10 +17,15 @@ import {
   optional,
   pair,
   record,
+  repr,
   string,
   triple,
   tuple,
 } from "../src";
+
+beforeEach(() => {
+  repr.short = false;
+});
 
 function testWithErrorsArray<T>({
   decoder,
@@ -28,11 +33,18 @@ function testWithErrorsArray<T>({
 }: {|
   decoder: Decoder<T>,
   data: mixed,
-|}): {| decoded: T, errors: Array<string> |} {
+|}): {| decoded: T, errors: Array<string>, shortErrors: Array<string> |} {
   const errors = [];
   const decoded = decoder(data);
   expect(decoder(data, errors)).toEqual(decoded);
-  return { decoded, errors };
+
+  const shortErrors = [];
+  repr.short = true;
+  const decoded2 = decoder(data, shortErrors);
+  repr.short = false;
+  expect(decoded2).toEqual(decoded);
+
+  return { decoded, errors, shortErrors };
 }
 
 test("boolean", () => {
@@ -167,6 +179,9 @@ at 1 in [1, (index 1) "2"]
         array[1]: Expected a number, but got: "2"
     at 1 in [1, (index 1) "2", 3],
       ],
+      "shortErrors": Array [
+        array[1]: Expected a number, but got: string,
+      ],
     }
   `);
 
@@ -185,6 +200,9 @@ at 1 in [1, (index 1) "2"]
       "errors": Array [
         array[1]: Expected a number, but got: "2"
     at 1 in [1, (index 1) "2", 3],
+      ],
+      "shortErrors": Array [
+        array[1]: Expected a number, but got: string,
       ],
     }
   `);
@@ -230,6 +248,9 @@ at "\\"), \\"ke… value\\"" in {"\\"), \\"ke… value\\"": 1}
         object["b"]: Expected a number, but got: "2"
     at "b" in {"b": "2", "a": 1, "c": 3},
       ],
+      "shortErrors": Array [
+        object["b"]: Expected a number, but got: string,
+      ],
     }
   `);
 
@@ -248,6 +269,9 @@ at "\\"), \\"ke… value\\"" in {"\\"), \\"ke… value\\"": 1}
       "errors": Array [
         object["b"]: Expected a number, but got: "2"
     at "b" in {"b": "2", "a": 1, "c": 3},
+      ],
+      "shortErrors": Array [
+        object["b"]: Expected a number, but got: string,
       ],
     }
   `);
@@ -324,16 +348,25 @@ at "hasOwnProperty" (prototype) in {}
         object["a"]: Expected a number, but got: "1"
     at "a" in {"a": "1"},
       ],
+      "shortErrors": Array [
+        object["a"]: Expected a number, but got: string,
+      ],
     }
   `);
 });
 
 test("record fieldError", () => {
-  expect(record((field, fieldError) => fieldError("key", "invalid"))({}))
-    .toMatchInlineSnapshot(`
+  const decoder = record((field, fieldError) => fieldError("key", "invalid"));
+
+  expect(decoder({})).toMatchInlineSnapshot(`
     [TypeError: object["key"]: invalid
     at "key" (missing) in {}]
   `);
+
+  repr.short = true;
+  expect(decoder({})).toMatchInlineSnapshot(
+    `[TypeError: object["key"]: invalid]`
+  );
 });
 
 test("record obj and errors", () => {
@@ -417,16 +450,23 @@ at 1 (out of bounds) in [1]
         array[0]: Expected a number, but got: "1"
     at 0 in [(index 0) "1"],
       ],
+      "shortErrors": Array [
+        array[0]: Expected a number, but got: string,
+      ],
     }
   `);
 });
 
 test("tuple itemError", () => {
-  expect(tuple((item, itemError) => itemError(0, "invalid"))([]))
-    .toMatchInlineSnapshot(`
+  const decoder = tuple((item, itemError) => itemError(0, "invalid"));
+
+  expect(decoder([])).toMatchInlineSnapshot(`
     [TypeError: array[0]: invalid
     at 0 (out of bounds) in []]
   `);
+
+  repr.short = true;
+  expect(decoder([])).toMatchInlineSnapshot(`[TypeError: array[0]: invalid]`);
 });
 
 test("tuple arr and errors", () => {
@@ -937,6 +977,31 @@ test("all decoders pass down errors", () => {
         object["lazy"]["test"]: Expected a boolean, but got: 0
     at "test" in {"test": 0}
     at "lazy" in {"lazy": Object(1), "boolean": 0, "number": false, (20 more)},
+      ],
+      "shortErrors": Array [
+        object["boolean"]: Expected a boolean, but got: number,
+        object["number"]: Expected a number, but got: boolean,
+        object["string"]: Expected a string, but got: boolean,
+        object["constant"]: Expected the value number, but got: boolean,
+        object["mixedArray"]: Expected an array, but got: boolean,
+        object["mixedDict"]: Expected an object, but got: boolean,
+        object["array"][0]["test"]: Expected a boolean, but got: number,
+        object["dict"]["key"]["test"]: Expected a boolean, but got: number,
+        object["record"]["field"]["test"]: Expected a boolean, but got: number,
+        object["tuple"][0]["test"]: Expected a boolean, but got: number,
+        object["pair1"][0]["test"]: Expected a boolean, but got: number,
+        object["pair2"][1]["test"]: Expected a boolean, but got: number,
+        object["triple1"][0]["test"]: Expected a boolean, but got: number,
+        object["triple2"][1]["test"]: Expected a boolean, but got: number,
+        object["triple3"][2]["test"]: Expected a boolean, but got: number,
+        object["autoRecord"]["field"]["test"]: Expected a boolean, but got: number,
+        object["deep"]["field"][0]["test"]: Expected a boolean, but got: number,
+        object["optional"]["test"]: Expected a boolean, but got: number,
+        object["map1"]["test"]: Expected a boolean, but got: number,
+        object["map2"]["test"]: Expected a boolean, but got: number,
+        object["either1"]["test"]: Expected a boolean, but got: number,
+        object["either2"]["test"]: Expected a boolean, but got: number,
+        object["lazy"]["test"]: Expected a boolean, but got: number,
       ],
     }
   `);
