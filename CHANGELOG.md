@@ -1,3 +1,13 @@
+### Version 3.1.0 (2019-09-15)
+
+- Added: You can now set `repr.short = true` to get shorter error messages,
+  containing only _where_ the error happened and the actual and expected types,
+  but not showing any actual values. This is useful if you’re dealing with
+  sensitive data, such as email addresses, passwords or social security numbers,
+  you might not want that data to potentially appear in error logs. Another use
+  case is if you simply prefer a shorter, oneline message.
+- Improved: Documentation on type inference in TypeScript.
+
 ### Version 3.0.1 (2019-08-08)
 
 - Fixed an oversight regarding the recommended type annotation for `autoRecord`
