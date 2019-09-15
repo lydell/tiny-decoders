@@ -187,12 +187,10 @@ test("type annotations", () => {
     name: string,
     age: number,
   });
-  // $ExpectType { name: string; age: number; }
   type Person2 = $ReturnType<typeof personDecoder9>;
   // type Person2 = $ReturnType<
   //   Decoder<{| age: number, name: string |}>
   // >
-  // $ExpectType { name: string; age: number; }
   type Person3 = $ReturnType<typeof personDecoder9Auto>;
   // type Person3 = $ReturnType<
   //   Decoder<
@@ -281,6 +279,32 @@ test("type annotations", () => {
   // ^
   // Cannot assign object literal to `user3` because property `extra` is missing in  object type [1] but exists in  object literal [2].
   expect(user3).toMatchObject(user);
+
+  // Here’s the same decoder again, but written using `record` instead of
+  // `autoRecord`. It should give the same inferred type.
+  const userDecoder2 = record(field => ({
+    id: field("id", either(string, number)),
+    name: field("name", string),
+    age: field("age", number),
+    active: field("active", boolean),
+    country: field("country", optional(string)),
+    type: field("type", constant<"user">("user")),
+  }));
+
+  type User2 = $ReturnType<typeof userDecoder2>;
+
+  // Inference for the literal `"user"` doesn’t work here, either.
+  const user4: User2 = {
+    id: 1,
+    name: "John Doe",
+    age: 30,
+    active: true,
+    country: undefined,
+    // As mentioned earlier it would have been nice if this was an error
+    // (supposed to be `type: "user"`):
+    type: "nope",
+  };
+  expect({ ...user4, type: "user" }).toMatchObject(user);
 
   // Because of the worse editor tooltips for inferred types as well as the
   // `constant` caveat, I find it hard to recommend the `$ReturnType` approach

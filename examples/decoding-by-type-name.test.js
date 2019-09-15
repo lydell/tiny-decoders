@@ -242,6 +242,10 @@ at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 object["type"]: Expected the value "Category", but got: "Product"
 at "type" in {"type": "Product", "name": "Pineapple", "price": 9, (1 more)}
 `);
+
+  // See also `typescript/type-annotations.ts` for additional examples of
+  // decoding based on a field, and important information about type inference
+  // about such decoders in TypeScript.
 });
 
 test("using several fields to decide how to decode", () => {

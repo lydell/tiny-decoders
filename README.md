@@ -202,7 +202,7 @@ const personDecoderAuto: Decoder<Person> = autoRecord({
 
 See the [TypeScript type annotations example][typescript-type-annotations] and
 the [Flow type annotations example][example-type-annotations] for more
-information.
+information, tips and caveats.
 
 ## API
 

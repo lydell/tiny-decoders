@@ -11,6 +11,7 @@ import {
   number,
   optional,
   string,
+  repr,
 } from "tiny-decoders";
 
 // First, a small test interface and a function that receives it:
@@ -264,4 +265,214 @@ const user3: User = {
   // ^^^^^^^^^^
   // Type '{ id: number; name: string; age: number; active: true; country: undefined; type: "user"; extra: string; }' is not assignable to type '{ id: string | number; name: string; age: number; active: boolean; country: string | undefined; type: "user"; }'.
   //   Object literal may only specify known properties, and 'extra' does not exist in type '{ id: string | number; name: string; age: number; active: boolean; country: string | undefined; type: "user"; }'. ts(2322)
+};
+
+// Here’s the same decoder again, but written using `record` instead of
+// `autoRecord`. It should give the same inferred type.
+const userDecoder2 = record(field => ({
+  id: field("id", either(string, number)),
+  name: field("name", string),
+  age: field("age", number),
+  active: field("active", boolean),
+  country: field("country", optional(string)),
+  type: field("type", constant("user")),
+}));
+
+type User2 = ReturnType<typeof userDecoder2>;
+
+// Inference for the literal `"user"` works here, too.
+const user4: User2 = {
+  id: 1,
+  name: "John Doe",
+  age: 30,
+  active: true,
+  country: undefined,
+  // $ExpectError
+  type: "nope",
+  // ^^^^^^^^^
+  // Type '"nope"' is not assignable to type '"user"'. ts(2322)
+};
+
+/*
+ * MAKING A TYPE FROM THE DECODER – CAVEATS
+ */
+
+// Let’s say we need to support two types of users – anonymous and registered ones.
+// Unfortunately, TypeScript doesn’t infer the type you might have expected:
+// $ExpectType Decoder<{ type: string; sessionId: number; id?: undefined; name?: undefined; } | { type: string; id: number; name: string; sessionId?: undefined; }>
+const userDecoder3 = record((field, fieldError) => {
+  const type = field("type", string);
+
+  switch (type) {
+    case "anonymous":
+      return {
+        type: "anonymous",
+        sessionId: field("sessionId", number),
+      };
+
+    case "registered":
+      return {
+        type: "registered",
+        id: field("id", number),
+        name: field("name", string),
+      };
+
+    default:
+      throw fieldError("type", `Unknown user type: ${repr(type)}`);
+  }
+});
+
+// To turn `type: string` into `type: "anonymous"` and `type: "registered"`, add
+// `as const` (using the `constant` decoder does not seem to help):
+// $ExpectType Decoder<{ type: "anonymous"; sessionId: number; id?: undefined; name?: undefined; } | { type: "registered"; id: number; name: string; sessionId?: undefined; }>
+const userDecoder4 = record((field, fieldError) => {
+  const type = field("type", string);
+
+  switch (type) {
+    case "anonymous":
+      return {
+        type: "anonymous" as const,
+        sessionId: field("sessionId", number),
+      };
+
+    case "registered":
+      return {
+        type: "registered" as const,
+        id: field("id", number),
+        name: field("name", string),
+      };
+
+    default:
+      throw fieldError("type", `Unknown user type: ${repr(type)}`);
+  }
+});
+
+// However, `id?: undefined` and similar are still part of the type. They don’t
+// hurt super much when it comes to type safety. They are optional fields that
+// only are allowed to be set to `undefined` – you can’t do much with that.
+// However, they do clutter tooltips and autocomplete in your editor.
+const testUser = userDecoder4({ type: "anonymous", sessiodId: 123 });
+if (testUser.type === "anonymous") {
+  // Type `testUser.` above this line and check your editor’s autocomplete.
+  // You probably get something like this:
+  //
+  // - id?: undefined
+  // - name?: undefined
+  // - sessionId: number
+  // - type: "anonymous"
+  //
+  // And if you hover over `testUser` in the line you typed, the tooltip showing
+  // the type might say:
+  //
+  //     {
+  //       type: "anonymous";
+  //       sessionId: number;
+  //       id?: undefined;
+  //       name?: undefined;
+  //     }
+  //
+  // Those extra fields are just noisy. They exist because of this:
+  // https://github.com/microsoft/TypeScript/pull/19513
+  //
+  // But can we get rid of them?
+}
+
+// Turns out we can get rid of the extra properties by using the good old
+// `identity` function! It’s just a function that returns whatever is passed to
+// it. A bit of an ugly workaround, but it works.
+const id = <T>(x: T): T => x;
+
+// And when wrapping each `return` in `id(...)` the extra properties vanish!
+// $ExpectType Decoder<{ type: "anonymous"; sessionId: number; } | { type: "registered"; id: number; name: string; }>
+const userDecoder5 = record((field, fieldError) => {
+  const type = field("type", string);
+
+  switch (type) {
+    case "anonymous":
+      return id({
+        type: "anonymous" as const,
+        sessionId: field("sessionId", number),
+      });
+
+    case "registered":
+      return id({
+        type: "registered" as const,
+        id: field("id", number),
+        name: field("name", string),
+      });
+
+    default:
+      throw fieldError("type", `Unknown user type: ${repr(type)}`);
+  }
+});
+
+// Another way is to write separate decoders for each case.
+function getUserDecoder(type: unknown) {
+  switch (type) {
+    case "anonymous":
+      return record(field => ({
+        type: field("type", constant("anonymous")),
+        sessionId: field("sessionId", number),
+      }));
+
+    case "registered":
+      // You can also use `autoRecord`:
+      return autoRecord({
+        type: constant("registered"),
+        id: number,
+        name: string,
+      });
+
+    default:
+      throw new TypeError(`Unknown user type: ${repr(type)}`);
+  }
+}
+
+// This “decodes” the "type" field using `getUserDecoder`. Remember that a
+// decoder is allowed to return whatever it wants. `getUserDecoder` returns a
+// _new_ decoder, which we immediately call. I haven’t found a nicer way to do
+// this so far.
+// $ExpectType Decoder<{ type: "anonymous"; sessionId: number; } | { type: "registered"; id: number; name: string; }>
+const userDecoder6 = record((field, _fieldError, obj, errors) =>
+  field("type", getUserDecoder)(obj, errors)
+);
+
+// Finally, there’s one last little detail to know about: How optional fields
+// are inferred.
+// $ExpectType Decoder<{ title: string; description: string | undefined; }>
+const itemDecoder = autoRecord({
+  title: string,
+  description: optional(string),
+});
+
+// As you can see above, fields using the `optional` decoder are always inferred
+// as `key: T | undefined`, and never as `key?: T`. This means that you always
+// have to specify the optional fields:
+type Item = ReturnType<typeof itemDecoder>;
+// $ExpectError
+const item1: Item = {
+  //  ^^^^^
+  // Property 'description' is missing in type '{ title: string; }' but required in type '{ title: string; description: string | undefined; } ts(2741)
+  title: "Pencil",
+};
+const item2: Item = {
+  title: "Pencil",
+  description: undefined,
+};
+
+// This may or may not be what you want. If you have a large number of optional
+// fields and need to construct a lot of such objects in code it might be
+// convenient not having to specify all optional fields at all times. To achieve
+// that you must provide an explicit type annotation:
+interface Item2 {
+  title: string;
+  description?: string;
+}
+// $ExpectType Decoder<Item2>
+const itemDecoder2 = autoRecord<Item2>({
+  title: string,
+  description: optional(string),
+});
+const item3: Item2 = {
+  title: "Pencil",
 };
