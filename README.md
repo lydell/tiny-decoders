@@ -40,7 +40,7 @@ Supports [TypeScript] and [Flow].
     - [`mixedArray`](#mixedarray)
     - [`mixedDict`](#mixeddict)
   - [`repr`](#repr)
-    - [Short output (for sensitive data)](#short-output-for-sensitive-data)
+    - [Output for sensitive data](#output-for-sensitive-data)
 - [Comparison with nvie/decoders](#comparison-with-nviedecoders)
   - [Error messages](#error-messages)
 - [Development](#development)
@@ -99,7 +99,6 @@ Otherwise, a `TypeError` is thrown.
 The error can look like this:
 
     TypeError: object["age"]: (optional) Expected a number, but got: "30"
-    at "age" in {"age": "30", "name": "John Doe", "active": true, (2 more)}
 */
 ```
 
@@ -911,10 +910,11 @@ undefined, null and missing values][example-missing-values].
 export function repr(
   value: unknown,
   options?: {
-    key?: string | number;
     recurse?: boolean;
     maxArrayChildren?: number;
     maxObjectChildren?: number;
+    maxLength?: number;
+    recurseMaxLength?: number;
   }
 ): string;
 ```
@@ -924,12 +924,13 @@ messages. Useful when making [custom decoders][example-custom-decoders].
 
 Options:
 
-| name              | type                                               | default     | description                                                                                 |
-| ----------------- | -------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
-| key               | <code>string &vert; number &vert; undefined</code> | `undefined` | An object key or array index to highlight when `repr`ing objects or arrays.                 |
-| recurse           | `boolean`                                          | `true`      | Whether to recursively call `repr` on array items and object values. It only recurses once. |
-| maxArrayChildren  | `number`                                           | `5`         | The number of array items to print (when `recurse` is `true`.)                              |
-| maxObjectChildren | `number`                                           | `3`         | The number of object key-values to print (when `recurse` is `true`.)                        |
+| name              | type      | default | description                                                                                                         |
+| ----------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| recurse           | `boolean` | `true`  | Whether to recursively call `repr` on array items and object values. It only recurses once.                         |
+| maxArrayChildren  | `number`  | `5`     | The number of array items to print (when `recurse` is `true`.)                                                      |
+| maxObjectChildren | `number`  | `3`     | The number of object key-values to print (when `recurse` is `true`.)                                                |
+| maxLength         | `number`  | `100`   | The maximum length of literals, such as strings, before truncating them.                                            |
+| recurseMaxLength  | `number`  | `20`    | Like `maxLength`, but when recursing. One typically wants shorter lengths here to avoid overly long error messages. |
 
 Example:
 
@@ -954,40 +955,37 @@ function alignmentDecoder(value: string): Alignment {
 This function returns _a_ string, but what that string looks like is not part of
 the public API.
 
-#### Short output (for sensitive data)
+#### Output for sensitive data
 
 By default, the tiny-decoder’s error messages try to be helpful by showing you
 the actual values that failed decoding to make it easier to understand what
 happened. However, if you’re dealing with sensitive data, such as email
 addresses, passwords or social security numbers, you might not want that data to
-potentially appear in error logs. Another use case is if you simply prefer a
-shorter, oneline message.
+potentially appear in error logs.
 
-By setting `repr.short = true` you will get shorter error messages, containing
-only _where_ the error happened and the actual and expected types, but not
-showing any actual values.
+By setting `repr.sensitive = true` you will get error messages containing only
+_where_ the error happened and the actual and expected types, but not showing
+any actual values.
 
 Standard:
 
 ```
 object["details"]["ssn"]: Expected a string, but got: 123456789
-at "ssn" in {"ssn": 123456789, "email": "john.doe@…mple.com"}
-at "details" in {"details": Object(2), "name": "John Doe"}
 ```
 
-With `repr.short = true`:
+With `repr.sensitive = true`:
 
 ```
 object["details"]["ssn"]: Expected a string, but got: number
 ```
 
 All decoders use `repr` internally when making their error messages, so setting
-`repr.short` affect them too. This is admittedly not the most beautiful API, but
-it is tiny.
+`repr.sensitive` affect them too. This is admittedly not the most beautiful API,
+but it is tiny.
 
-If you need _both_ standard _and_ short output in the same application –
-remember that `repr.short = true` globally affects everything. You’ll need to
-flip `repr.short` back and forth as needed.
+If you need _both_ standard _and_ sensitive output in the same application –
+remember that `repr.sensitive = true` globally affects everything. You’ll need
+to flip `repr.sensitive` back and forth as needed.
 
 ## Comparison with nvie/decoders
 
@@ -1054,44 +1052,25 @@ Decoding error:
 ]
 ```
 
-The errors of tiny-decoders are shorter and a little bit more cryptic. As
-opposed to [nvie/decoders], it stops at the _first_ error in a record (instead
-of showing them all). First, the missing “id” field:
+The errors of tiny-decoders are way shorter. As opposed to [nvie/decoders],
+it stops at the _first_ error in a record (instead of showing them all).
+First, the missing “id” field:
 
 ```
 TypeError: array[1]["accessories"][0]["id"]: Expected a string, but got: undefined
-at "id" (missing) in {"name": "Keycap Puller", "image": "data:imag…AkQBADs=", "discount": "5%"}
-at 0 in [(index 0) Object(3), Object(4)]
-at "accessories" in {"accessories": Array(2), "id": "382973", "name": "Ergonomic Keyboard", (2 more)}
-at 1 in [Object(5), (index 1) Object(5), Object(5)]
 ```
 
 And if we add an “id” we get the “discount” error:
 
 ```
 TypeError: array[1]["accessories"][0]["discount"]: (optional) Expected a number, but got: "5%"
-at "discount" in {"discount": "5%", "id": "489382", "name": "Keycap Puller", (1 more)}
-at 0 in [(index 0) Object(4), Object(4)]
-at "accessories" in {"accessories": Array(2), "id": "382973", "name": "Ergonomic Keyboard", (2 more)}
-at 1 in [Object(5), (index 1) Object(5), Object(5)]
 ```
 
-If you read the “stack trace” of tiny-decoders from bottom to top, it’s a bit
-like expanding objects and arrays in the browser devtools (but in your head):
-
-```
-[Object(5), (index 1) Object(5), Object(5)]
-                      |
-                      v
-                      {"accessories": Array(2), "id": "382973", "name": "Ergonomic Keyboard", (2 more)}
-                                      |
-                                      v
-                                      [(index 0) Object(4), Object(4)]
-                                                 |
-                                                 v
-                                                 {"discount": "5%", "id": "489382", "name": "Keycap Puller", (1 more)}
-                                                              ^^^^
-```
+tiny-decoders used to also print a “stack trace,” showing you a little of
+each parent object and array. After using tiny-decoders for a while I noticed
+this not being super useful. It’s nicer to look at the whole object in a tool
+of choice, and just use the error message to understand _where_ the error
+is, and what is wrong.
 
 ## Development
 

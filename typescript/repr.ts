@@ -4,21 +4,14 @@ repr(undefined);
 repr(null, {});
 
 repr(0, {
-  key: "key",
   recurse: false,
   maxArrayChildren: 10,
   maxObjectChildren: 10,
+  maxLength: 10,
+  recurseMaxLength: 10,
 });
 
-repr("", {
-  key: 0,
-});
-
-// Bad key:
-// $ExpectError
-repr(repr, {
-  key: Symbol("key"),
-});
+repr("", {});
 
 // Misspelled option ("maxObjetChildren" instead of "maxObjectChildren"):
 repr([null, "", repr], {
@@ -27,9 +20,9 @@ repr([null, "", repr], {
   maxObjetChildren: 10,
 });
 
-repr.short = true;
-repr.short = false;
+repr.sensitive = true;
+repr.sensitive = false;
 // $ExpectError
-repr.short = "true";
+repr.sensitive = "true";
 // $ExpectError
 repr.shorts = false;

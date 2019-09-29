@@ -16,14 +16,9 @@ test("decoding deeply nested values", () => {
   const incompleteData = { store: { products: [{ accessories: [] }] } };
 
   expect(decoder(data)).toMatchInlineSnapshot(`123`);
-  expect(() => decoder(incompleteData)).toThrowErrorMatchingInlineSnapshot(`
-object["store"]["products"][0]["accessories"][0]: Expected an object, but got: undefined
-at 0 (out of bounds) in []
-at "accessories" in {"accessories": []}
-at 0 in [(index 0) Object(1)]
-at "products" in {"products": Array(1)}
-at "store" in {"store": Object(1)}
-`);
+  expect(() => decoder(incompleteData)).toThrowErrorMatchingInlineSnapshot(
+    `object["store"]["products"][0]["accessories"][0] (out of bounds): Expected an object, but got: undefined`
+  );
 
   // By combining the decoder with another decoder that always succeeds (a
   // function that ignores its input and always returns the same value) you can
@@ -42,15 +37,11 @@ at "store" in {"store": Object(1)}
   ).toMatchInlineSnapshot(`null`);
 
   // Note that `optional` doesn’t help in this case:
-  expect(() => optional(decoder)(incompleteData))
-    .toThrowErrorMatchingInlineSnapshot(`
-(optional) object["store"]["products"][0]["accessories"][0]: Expected an object, but got: undefined
-at 0 (out of bounds) in []
-at "accessories" in {"accessories": []}
-at 0 in [(index 0) Object(1)]
-at "products" in {"products": Array(1)}
-at "store" in {"store": Object(1)}
-`);
+  expect(() =>
+    optional(decoder)(incompleteData)
+  ).toThrowErrorMatchingInlineSnapshot(
+    `(optional) object["store"]["products"][0]["accessories"][0] (out of bounds): Expected an object, but got: undefined`
+  );
   // `optional` only does its job if the toplevel value is missing.
   expect(optional(decoder, 0)(undefined)).toMatchInlineSnapshot(`0`);
 

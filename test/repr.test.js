@@ -12,7 +12,7 @@ expect.addSnapshotSerializer({
 });
 
 beforeEach(() => {
-  repr.short = false;
+  repr.sensitive = false;
 });
 
 class Point {
@@ -26,6 +26,9 @@ class Point {
     this.y = y;
   }
 }
+
+// eslint-disable-next-line no-empty-function
+function functionWithSomewhatLongName() {}
 
 test("undefined", () => {
   expect(repr(undefined)).toMatchInlineSnapshot(`undefined`);
@@ -51,6 +54,11 @@ test("number", () => {
   expect(repr(-123456789.01234567890123456789)).toMatchInlineSnapshot(
     `-123456789.01234567`
   );
+  expect(
+    repr(-123456789.01234567890123456789, {
+      maxLength: 10,
+    })
+  ).toMatchInlineSnapshot(`-1234…34567`);
 });
 
 test("string", () => {
@@ -62,9 +70,18 @@ test("string", () => {
   expect(repr(" \t\r\n\u2028\u2029\f\v")).toMatchInlineSnapshot(
     `" \\t\\r\\n  \\f\\u000b"`
   );
-  /* eslint-enable no-irregular-whitespace */
   expect(repr("Iñtërnâtiônàlizætiøn☃💩")).toMatchInlineSnapshot(
-    `"Iñtërnâti…ætiøn☃💩"`
+    `"Iñtërnâtiônàlizætiøn☃💩"`
+  );
+  expect(
+    repr("Iñtërnâtiônàlizætiøn☃💩", { maxLength: 10 })
+  ).toMatchInlineSnapshot(`"Iñtë…n☃💩"`);
+  expect(
+    repr(
+      "<section><p>Here’s some <code>HTML</code text in a string.</p><p>It’s probably too long to show it all.</p></section>"
+    )
+  ).toMatchInlineSnapshot(
+    `"<section><p>Here’s some <code>HTML</code text in …s probably too long to show it all.</p></section>"`
   );
 });
 
@@ -74,7 +91,10 @@ test("symbol", () => {
     `Symbol(description)`
   );
   expect(repr(Symbol('"), "key": "other value"'))).toMatchInlineSnapshot(
-    `Symbol("),…r value")`
+    `Symbol("), "key": "other value")`
+  );
+  expect(repr(Symbol("description"), { maxLength: 10 })).toMatchInlineSnapshot(
+    `Symbo…tion)`
   );
 });
 
@@ -83,20 +103,30 @@ test("function", () => {
   expect(repr(repr)).toMatchInlineSnapshot(`function "repr"`);
   expect(repr(() => {})).toMatchInlineSnapshot(`function ""`);
   expect(repr(function named() {})).toMatchInlineSnapshot(`function "named"`);
+  expect(
+    repr(functionWithSomewhatLongName, { maxLength: 10 })
+  ).toMatchInlineSnapshot(`function "func…Name"`);
   expect(repr(async function* generator() {})).toMatchInlineSnapshot(
     `function "generator"`
   );
   const fn = () => {};
   Object.defineProperty(fn, "name", { value: '"), "key": "other value"' });
-  expect(repr(fn)).toMatchInlineSnapshot(`function "\\"), \\"ke… value\\""`);
+  expect(repr(fn)).toMatchInlineSnapshot(
+    `function "\\"), \\"key\\": \\"other value\\""`
+  );
 });
 /* eslint-enable no-empty-function, prefer-arrow-callback, flowtype/require-return-type */
 
 test("regex", () => {
   expect(repr(/test/)).toMatchInlineSnapshot(`/test/`);
   expect(repr(/^\d{4}-\d{2}-\d{2}$/gimy)).toMatchInlineSnapshot(
-    `/^\\d{4}-\\d…{2}$/gimy`
+    `/^\\d{4}-\\d{2}-\\d{2}$/gimy`
   );
+  expect(
+    repr(/^\d{4}-\d{2}-\d{2}$/gimy, {
+      maxLength: 10,
+    })
+  ).toMatchInlineSnapshot(`/^\\d{…/gimy`);
 });
 
 test("Date", () => {
@@ -135,7 +165,21 @@ test("primitive wrappers", () => {
 test("array", () => {
   expect(repr([])).toMatchInlineSnapshot(`[]`);
   expect(repr([1])).toMatchInlineSnapshot(`[1]`);
+  expect(repr([1, 2])).toMatchInlineSnapshot(`[1, 2]`);
+  expect(repr([1, 2, 3])).toMatchInlineSnapshot(`[1, 2, 3]`);
+  expect(repr([1, 2, 3, 4])).toMatchInlineSnapshot(`[1, 2, 3, 4]`);
+  expect(repr([1, 2, 3, 4, 5])).toMatchInlineSnapshot(`[1, 2, 3, 4, 5]`);
+  expect(repr([1, 2, 3, 4, 5, 6])).toMatchInlineSnapshot(
+    `[1, 2, 3, 4, 5, (1 more)]`
+  );
+  expect(repr([1, 2, 3, 4, 5, 6, 7])).toMatchInlineSnapshot(
+    `[1, 2, 3, 4, 5, (2 more)]`
+  );
+  expect(
+    repr([1, 2, 3, 4, 5, 6, 7], { maxArrayChildren: 3 })
+  ).toMatchInlineSnapshot(`[1, 2, 3, (4 more)]`);
   expect(repr([1], { recurse: false })).toMatchInlineSnapshot(`Array(1)`);
+  expect(repr([1, 2, 3], { recurse: false })).toMatchInlineSnapshot(`Array(3)`);
   expect(
     repr(
       // eslint-disable-next-line no-sparse-arrays
@@ -145,10 +189,10 @@ test("array", () => {
         null,
         true,
         NaN,
-        "string",
-        Symbol("desc"),
-        repr,
-        /test/gm,
+        "a somewhat long string",
+        Symbol("symbol with long description"),
+        functionWithSomewhatLongName,
+        /a somewhat long regex/gm,
         new Date("2018-10-27T16:07:33.978Z"),
         new RangeError(),
         // eslint-disable-next-line no-new-wrappers
@@ -162,50 +206,32 @@ test("array", () => {
       { maxArrayChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `[undefined, <empty>, null, true, NaN, "string", Symbol(desc), function "repr", /test/gm, Date, Error, String, [], {}, Array(1), Object(1), Point(2)]`
+    `[undefined, <empty>, null, true, NaN, "a somewha…ng string", Symbol(sym…scription), function "functionW…tLongName", /a somewha…g regex/gm, Date, Error, String, [], {}, Array(1), Object(1), Point(2)]`
   );
-});
-
-test("array key", () => {
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7])).toMatchInlineSnapshot(
-    `[0, 1, 2, 3, 4, (3 more)]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: -1 })).toMatchInlineSnapshot(
-    `[0, 1, 2, 3, 4, (3 more)]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 0 })).toMatchInlineSnapshot(
-    `[(index 0) 0, 1, 2, 3, 4, (3 more)]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 1 })).toMatchInlineSnapshot(
-    `[(1 more), (index 1) 1, 2, 3, 4, 5, (2 more)]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 2 })).toMatchInlineSnapshot(
-    `[(2 more), (index 2) 2, 3, 4, 5, 6, (1 more)]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 3 })).toMatchInlineSnapshot(
-    `[(3 more), (index 3) 3, 4, 5, 6, 7]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 4 })).toMatchInlineSnapshot(
-    `[(3 more), 3, (index 4) 4, 5, 6, 7]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 5 })).toMatchInlineSnapshot(
-    `[(3 more), 3, 4, (index 5) 5, 6, 7]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 6 })).toMatchInlineSnapshot(
-    `[(3 more), 3, 4, 5, (index 6) 6, 7]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: 7 })).toMatchInlineSnapshot(
-    `[(3 more), 3, 4, 5, 6, (index 7) 7]`
-  );
-  expect(repr([0, 1, 2, 3, 4, 5, 6, 7], { key: "0" })).toMatchInlineSnapshot(
-    `[0, 1, 2, 3, 4, (3 more)]`
-  );
+  expect(
+    repr(["a short string"], { recurseMaxLength: 5 })
+  ).toMatchInlineSnapshot(`["a…g"]`);
 });
 
 test("object", () => {
   expect(repr({})).toMatchInlineSnapshot(`{}`);
   expect(repr({ a: 1 })).toMatchInlineSnapshot(`{"a": 1}`);
-  expect(repr({ a: 1 }, { recurse: false })).toMatchInlineSnapshot(`Object(1)`);
+  expect(repr({ a: 1, b: 2 })).toMatchInlineSnapshot(`{"a": 1, "b": 2}`);
+  expect(repr({ a: 1, b: 2, c: 3 })).toMatchInlineSnapshot(
+    `{"a": 1, "b": 2, "c": 3}`
+  );
+  expect(repr({ a: 1, b: 2, c: 3, d: 4 })).toMatchInlineSnapshot(
+    `{"a": 1, "b": 2, "c": 3, (1 more)}`
+  );
+  expect(repr({ a: 1, b: 2, c: 3, d: 4, e: 5 })).toMatchInlineSnapshot(
+    `{"a": 1, "b": 2, "c": 3, (2 more)}`
+  );
+  expect(
+    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { maxObjectChildren: 1 })
+  ).toMatchInlineSnapshot(`{"a": 1, (4 more)}`);
+  expect(repr({ a: 1, b: 2, c: 3 }, { recurse: false })).toMatchInlineSnapshot(
+    `Object(3)`
+  );
   expect(
     repr(
       {
@@ -213,10 +239,10 @@ test("object", () => {
         b: null,
         c: true,
         d: NaN,
-        e: "string",
-        f: Symbol("desc"),
-        g: repr,
-        h: /test/gm,
+        e: "a somewhat long string",
+        f: Symbol("symbol with long description"),
+        g: functionWithSomewhatLongName,
+        h: /a somewhat long regex/gm,
         i: new Date("2018-10-27T16:07:33.978Z"),
         j: new RangeError(),
         // eslint-disable-next-line no-new-wrappers
@@ -226,45 +252,22 @@ test("object", () => {
         o: [1],
         p: { a: 1 },
         r: new Point(10, 235.8),
+        "a somewhat long key name": 1,
       },
       { maxObjectChildren: Infinity }
     )
   ).toMatchInlineSnapshot(
-    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "string", "f": Symbol(desc), "g": function "repr", "h": /test/gm, "i": Date, "j": Error, "k": String, "l": [], "m": {}, "o": Array(1), "p": Object(1), "r": Point(2)}`
+    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "a somewha…ng string", "f": Symbol(sym…scription), "g": function "functionW…tLongName", "h": /a somewha…g regex/gm, "i": Date, "j": Error, "k": String, "l": [], "m": {}, "o": Array(1), "p": Object(1), "r": Point(2), "a somewha… key name": 1}`
   );
+  expect(
+    repr({ "a short key": "a short string" }, { recurseMaxLength: 5 })
+  ).toMatchInlineSnapshot(`{"a…y": "a…g"}`);
   expect(repr({ '"), "key": "other value"': 1 })).toMatchInlineSnapshot(
-    `{"\\"), \\"ke… value\\"": 1}`
+    `{"\\"), \\"ke…r value\\"": 1}`
   );
   expect(repr(new Point(10, 235.8))).toMatchInlineSnapshot(
     `Point {"x": 10, "y": 235.8}`
   );
-});
-
-test("object key", () => {
-  expect(repr({ a: 1, b: 2, c: 3, d: 4, e: 5 })).toMatchInlineSnapshot(
-    `{"a": 1, "b": 2, "c": 3, (2 more)}`
-  );
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { key: "a" })
-  ).toMatchInlineSnapshot(`{"a": 1, "b": 2, "c": 3, (2 more)}`);
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { key: "b" })
-  ).toMatchInlineSnapshot(`{"b": 2, "a": 1, "c": 3, (2 more)}`);
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { key: "c" })
-  ).toMatchInlineSnapshot(`{"c": 3, "a": 1, "b": 2, (2 more)}`);
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { key: "d" })
-  ).toMatchInlineSnapshot(`{"d": 4, "a": 1, "b": 2, (2 more)}`);
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { key: "e" })
-  ).toMatchInlineSnapshot(`{"e": 5, "a": 1, "b": 2, (2 more)}`);
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { key: "f" })
-  ).toMatchInlineSnapshot(`{"a": 1, "b": 2, "c": 3, (2 more)}`);
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { key: 0 })
-  ).toMatchInlineSnapshot(`{"a": 1, "b": 2, "c": 3, (2 more)}`);
 });
 
 test("misc", () => {
@@ -305,8 +308,8 @@ test("catch errors", () => {
   expect(repr(regex)).toMatchInlineSnapshot(`RegExp`);
 });
 
-test("short output", () => {
-  repr.short = true;
+test("sensitive output", () => {
+  repr.sensitive = true;
 
   expect(repr(undefined)).toMatchInlineSnapshot(`undefined`);
   expect(repr(null)).toMatchInlineSnapshot(`null`);

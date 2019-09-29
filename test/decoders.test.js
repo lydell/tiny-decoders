@@ -24,7 +24,7 @@ import {
 } from "../src";
 
 beforeEach(() => {
-  repr.short = false;
+  repr.sensitive = false;
 });
 
 function testWithErrorsArray<T>({
@@ -39,9 +39,9 @@ function testWithErrorsArray<T>({
   expect(decoder(data, errors)).toEqual(decoded);
 
   const shortErrors = [];
-  repr.short = true;
+  repr.sensitive = true;
   const decoded2 = decoder(data, shortErrors);
-  repr.short = false;
+  repr.sensitive = false;
   expect(decoded2).toEqual(decoded);
 
   return { decoded, errors, shortErrors };
@@ -159,10 +159,9 @@ test("array", () => {
   ).toThrowErrorMatchingInlineSnapshot(
     `Expected an array, but got: {"0": 1, "length": 1}`
   );
-  expect(() => array(number)([1, "2"])).toThrowErrorMatchingInlineSnapshot(`
-array[1]: Expected a number, but got: "2"
-at 1 in [1, (index 1) "2"]
-`);
+  expect(() => array(number)([1, "2"])).toThrowErrorMatchingInlineSnapshot(
+    `array[1]: Expected a number, but got: "2"`
+  );
 
   expect(
     testWithErrorsArray({
@@ -176,8 +175,7 @@ at 1 in [1, (index 1) "2"]
         3,
       ],
       "errors": Array [
-        array[1]: Expected a number, but got: "2"
-    at 1 in [1, (index 1) "2", 3],
+        array[1]: Expected a number, but got: "2",
       ],
       "shortErrors": Array [
         array[1]: Expected a number, but got: string,
@@ -198,8 +196,7 @@ at 1 in [1, (index 1) "2"]
         3,
       ],
       "errors": Array [
-        array[1]: Expected a number, but got: "2"
-    at 1 in [1, (index 1) "2", 3],
+        array[1]: Expected a number, but got: "2",
       ],
       "shortErrors": Array [
         array[1]: Expected a number, but got: string,
@@ -222,16 +219,16 @@ test("dict", () => {
   expect(() => dict(string)([])).toThrowErrorMatchingInlineSnapshot(
     `Expected an object, but got: []`
   );
-  expect(() => dict(string)({ a: "a", b: 0 }))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["b"]: Expected a string, but got: 0
-at "b" in {"b": 0, "a": "a"}
-`);
-  expect(() => dict(string)({ '"), "key": "other value"': 1 }))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["\\"), \\"ke… value\\""]: Expected a string, but got: 1
-at "\\"), \\"ke… value\\"" in {"\\"), \\"ke… value\\"": 1}
-`);
+  expect(() =>
+    dict(string)({ a: "a", b: 0 })
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["b"]: Expected a string, but got: 0`
+  );
+  expect(() =>
+    dict(string)({ '"), "key": "other value"': 1 })
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["\\"), \\"key\\": \\"other value\\""]: Expected a string, but got: 1`
+  );
 
   expect(
     testWithErrorsArray({
@@ -245,8 +242,7 @@ at "\\"), \\"ke… value\\"" in {"\\"), \\"ke… value\\"": 1}
         "c": 3,
       },
       "errors": Array [
-        object["b"]: Expected a number, but got: "2"
-    at "b" in {"b": "2", "a": 1, "c": 3},
+        object["b"]: Expected a number, but got: "2",
       ],
       "shortErrors": Array [
         object["b"]: Expected a number, but got: string,
@@ -267,8 +263,7 @@ at "\\"), \\"ke… value\\"" in {"\\"), \\"ke… value\\"": 1}
         "c": 3,
       },
       "errors": Array [
-        object["b"]: Expected a number, but got: "2"
-    at "b" in {"b": "2", "a": 1, "c": 3},
+        object["b"]: Expected a number, but got: "2",
       ],
       "shortErrors": Array [
         object["b"]: Expected a number, but got: string,
@@ -297,11 +292,11 @@ test("record", () => {
   expect(() => record(() => "")("string")).toThrowErrorMatchingInlineSnapshot(
     `Expected an object, but got: "string"`
   );
-  expect(() => record(field => ({ a: field("missing", boolean) }))({}))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["missing"]: Expected a boolean, but got: undefined
-at "missing" (missing) in {}
-`);
+  expect(() =>
+    record(field => ({ a: field("missing", boolean) }))({})
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["missing"] (missing): Expected a boolean, but got: undefined`
+  );
 });
 
 test("record field", () => {
@@ -318,21 +313,21 @@ test("record field", () => {
   expect(() =>
     record(field => field("a", number))([])
   ).toThrowErrorMatchingInlineSnapshot(`Expected an object, but got: []`);
-  expect(() => record(field => field("a", number))({}))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["a"]: Expected a number, but got: undefined
-at "a" (missing) in {}
-`);
-  expect(() => record(field => field("a", number))({ a: null }))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["a"]: Expected a number, but got: null
-at "a" in {"a": null}
-`);
-  expect(() => record(field => field("hasOwnProperty", number))({}))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["hasOwnProperty"]: Expected a number, but got: function "hasOwnProperty"
-at "hasOwnProperty" (prototype) in {}
-`);
+  expect(() =>
+    record(field => field("a", number))({})
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["a"] (missing): Expected a number, but got: undefined`
+  );
+  expect(() =>
+    record(field => field("a", number))({ a: null })
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["a"]: Expected a number, but got: null`
+  );
+  expect(() =>
+    record(field => field("hasOwnProperty", number))({})
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["hasOwnProperty"] (prototype): Expected a number, but got: function "hasOwnProperty"`
+  );
 
   expect(
     testWithErrorsArray({
@@ -345,8 +340,7 @@ at "hasOwnProperty" (prototype) in {}
         "a": 0,
       },
       "errors": Array [
-        object["a"]: Expected a number, but got: "1"
-    at "a" in {"a": "1"},
+        object["a"]: Expected a number, but got: "1",
       ],
       "shortErrors": Array [
         object["a"]: Expected a number, but got: string,
@@ -358,14 +352,13 @@ at "hasOwnProperty" (prototype) in {}
 test("record fieldError", () => {
   const decoder = record((field, fieldError) => fieldError("key", "invalid"));
 
-  expect(decoder({})).toMatchInlineSnapshot(`
-    [TypeError: object["key"]: invalid
-    at "key" (missing) in {}]
-  `);
-
-  repr.short = true;
   expect(decoder({})).toMatchInlineSnapshot(
-    `[TypeError: object["key"]: invalid]`
+    `[TypeError: object["key"] (missing): invalid]`
+  );
+
+  repr.sensitive = true;
+  expect(decoder({})).toMatchInlineSnapshot(
+    `[TypeError: object["key"] (missing): invalid]`
   );
 });
 
@@ -397,11 +390,11 @@ test("tuple", () => {
   expect(() => tuple(() => "")("string")).toThrowErrorMatchingInlineSnapshot(
     `Expected an array, but got: "string"`
   );
-  expect(() => tuple(item => [item(99, boolean)])([]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[99]: Expected a boolean, but got: undefined
-at 99 (out of bounds) in []
-`);
+  expect(() =>
+    tuple(item => [item(99, boolean)])([])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[99] (out of bounds): Expected a boolean, but got: undefined`
+  );
   expect(() =>
     tuple(item => item(0, number))({ length: 1, "0": 1 })
   ).toThrowErrorMatchingInlineSnapshot(
@@ -415,26 +408,26 @@ test("tuple item", () => {
   ).toThrowErrorMatchingInlineSnapshot(
     `Expected an array, but got: {"0": 1, "length": 1}`
   );
-  expect(() => tuple(item => item(0, number))([]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[0]: Expected a number, but got: undefined
-at 0 (out of bounds) in []
-`);
-  expect(() => tuple(item => item(0, number))([true]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[0]: Expected a number, but got: true
-at 0 in [(index 0) true]
-`);
-  expect(() => tuple(item => item(-1, number))([]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[-1]: Expected a number, but got: undefined
-at -1 (out of bounds) in []
-`);
-  expect(() => tuple(item => item(1, number))([1]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[1]: Expected a number, but got: undefined
-at 1 (out of bounds) in [1]
-`);
+  expect(() =>
+    tuple(item => item(0, number))([])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[0] (out of bounds): Expected a number, but got: undefined`
+  );
+  expect(() =>
+    tuple(item => item(0, number))([true])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[0]: Expected a number, but got: true`
+  );
+  expect(() =>
+    tuple(item => item(-1, number))([])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[-1] (out of bounds): Expected a number, but got: undefined`
+  );
+  expect(() =>
+    tuple(item => item(1, number))([1])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[1] (out of bounds): Expected a number, but got: undefined`
+  );
 
   expect(
     testWithErrorsArray({
@@ -447,8 +440,7 @@ at 1 (out of bounds) in [1]
         0,
       ],
       "errors": Array [
-        array[0]: Expected a number, but got: "1"
-    at 0 in [(index 0) "1"],
+        array[0]: Expected a number, but got: "1",
       ],
       "shortErrors": Array [
         array[0]: Expected a number, but got: string,
@@ -460,13 +452,14 @@ at 1 (out of bounds) in [1]
 test("tuple itemError", () => {
   const decoder = tuple((item, itemError) => itemError(0, "invalid"));
 
-  expect(decoder([])).toMatchInlineSnapshot(`
-    [TypeError: array[0]: invalid
-    at 0 (out of bounds) in []]
-  `);
+  expect(decoder([])).toMatchInlineSnapshot(
+    `[TypeError: array[0] (out of bounds): invalid]`
+  );
 
-  repr.short = true;
-  expect(decoder([])).toMatchInlineSnapshot(`[TypeError: array[0]: invalid]`);
+  repr.sensitive = true;
+  expect(decoder([])).toMatchInlineSnapshot(
+    `[TypeError: array[0] (out of bounds): invalid]`
+  );
 });
 
 test("tuple arr and errors", () => {
@@ -503,11 +496,11 @@ test("autoRecord", () => {
   expect(() => autoRecord({})([])).toThrowErrorMatchingInlineSnapshot(
     `Expected an object, but got: []`
   );
-  expect(() => autoRecord({ a: boolean })({}))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["a"]: Expected a boolean, but got: undefined
-at "a" (missing) in {}
-`);
+  expect(() =>
+    autoRecord({ a: boolean })({})
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["a"] (missing): Expected a boolean, but got: undefined`
+  );
 });
 
 test("pair", () => {
@@ -526,19 +519,17 @@ test("pair", () => {
   expect(() =>
     pair(string, number)(undefined)
   ).toThrowErrorMatchingInlineSnapshot(`Expected an array, but got: undefined`);
-  expect(() => pair(string, number)([])).toThrowErrorMatchingInlineSnapshot(`
-array[0]: Expected a string, but got: undefined
-at 0 (out of bounds) in []
-`);
-  expect(() => pair(string, number)([""])).toThrowErrorMatchingInlineSnapshot(`
-array[1]: Expected a number, but got: undefined
-at 1 (out of bounds) in [""]
-`);
-  expect(() => pair(string, number)(["", ""]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[1]: Expected a number, but got: ""
-at 1 in ["", (index 1) ""]
-`);
+  expect(() => pair(string, number)([])).toThrowErrorMatchingInlineSnapshot(
+    `array[0] (out of bounds): Expected a string, but got: undefined`
+  );
+  expect(() => pair(string, number)([""])).toThrowErrorMatchingInlineSnapshot(
+    `array[1] (out of bounds): Expected a number, but got: undefined`
+  );
+  expect(() =>
+    pair(string, number)(["", ""])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[1]: Expected a number, but got: ""`
+  );
 });
 
 test("triple", () => {
@@ -560,26 +551,26 @@ test("triple", () => {
   expect(() =>
     triple(string, number, boolean)(undefined)
   ).toThrowErrorMatchingInlineSnapshot(`Expected an array, but got: undefined`);
-  expect(() => triple(string, number, boolean)([]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[0]: Expected a string, but got: undefined
-at 0 (out of bounds) in []
-`);
-  expect(() => triple(string, number, boolean)([""]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[1]: Expected a number, but got: undefined
-at 1 (out of bounds) in [""]
-`);
-  expect(() => triple(string, number, boolean)(["", 0]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[2]: Expected a boolean, but got: undefined
-at 2 (out of bounds) in ["", 0]
-`);
-  expect(() => triple(string, number, boolean)(["", "", true]))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[1]: Expected a number, but got: ""
-at 1 in ["", (index 1) "", true]
-`);
+  expect(() =>
+    triple(string, number, boolean)([])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[0] (out of bounds): Expected a string, but got: undefined`
+  );
+  expect(() =>
+    triple(string, number, boolean)([""])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[1] (out of bounds): Expected a number, but got: undefined`
+  );
+  expect(() =>
+    triple(string, number, boolean)(["", 0])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[2] (out of bounds): Expected a boolean, but got: undefined`
+  );
+  expect(() =>
+    triple(string, number, boolean)(["", "", true])
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[1]: Expected a number, but got: ""`
+  );
 
   expect(triple(number, number, pair(string, string))([1, 1, ["a", "b"]]))
     .toMatchInlineSnapshot(`
@@ -613,33 +604,22 @@ test("deep", () => {
   expect(() => decoder([])).toThrowErrorMatchingInlineSnapshot(
     `Expected an object, but got: []`
   );
-  expect(() => decoder({})).toThrowErrorMatchingInlineSnapshot(`
-object["store"]: Expected an object, but got: undefined
-at "store" (missing) in {}
-`);
-  expect(() => decoder({ store: {} })).toThrowErrorMatchingInlineSnapshot(`
-object["store"]["products"]: Expected an array, but got: undefined
-at "products" (missing) in {}
-at "store" in {"store": {}}
-`);
-  expect(() => decoder({ store: { products: [{}] } }))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["store"]["products"][1]: Expected an object, but got: undefined
-at 1 (out of bounds) in [{}]
-at "products" in {"products": Array(1)}
-at "store" in {"store": Object(1)}
-`);
+  expect(() => decoder({})).toThrowErrorMatchingInlineSnapshot(
+    `object["store"] (missing): Expected an object, but got: undefined`
+  );
+  expect(() => decoder({ store: {} })).toThrowErrorMatchingInlineSnapshot(
+    `object["store"]["products"] (missing): Expected an array, but got: undefined`
+  );
+  expect(() =>
+    decoder({ store: { products: [{}] } })
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["store"]["products"][1] (out of bounds): Expected an object, but got: undefined`
+  );
   expect(() =>
     decoder({ store: { products: [{}, { accessories: [{ price: null }] }] } })
-  ).toThrowErrorMatchingInlineSnapshot(`
-object["store"]["products"][1]["accessories"][0]["price"]: Expected a number, but got: null
-at "price" in {"price": null}
-at 0 in [(index 0) Object(1)]
-at "accessories" in {"accessories": Array(1)}
-at 1 in [{}, (index 1) Object(1)]
-at "products" in {"products": Array(2)}
-at "store" in {"store": Object(1)}
-`);
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["store"]["products"][1]["accessories"][0]["price"]: Expected a number, but got: null`
+  );
 });
 
 test("optional", () => {
@@ -663,11 +643,11 @@ test("optional", () => {
   expect(() => optional(number)("string")).toThrowErrorMatchingInlineSnapshot(
     `(optional) Expected a number, but got: "string"`
   );
-  expect(() => optional(record(field => field("missing", string)))({}))
-    .toThrowErrorMatchingInlineSnapshot(`
-(optional) object["missing"]: Expected a string, but got: undefined
-at "missing" (missing) in {}
-`);
+  expect(() =>
+    optional(record(field => field("missing", string)))({})
+  ).toThrowErrorMatchingInlineSnapshot(
+    `(optional) object["missing"] (missing): Expected a string, but got: undefined`
+  );
 });
 
 test("map", () => {
@@ -723,7 +703,6 @@ Expected a boolean, but got: null
     .toThrowErrorMatchingInlineSnapshot(`
 Several decoders failed:
 object["a"]: Expected a number, but got: true
-at "a" in {"a": true}
 Expected a string, but got: {"a": true}
 `);
 });
@@ -764,10 +743,6 @@ Expected a number, but got: ["nope"]
 array[0]: Several decoders failed:
 Expected a number, but got: "nope"
 Expected an array, but got: "nope"
-at 0 in [(index 0) "nope"]
-at 0 in [(index 0) Array(1)]
-at 0 in [(index 0) Array(1)]
-at 0 in [(index 0) Array(1)]
 `);
 });
 
@@ -902,81 +877,29 @@ test("all decoders pass down errors", () => {
         "tuple": null,
       },
       "errors": Array [
-        object["boolean"]: Expected a boolean, but got: 0
-    at "boolean" in {"boolean": 0, "number": false, "string": false, (20 more)},
-        object["number"]: Expected a number, but got: false
-    at "number" in {"number": false, "boolean": 0, "string": false, (20 more)},
-        object["string"]: Expected a string, but got: false
-    at "string" in {"string": false, "boolean": 0, "number": false, (20 more)},
-        object["constant"]: Expected the value 1, but got: false
-    at "constant" in {"constant": false, "boolean": 0, "number": false, (20 more)},
-        object["mixedArray"]: Expected an array, but got: false
-    at "mixedArray" in {"mixedArray": false, "boolean": 0, "number": false, (20 more)},
-        object["mixedDict"]: Expected an object, but got: false
-    at "mixedDict" in {"mixedDict": false, "boolean": 0, "number": false, (20 more)},
-        object["array"][0]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 0 in [(index 0) Object(1)]
-    at "array" in {"array": Array(1), "boolean": 0, "number": false, (20 more)},
-        object["dict"]["key"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "key" in {"key": Object(1)}
-    at "dict" in {"dict": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["record"]["field"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "field" in {"field": Object(1)}
-    at "record" in {"record": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["tuple"][0]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 0 in [(index 0) Object(1)]
-    at "tuple" in {"tuple": Array(1), "boolean": 0, "number": false, (20 more)},
-        object["pair1"][0]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 0 in [(index 0) Object(1), true]
-    at "pair1" in {"pair1": Array(2), "boolean": 0, "number": false, (20 more)},
-        object["pair2"][1]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 1 in [true, (index 1) Object(1)]
-    at "pair2" in {"pair2": Array(2), "boolean": 0, "number": false, (20 more)},
-        object["triple1"][0]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 0 in [(index 0) Object(1), true, true]
-    at "triple1" in {"triple1": Array(3), "boolean": 0, "number": false, (20 more)},
-        object["triple2"][1]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 1 in [true, (index 1) Object(1), true]
-    at "triple2" in {"triple2": Array(3), "boolean": 0, "number": false, (20 more)},
-        object["triple3"][2]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 2 in [true, true, (index 2) Object(1)]
-    at "triple3" in {"triple3": Array(3), "boolean": 0, "number": false, (20 more)},
-        object["autoRecord"]["field"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "field" in {"field": Object(1)}
-    at "autoRecord" in {"autoRecord": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["deep"]["field"][0]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at 0 in [(index 0) Object(1)]
-    at "field" in {"field": Array(1)}
-    at "deep" in {"deep": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["optional"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "optional" in {"optional": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["map1"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "map1" in {"map1": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["map2"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "map2" in {"map2": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["either1"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "either1" in {"either1": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["either2"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "either2" in {"either2": Object(1), "boolean": 0, "number": false, (20 more)},
-        object["lazy"]["test"]: Expected a boolean, but got: 0
-    at "test" in {"test": 0}
-    at "lazy" in {"lazy": Object(1), "boolean": 0, "number": false, (20 more)},
+        object["boolean"]: Expected a boolean, but got: 0,
+        object["number"]: Expected a number, but got: false,
+        object["string"]: Expected a string, but got: false,
+        object["constant"]: Expected the value 1, but got: false,
+        object["mixedArray"]: Expected an array, but got: false,
+        object["mixedDict"]: Expected an object, but got: false,
+        object["array"][0]["test"]: Expected a boolean, but got: 0,
+        object["dict"]["key"]["test"]: Expected a boolean, but got: 0,
+        object["record"]["field"]["test"]: Expected a boolean, but got: 0,
+        object["tuple"][0]["test"]: Expected a boolean, but got: 0,
+        object["pair1"][0]["test"]: Expected a boolean, but got: 0,
+        object["pair2"][1]["test"]: Expected a boolean, but got: 0,
+        object["triple1"][0]["test"]: Expected a boolean, but got: 0,
+        object["triple2"][1]["test"]: Expected a boolean, but got: 0,
+        object["triple3"][2]["test"]: Expected a boolean, but got: 0,
+        object["autoRecord"]["field"]["test"]: Expected a boolean, but got: 0,
+        object["deep"]["field"][0]["test"]: Expected a boolean, but got: 0,
+        object["optional"]["test"]: Expected a boolean, but got: 0,
+        object["map1"]["test"]: Expected a boolean, but got: 0,
+        object["map2"]["test"]: Expected a boolean, but got: 0,
+        object["either1"]["test"]: Expected a boolean, but got: 0,
+        object["either2"]["test"]: Expected a boolean, but got: 0,
+        object["lazy"]["test"]: Expected a boolean, but got: 0,
       ],
       "shortErrors": Array [
         object["boolean"]: Expected a boolean, but got: number,

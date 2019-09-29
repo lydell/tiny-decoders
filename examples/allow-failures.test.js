@@ -38,8 +38,7 @@ test("allowing decoders to fail", () => {
   `);
   expect(errors).toMatchInlineSnapshot(`
     Array [
-      object["description"]: Expected a string, but got: {"html": "<p>Delici…uit.</p>"}
-    at "description" in {"description": Object(1), "id": 123, "name": "Apple"},
+      object["description"]: Expected a string, but got: {"html": "<p>Delici…ruit.</p>"},
     ]
   `);
 
@@ -59,10 +58,8 @@ test("allowing decoders to fail", () => {
   `);
   expect(namesErrors).toMatchInlineSnapshot(`
     Array [
-      array[2]: Expected a string, but got: null
-    at 2 in ["Alice", "Bob", (index 2) null, "David", Object(1)],
-      array[4]: Expected a string, but got: {"value": "Edgar"}
-    at 4 in ["Alice", "Bob", null, "David", (index 4) Object(1)],
+      array[2]: Expected a string, but got: null,
+      array[4]: Expected a string, but got: {"value": "Edgar"},
     ]
   `);
   expect(namesDecoder2(list)).toMatchInlineSnapshot(`

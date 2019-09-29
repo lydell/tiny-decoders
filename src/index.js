@@ -365,21 +365,23 @@ export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
   };
 }
 
-repr.short = false;
+repr.sensitive = false;
 
 export function repr(
   // $FlowIgnore: Using `any` rather than `mixed` here to cut down on the bytes.
   value: any,
   {
-    key,
     recurse = true,
     maxArrayChildren = 5,
     maxObjectChildren = 3,
+    maxLength = 100,
+    recurseMaxLength = 20,
   }: {|
-    key?: string | number,
     recurse?: boolean,
     maxArrayChildren?: number,
     maxObjectChildren?: number,
+    maxLength?: number,
+    recurseMaxLength?: number,
   |} = {}
 ): string {
   const type = typeof value;
@@ -395,15 +397,17 @@ export function repr(
       type === "symbol" ||
       toStringType === "RegExp"
     ) {
-      return repr.short ? toStringType.toLowerCase() : truncate(String(value));
+      return repr.sensitive
+        ? toStringType.toLowerCase()
+        : truncate(String(value), maxLength);
     }
 
     if (type === "string") {
-      return repr.short ? type : printString(value);
+      return repr.sensitive ? type : truncate(JSON.stringify(value), maxLength);
     }
 
     if (type === "function") {
-      return `function ${printString(value.name)}`;
+      return `function ${truncate(JSON.stringify(value.name), maxLength)}`;
     }
 
     if (Array.isArray(value)) {
@@ -415,21 +419,14 @@ export function repr(
       const lastIndex = arr.length - 1;
       const items = [];
 
-      // Print values around the provided key, if any.
-      const start =
-        typeof key === "number"
-          ? Math.max(0, Math.min(key, lastIndex - maxArrayChildren + 1))
-          : 0;
-      const end = Math.min(start + maxArrayChildren - 1, lastIndex);
+      const end = Math.min(maxArrayChildren - 1, lastIndex);
 
-      if (start > 0) {
-        items.push(`(${start} more)`);
-      }
-
-      for (let index = start; index <= end; index++) {
+      for (let index = 0; index <= end; index++) {
         const item =
-          index in arr ? repr(arr[index], { recurse: false }) : "<empty>";
-        items.push(index === key ? `(index ${index}) ${item}` : item);
+          index in arr
+            ? repr(arr[index], { recurse: false, maxLength: recurseMaxLength })
+            : "<empty>";
+        items.push(item);
       }
 
       if (end < lastIndex) {
@@ -450,18 +447,19 @@ export function repr(
         return `${name}(${keys.length})`;
       }
 
-      // Make sure the provided key (if any) comes first, so that it is visible.
-      const newKeys =
-        typeof key === "string" && keys.indexOf(key) >= 0
-          ? [key, ...keys.filter(key2 => key2 !== key)]
-          : keys;
+      const numHidden = Math.max(0, keys.length - maxObjectChildren);
 
-      const numHidden = Math.max(0, newKeys.length - maxObjectChildren);
-
-      const items = newKeys
+      const items = keys
         .slice(0, maxObjectChildren)
         .map(
-          key2 => `${printString(key2)}: ${repr(obj[key2], { recurse: false })}`
+          key2 =>
+            `${truncate(JSON.stringify(key2), recurseMaxLength)}: ${repr(
+              obj[key2],
+              {
+                recurse: false,
+                maxLength: recurseMaxLength,
+              }
+            )}`
         )
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);
 
@@ -475,19 +473,11 @@ export function repr(
   }
 }
 
-function printString(str: string): string {
-  return truncate(JSON.stringify(str));
-}
-
-function truncate(str: string): string {
-  // If the string is too long, show a bit at the start and a bit at the end and
-  // cut out the middle (replacing it with a separator). Explaining the magic
-  // numbers: 20 is the maximum length and: `20 = 10 + "…".length + 9`.
-  // `maxLength` and `separator` could be taken as parameters and the offset
-  // could be calculated from them, but I’ve hardcoded them to save some bytes.
-  return str.length <= 20
+function truncate(str: string, maxLength: number): string {
+  const half = Math.floor(maxLength / 2);
+  return str.length <= maxLength
     ? str
-    : [str.slice(0, 10), "…", str.slice(-9)].join("");
+    : `${str.slice(0, half)}…${str.slice(-half)}`;
 }
 
 const keyErrorPrefixRegex = /^(?:object|array)(?=\[)/;
@@ -497,24 +487,26 @@ function keyErrorMessage(
   value: mixed,
   message: string
 ): string {
-  const prefix = typeof key === "string" ? "object" : "array";
-  const at = typeof key === "string" ? printString(key) : String(key);
   const missing =
     typeof key === "number"
       ? Array.isArray(value) && (key < 0 || key >= value.length)
-        ? " (out of bounds)"
+        ? "(out of bounds)"
         : ""
       : value == null || typeof value !== "object"
       ? /* istanbul ignore next */ ""
       : Object.prototype.hasOwnProperty.call(value, key)
       ? ""
       : key in value
-      ? " (prototype)"
-      : " (missing)";
+      ? "(prototype)"
+      : "(missing)";
+
   return [
-    `${prefix}[${at}]`,
-    keyErrorPrefixRegex.test(message) ? "" : ": ",
+    `${typeof key === "string" ? "object" : "array"}[${JSON.stringify(key)}]`,
+    keyErrorPrefixRegex.test(message)
+      ? ""
+      : missing !== ""
+      ? ` ${missing}: `
+      : ": ",
     message.replace(keyErrorPrefixRegex, ""),
-    repr.short ? "" : `\nat ${at}${missing} in ${repr(value, { key })}`,
   ].join("");
 }

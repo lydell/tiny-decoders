@@ -112,15 +112,14 @@ test("decoding based on a field", () => {
       "type": "Offer",
     }
   `);
-  expect(() => searchResultDecoder1(incompleteProduct))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["price"]: Expected a number, but got: undefined
-at "price" (missing) in {"type": "Product", "name": "Ergonomic Keyboard"}
-`);
-  expect(() => searchResultDecoder1(user)).toThrowErrorMatchingInlineSnapshot(`
-object["type"]: Expected a SearchResult type, but got: "User"
-at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
-`);
+  expect(() =>
+    searchResultDecoder1(incompleteProduct)
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["price"] (missing): Expected a number, but got: undefined`
+  );
+  expect(() => searchResultDecoder1(user)).toThrowErrorMatchingInlineSnapshot(
+    `object["type"]: Expected a SearchResult type, but got: "User"`
+  );
 
   // Finally, if let’s say we already had decoders for products and categories as well.
 
@@ -149,21 +148,15 @@ at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
   expect(() => searchResultDecoder2(incompleteProduct))
     .toThrowErrorMatchingInlineSnapshot(`
 Several decoders failed:
-object["price"]: Expected a number, but got: undefined
-at "price" (missing) in {"type": "Product", "name": "Ergonomic Keyboard"}
+object["price"] (missing): Expected a number, but got: undefined
 object["type"]: Expected the value "Category", but got: "Product"
-at "type" in {"type": "Product", "name": "Ergonomic Keyboard"}
 object["type"]: Expected the value "Offer", but got: "Product"
-at "type" in {"type": "Product", "name": "Ergonomic Keyboard"}
 `);
   expect(() => searchResultDecoder2(user)).toThrowErrorMatchingInlineSnapshot(`
 Several decoders failed:
 object["type"]: Expected the value "Product", but got: "User"
-at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 object["type"]: Expected the value "Category", but got: "User"
-at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 object["type"]: Expected the value "Offer", but got: "User"
-at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 `);
 
   // This is a better approach:
@@ -192,15 +185,14 @@ at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
 
   expect(searchResultDecoder3(offer)).toEqual(searchResultDecoder1(offer));
 
-  expect(() => searchResultDecoder3(incompleteProduct))
-    .toThrowErrorMatchingInlineSnapshot(`
-object["price"]: Expected a number, but got: undefined
-at "price" (missing) in {"type": "Product", "name": "Ergonomic Keyboard"}
-`);
-  expect(() => searchResultDecoder3(user)).toThrowErrorMatchingInlineSnapshot(`
-object["type"]: Expected a SearchResult type, but got: "User"
-at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
-`);
+  expect(() =>
+    searchResultDecoder3(incompleteProduct)
+  ).toThrowErrorMatchingInlineSnapshot(
+    `object["price"] (missing): Expected a number, but got: undefined`
+  );
+  expect(() => searchResultDecoder3(user)).toThrowErrorMatchingInlineSnapshot(
+    `object["type"]: Expected a SearchResult type, but got: "User"`
+  );
 
   // `searchResultDecoder3` could also have been written like this, but that
   // gives a worse error message when `type` is invalid (which doesn’t indicate
@@ -238,10 +230,9 @@ at "type" in {"type": "User", "firstName": "John", "lastName": "Doe"}
       "type": "Category",
     }
   `);
-  expect(() => categoryDecoder(product)).toThrowErrorMatchingInlineSnapshot(`
-object["type"]: Expected the value "Category", but got: "Product"
-at "type" in {"type": "Product", "name": "Pineapple", "price": 9, (1 more)}
-`);
+  expect(() => categoryDecoder(product)).toThrowErrorMatchingInlineSnapshot(
+    `object["type"]: Expected the value "Category", but got: "Product"`
+  );
 
   // See also `typescript/type-annotations.ts` for additional examples of
   // decoding based on a field, and important information about type inference

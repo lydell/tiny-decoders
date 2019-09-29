@@ -6,21 +6,14 @@ repr(undefined);
 repr(null, {});
 
 repr(0, {
-  key: "key",
   recurse: false,
   maxArrayChildren: 10,
   maxObjectChildren: 10,
+  maxLength: 10,
+  recurseMaxLength: 10,
 });
 
-repr("", {
-  key: 0,
-});
-
-// Bad key:
-repr(repr, {
-  // $ExpectError
-  key: Symbol("key"),
-});
+repr("", {});
 
 // Misspelled option ("maxObjetChildren" instead of "maxObjectChildren"):
 // $ExpectError

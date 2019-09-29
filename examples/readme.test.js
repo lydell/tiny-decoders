@@ -15,7 +15,7 @@ import {
 } from "../src";
 
 beforeEach(() => {
-  repr.short = false;
+  repr.sensitive = false;
 });
 
 test("the main readme example", () => {
@@ -54,10 +54,9 @@ test("the main readme example", () => {
 
   const payload2: mixed = getSomeInvalidJSON();
 
-  expect(() => userDecoder(payload2)).toThrowErrorMatchingInlineSnapshot(`
-object["age"]: (optional) Expected a number, but got: "30"
-at "age" in {"age": "30", "full_name": "John Doe", "is_active": true, (2 more)}
-`);
+  expect(() => userDecoder(payload2)).toThrowErrorMatchingInlineSnapshot(
+    `object["age"]: (optional) Expected a number, but got: "30"`
+  );
 });
 
 function getSomeJSON(): mixed {
@@ -164,23 +163,17 @@ test("error messages", () => {
 ]
 `);
 
-  expect(() => productsDecoder1(getProducts()))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[1]["accessories"][0]["id"]: Expected a string, but got: undefined
-at "id" (missing) in {"name": "Keycap Puller", "image": "data:imag…AkQBADs=", "discount": "5%"}
-at 0 in [(index 0) Object(3), Object(4)]
-at "accessories" in {"accessories": Array(2), "id": "382973", "name": "Ergonomic Keyboard", (2 more)}
-at 1 in [Object(5), (index 1) Object(5), Object(5)]
-`);
+  expect(() =>
+    productsDecoder1(getProducts())
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[1]["accessories"][0]["id"] (missing): Expected a string, but got: undefined`
+  );
 
-  expect(() => productsDecoder1(getProducts({ missingId: false })))
-    .toThrowErrorMatchingInlineSnapshot(`
-array[1]["accessories"][0]["discount"]: (optional) Expected a number, but got: "5%"
-at "discount" in {"discount": "5%", "id": "489382", "name": "Keycap Puller", (1 more)}
-at 0 in [(index 0) Object(4), Object(4)]
-at "accessories" in {"accessories": Array(2), "id": "382973", "name": "Ergonomic Keyboard", (2 more)}
-at 1 in [Object(5), (index 1) Object(5), Object(5)]
-`);
+  expect(() =>
+    productsDecoder1(getProducts({ missingId: false }))
+  ).toThrowErrorMatchingInlineSnapshot(
+    `array[1]["accessories"][0]["discount"]: (optional) Expected a number, but got: "5%"`
+  );
 });
 
 function getProducts({
@@ -229,7 +222,7 @@ function getProducts({
   ];
 }
 
-test("default vs short error messages", () => {
+test("default vs sensitive error messages", () => {
   const userDecoder = autoRecord({
     name: string,
     details: autoRecord({
@@ -246,13 +239,11 @@ test("default vs short error messages", () => {
     },
   };
 
-  expect(() => userDecoder(data)).toThrowErrorMatchingInlineSnapshot(`
-object["details"]["ssn"]: Expected a string, but got: 123456789
-at "ssn" in {"ssn": 123456789, "email": "john.doe@…mple.com"}
-at "details" in {"details": Object(2), "name": "John Doe"}
-`);
+  expect(() => userDecoder(data)).toThrowErrorMatchingInlineSnapshot(
+    `object["details"]["ssn"]: Expected a string, but got: 123456789`
+  );
 
-  repr.short = true;
+  repr.sensitive = true;
   expect(() => userDecoder(data)).toThrowErrorMatchingInlineSnapshot(
     `object["details"]["ssn"]: Expected a string, but got: number`
   );

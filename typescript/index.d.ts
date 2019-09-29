@@ -96,11 +96,12 @@ export const repr: {
   (
     value: unknown,
     options?: {
-      key?: string | number;
       recurse?: boolean;
       maxArrayChildren?: number;
       maxObjectChildren?: number;
+      maxLength?: number;
+      recurseMaxLength?: number;
     }
   ): string;
-  short: boolean;
+  sensitive: boolean;
 };
