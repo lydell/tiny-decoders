@@ -1052,9 +1052,9 @@ Decoding error:
 ]
 ```
 
-The errors of tiny-decoders are way shorter. As opposed to [nvie/decoders],
-it stops at the _first_ error in a record (instead of showing them all).
-First, the missing “id” field:
+The errors of tiny-decoders are way shorter. As opposed to [nvie/decoders], it
+stops at the _first_ error in a record (instead of showing them all). First, the
+missing “id” field:
 
 ```
 TypeError: array[1]["accessories"][0]["id"]: Expected a string, but got: undefined
@@ -1066,11 +1066,11 @@ And if we add an “id” we get the “discount” error:
 TypeError: array[1]["accessories"][0]["discount"]: (optional) Expected a number, but got: "5%"
 ```
 
-tiny-decoders used to also print a “stack trace,” showing you a little of
-each parent object and array. After using tiny-decoders for a while I noticed
-this not being super useful. It’s nicer to look at the whole object in a tool
-of choice, and just use the error message to understand _where_ the error
-is, and what is wrong.
+tiny-decoders used to also print a “stack trace,” showing you a little of each
+parent object and array. After using tiny-decoders for a while I noticed this
+not being super useful. It’s nicer to look at the whole object in a tool of
+choice, and just use the error message to understand _where_ the error is, and
+what is wrong.
 
 ## Development
 
