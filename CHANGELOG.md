@@ -1,3 +1,24 @@
+### Version 4.0.0 (2019-09-29)
+
+- Removed: The “stack trace,” showing you a little of each parent object and
+  array, in error messages is now gone. After using tiny-decoders for a while I
+  noticed this not being super useful. It’s nicer to look at the whole object in
+  a tool of choice, and just use the error message to understand _where_ the
+  error is, and what is wrong.
+- Changed: `repr.short` is now called `repr.sensitive` because of the above
+  change.
+- Removed: The `key` option of `repr`. It’s not needed since the “stack traces”
+  were removed.
+- Changed: Object keys in the part showing you _where_ an error occurred are no
+  longer truncated.
+- Changed: Literals, such as strings, are now allowed to be 100 characters long
+  before being truncated. Inside objects and arrays, the limit is 20 characters,
+  just like before. The idea is that printed values are at most 100–120
+  characters roughly. Now, strings and other literals can utilize more of that
+  space (rather than always being clipped already at 20 characters).
+- Added: The `maxLength` and `recurseMaxLength` options of `repr` which control
+  the above change.
+
 ### Version 3.1.0 (2019-09-15)
 
 - Added: You can now set `repr.short = true` to get shorter error messages,
