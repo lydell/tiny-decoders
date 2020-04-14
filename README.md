@@ -1,4 +1,4 @@
-# tiny-decoders [![Build Status][travis-badge]][travis-link] ![no dependencies][deps-tiny-decoders] [![minified size][min-tiny-decoders]][bundlephobia-tiny-decoders]
+# tiny-decoders ![no dependencies][deps-tiny-decoders] [![minified size][min-tiny-decoders]][bundlephobia-tiny-decoders]
 
 Type-safe data decoding for the minimalist, inspired by [nvie/decoders] and [Elm’s JSON Decoders][elm-json].
 
@@ -58,8 +58,6 @@ The error can look like this:
 [flow]: https://flow.org/
 [min-tiny-decoders]: https://img.shields.io/bundlephobia/min/tiny-decoders.svg
 [nvie/decoders]: https://github.com/nvie/decoders
-[travis-badge]: https://travis-ci.com/lydell/tiny-decoders.svg?branch=master
-[travis-link]: https://travis-ci.com/lydell/tiny-decoders
 [typescript]: https://www.typescriptlang.org/
 
 <!-- prettier-ignore-start -->
