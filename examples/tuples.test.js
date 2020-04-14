@@ -31,7 +31,7 @@ test("decoding tuples", () => {
     x: number,
     y: number,
   |};
-  const pointDecoder1: Decoder<Point> = tuple(item => ({
+  const pointDecoder1: Decoder<Point> = tuple((item) => ({
     x: item(0, number),
     y: item(1, number),
   }));
@@ -59,7 +59,7 @@ test("decoding tuples", () => {
   `);
 
   // For longer tuples, you need to use `tuple`.
-  const longTupleDecoder1 = tuple(item => [
+  const longTupleDecoder1 = tuple((item) => [
     item(0, string),
     item(1, string),
     item(2, number),
@@ -76,7 +76,7 @@ test("decoding tuples", () => {
     `);
 
   // But in such cases it’s probably nicer to switch to an object:
-  const longTupleDecoder2 = tuple(item => ({
+  const longTupleDecoder2 = tuple((item) => ({
     firstName: item(0, string),
     lastName: item(1, string),
     age: item(2, number),
@@ -94,7 +94,7 @@ test("decoding tuples", () => {
 
   // Finally, you can of course decode an object to a tuple as well:
   const obj: mixed = { x: 1, y: 2 };
-  const pointTupleDecoder2: Decoder<PointTuple> = record(field => [
+  const pointTupleDecoder2: Decoder<PointTuple> = record((field) => [
     field("x", number),
     field("y", number),
   ]);

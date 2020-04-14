@@ -47,6 +47,7 @@ verifyCamel(
 
 // Misspelled field ("fistName" instead of "firstName"):
 verifyCamel(
+  // $ExpectError
   map(
     autoRecord({
       first_name: string,
@@ -59,6 +60,7 @@ verifyCamel(
 
 // Misspelled field ("ago" instead of "age"):
 verifyCamel(
+  // $ExpectError
   map(
     autoRecord({
       first_name: string,

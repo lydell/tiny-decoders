@@ -14,7 +14,7 @@ test("decoding mixed", () => {
   const messageDecoder1: Decoder<Message> = autoRecord({
     text: string,
     // All fields are already `mixed` so you can pass them through as-is.
-    data: value => value,
+    data: (value) => value,
   });
   expect((messageDecoder1(message): Message)).toMatchInlineSnapshot(`
     Object {
@@ -24,7 +24,7 @@ test("decoding mixed", () => {
   `);
 
   // If you like, you can define one of these helper functions:
-  const identity = value => value;
+  const identity = (value) => value;
   const mixed = identity;
 
   const messageDecoder2: Decoder<Message> = autoRecord({

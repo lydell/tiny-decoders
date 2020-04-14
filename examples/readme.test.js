@@ -85,8 +85,8 @@ test("error messages", () => {
   // After: `"string"`
   // This is like the serializer in jest.snapshots.config.js but for _all_ strings.
   expect.addSnapshotSerializer({
-    test: value => typeof value === "string",
-    print: value => value,
+    test: (value) => typeof value === "string",
+    print: (value) => value,
   });
 
   const accessoryDecoder1 = autoRecord({

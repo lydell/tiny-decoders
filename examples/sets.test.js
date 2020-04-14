@@ -33,7 +33,7 @@ test("decoding to a Set", () => {
   };
 
   // Still no problem, really:
-  const objDecoder1 = record(field => ({
+  const objDecoder1 = record((field) => ({
     id: field("id", string),
     numbers: new Set(field("numbers", array(number))),
   }));
@@ -58,11 +58,11 @@ test("decoding to a Set", () => {
   // of the `map` call is a function that looks like this:
   //
   //    (value: mixed) => Set<number>
-  const objDecoder2 = record(field => ({
+  const objDecoder2 = record((field) => ({
     id: field("id", string),
     numbers: field(
       "numbers",
-      optional(map(array(number), arr => new Set(arr)))
+      optional(map(array(number), (arr) => new Set(arr)))
     ),
   }));
   expect(objDecoder2(obj)).toEqual(objDecoder1(obj));
@@ -71,7 +71,7 @@ test("decoding to a Set", () => {
   // accepts decoders as arguments):
   const objDecoder3 = autoRecord({
     id: string,
-    numbers: map(array(number), arr => new Set(arr)),
+    numbers: map(array(number), (arr) => new Set(arr)),
   });
   expect(objDecoder3(obj)).toEqual(objDecoder1(obj));
 

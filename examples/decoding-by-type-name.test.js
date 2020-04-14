@@ -298,7 +298,7 @@ test("using several fields to decide how to decode", () => {
     |},
   |};
 
-  const personDecoder: Decoder<Person> = record(field => {
+  const personDecoder: Decoder<Person> = record((field) => {
     // First get the roles, and then decode based on those.
     const isUser = field("isUser", optional(boolean, false));
     const isAdmin = field("isAdmin", optional(boolean, false));

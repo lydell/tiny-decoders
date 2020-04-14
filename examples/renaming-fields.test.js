@@ -51,7 +51,7 @@ test("renaming fields", () => {
 
   // If you want to rename some fields, switch to `record`. This means having to
   // duplicate some field names, but it’s not so bad.
-  const userCamelCaseDecoder1: Decoder<UserCamelCase> = record(field => ({
+  const userCamelCaseDecoder1: Decoder<UserCamelCase> = record((field) => ({
     firstName: field("first_name", string),
     lastName: field("last_name", string),
     age: field("age", number),

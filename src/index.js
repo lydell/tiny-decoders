@@ -452,7 +452,7 @@ export function repr(
       const items = keys
         .slice(0, maxObjectChildren)
         .map(
-          key2 =>
+          (key2) =>
             `${truncate(JSON.stringify(key2), recurseMaxLength)}: ${repr(
               obj[key2],
               {

@@ -34,7 +34,7 @@ test("type annotations", () => {
   // Flow will infer what they decode into (try hovering `personDecoder1`
   // and `personDecoder1Auto` in your editor!), but it won’t know that you
   // intended to decode a `Person`. As you can see, I’ve misspelled `age` as `aye`.
-  const personDecoder1 = record(field => ({
+  const personDecoder1 = record((field) => ({
     name: field("name", string),
     aye: field("age", number),
   }));
@@ -57,7 +57,7 @@ test("type annotations", () => {
   // The way to make the above type errors more clear is to provide explicit type
   // annotations, so that Flow knows what you’re trying to do.
   // $ExpectError
-  const personDecoder2: Decoder<Person> = record(field => ({
+  const personDecoder2: Decoder<Person> = record((field) => ({
     name: field("name", string),
     aye: field("age", number),
   }));
@@ -76,7 +76,7 @@ test("type annotations", () => {
   // Here’s a shorter way of writing the above – which also gives better error
   // messages! Note that unlike in TypeScript, `autoRecord<Person>({...})` cannot be used in Flow.
   // $ExpectError
-  const personDecoder3 = record<Person>(field => ({
+  const personDecoder3 = record<Person>((field) => ({
     name: field("name", string),
     aye: field("age", number),
   }));
@@ -99,7 +99,7 @@ test("type annotations", () => {
    */
 
   // Flow has exact objects, so even without type annotations it detects errors:
-  const personDecoder5 = record(field => ({
+  const personDecoder5 = record((field) => ({
     name: field("name", string),
     age: field("age", number),
     extra: field("extra", string),
@@ -120,7 +120,7 @@ test("type annotations", () => {
 
   // Adding `Decoder<Person>` moves the errors to the decoder definitions:
   // $ExpectError
-  const personDecoder6: Decoder<Person> = record(field => ({
+  const personDecoder6: Decoder<Person> = record((field) => ({
     name: field("name", string),
     age: field("age", number),
     extra: field("extra", string),
@@ -140,7 +140,7 @@ test("type annotations", () => {
 
   // The shorter notation produces different error messages:
   // $ExpectError
-  const personDecoder7 = record<Person>(field => ({
+  const personDecoder7 = record<Person>((field) => ({
     name: field("name", string),
     age: field("age", number),
     extra: field("extra", string),
@@ -179,7 +179,7 @@ test("type annotations", () => {
   // “resolved” type, but instead the whole `$ReturnType<...>`. That looks kinda
   // OK when using `record`, but is a but noisy for `autoRecord` since you’ll
   // also see the whole `$ObjMap<...>` nonsense. See below.
-  const personDecoder9 = record(field => ({
+  const personDecoder9 = record((field) => ({
     name: field("name", string),
     age: field("age", number),
   }));
@@ -282,7 +282,7 @@ test("type annotations", () => {
 
   // Here’s the same decoder again, but written using `record` instead of
   // `autoRecord`. It should give the same inferred type.
-  const userDecoder2 = record(field => ({
+  const userDecoder2 = record((field) => ({
     id: field("id", either(string, number)),
     name: field("name", string),
     age: field("age", number),

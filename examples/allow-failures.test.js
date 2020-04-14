@@ -11,7 +11,7 @@ test("allowing decoders to fail", () => {
   // failures, and where to save error messages. (By default, they _throw_
   // errors.)
 
-  const productDecoder = record(field => ({
+  const productDecoder = record((field) => ({
     id: field("id", number),
     name: field("name", string),
     description: field("description", string, { default: "" }),

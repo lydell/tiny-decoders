@@ -29,8 +29,8 @@ test("decoding deeply nested values", () => {
   );
 
   // If you like, you can define one of these helper functions:
-  const always = value => () => value;
-  const hardcoded = value => () => value;
+  const always = (value) => () => value;
+  const hardcoded = (value) => () => value;
   expect(either(decoder, always(0))(incompleteData)).toMatchInlineSnapshot(`0`);
   expect(
     either(decoder, hardcoded(null))(incompleteData)
@@ -47,20 +47,23 @@ test("decoding deeply nested values", () => {
 
   // By the way, are you curious how `deep` works? The decoder we made at the
   // start of this example is equivalent to:
-  const decoder2 = record(field1 =>
+  const decoder2 = record((field1) =>
     field1(
       "store",
-      record(field2 =>
+      record((field2) =>
         field2(
           "products",
-          tuple(item1 =>
+          tuple((item1) =>
             item1(
               0,
-              record(field3 =>
+              record((field3) =>
                 field3(
                   "accessories",
-                  tuple(item2 =>
-                    item2(0, record(field4 => field4("price", number)))
+                  tuple((item2) =>
+                    item2(
+                      0,
+                      record((field4) => field4("price", number))
+                    )
                   )
                 )
               )

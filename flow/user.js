@@ -29,7 +29,7 @@ const userDecoder: Decoder<User> = autoRecord({
 
 verifyUser(userDecoder);
 
-const userDecoder2: Decoder<User> = record(field => ({
+const userDecoder2: Decoder<User> = record((field) => ({
   name: field("name", string),
   age: field("age", number),
   active: field("active", boolean),
@@ -48,7 +48,7 @@ verifyUser(
   })
 );
 verifyUser(
-  record(field => ({
+  record((field) => ({
     id: field("id", string),
     name: field("name", string),
     age: field("age", number),
@@ -67,7 +67,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record(field => ({
+  record((field) => ({
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
@@ -84,7 +84,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record(field => ({
+  record((field) => ({
     age: field("age", number),
     active: field("active", boolean),
   }))
@@ -109,7 +109,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record(field => ({
+  record((field) => ({
     extra: field("extra", string),
     name: field("name", string),
     age: field("age", number),
@@ -119,7 +119,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record<User>(field => ({
+  record<User>((field) => ({
     extra: field("extra", string),
     name: field("name", string),
     age: field("age", number),
@@ -152,7 +152,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record(field => ({
+  record((field) => ({
     extra: field("extra", string),
     extra2: field("extra2", () => undefined),
     name: field("name", string),
@@ -163,7 +163,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record<User>(field => ({
+  record<User>((field) => ({
     extra: field("extra", string),
     extra2: field("extra2", () => undefined),
     name: field("name", string),
@@ -185,7 +185,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record(field => ({
+  record((field) => ({
     naem: field("naem", string),
     age: field("age", number),
     active: field("active", boolean),
@@ -204,7 +204,7 @@ verifyUser(
   })
 );
 verifyUser(
-  record(field => ({
+  record((field) => ({
     // $ExpectError
     name: field("name", number),
     age: field("age", number),
@@ -224,7 +224,7 @@ verifyUser(
   })
 );
 verifyUser(
-  record(field => ({
+  record((field) => ({
     // $ExpectError
     name: field("name", optional(string)),
     age: field("age", number),

@@ -7,8 +7,8 @@ import { repr } from "../src";
 // After: `"string"`
 // This is like the serializer in jest.snapshots.config.js but for _all_ strings.
 expect.addSnapshotSerializer({
-  test: value => typeof value === "string",
-  print: value => value,
+  test: (value) => typeof value === "string",
+  print: (value) => value,
 });
 
 beforeEach(() => {
@@ -288,7 +288,7 @@ test("misc", () => {
   expect(
     repr(
       // eslint-disable-next-line no-unused-vars, flowtype/require-return-type
-      (function(a: number, b: number) {
+      (function (a: number, b: number) {
         // eslint-disable-next-line prefer-rest-params
         return arguments;
       })(1, 2)
