@@ -1,0 +1,13 @@
+{
+  "name": "tiny-decoders",
+  "version": "4.0.0",
+  "license": "MIT",
+  "author": "Simon Lydell",
+  "repository": "lydell/tiny-decoders",
+  "description": "Type-safe data decoding for the minimalist.",
+  "type": "module",
+  "module": "index.mjs",
+  "exports": "./index.mjs",
+  "sideEffects": false,
+  "keywords": ["decode", "decoders", "elm", "flow", "json", "typescript"]
+}

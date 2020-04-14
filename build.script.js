@@ -1,20 +1,50 @@
-/* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
 
-const shell = require("shelljs");
+const babel = require("@babel/core");
 
-shell.config.fatal = true;
-shell.config.verbose = true;
-
-const DIST = "dist";
+const DIR = __dirname;
+const DIST = path.join(DIR, "dist");
 const INDEX = "src/index.js";
 
-shell.cd(__dirname);
-shell.rm("-rf", DIST);
-shell.mkdir(DIST);
+const READ_MORE =
+  "**[➡️ Full readme](https://github.com/lydell/tiny-decoders/)**";
 
-shell.exec(`babel ${INDEX} --out-file ${DIST}/index.js`);
-shell.exec(`babel --env-name esm ${INDEX} --out-file ${DIST}/index.mjs`);
-shell.cp(INDEX, `${DIST}/index.js.flow`);
-shell.cp("typescript/index.d.ts", `${DIST}/index.d.ts`);
+const FILES_TO_COPY = [
+  { src: "LICENSE" },
+  { src: "typescript/index.d.ts", dest: "index.d.ts" },
+  { src: "package-real.json", dest: "package.json" },
+  {
+    src: "README.md",
+    transform: (content) => content.replace(/<!--[^]*$/, READ_MORE),
+  },
+  {
+    src: INDEX,
+    dest: "index.js",
+    transform: (content) => babel.transformSync(content).code,
+  },
+  {
+    src: INDEX,
+    dest: "index.mjs",
+    transform: (content) =>
+      babel.transformSync(content, { envName: "esm" }).code,
+  },
+  { src: INDEX, dest: "index.js.flow" },
+];
 
-console.log(shell.ls(DIST).join("  "));
+if (fs.existsSync(DIST)) {
+  fs.rmdirSync(DIST, { recursive: true });
+}
+
+fs.mkdirSync(DIST);
+
+for (const { src, dest = src, transform } of FILES_TO_COPY) {
+  if (transform) {
+    fs.writeFileSync(
+      path.join(DIST, dest),
+      transform(fs.readFileSync(path.join(DIR, src), "utf8"))
+    );
+  } else {
+    fs.copyFileSync(path.join(DIR, src), path.join(DIST, dest));
+  }
+}

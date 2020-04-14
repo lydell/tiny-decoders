@@ -4,60 +4,6 @@ Type-safe data decoding for the minimalist, inspired by [nvie/decoders] and [Elm
 
 Supports [TypeScript] and [Flow].
 
-## Contents
-
-<!-- prettier-ignore-start -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-
-- [Installation](#installation)
-- [Example](#example)
-- [Intro](#intro)
-- [A note on type annotations](#a-note-on-type-annotations)
-- [API](#api)
-  - [The `Decoder<T>` type](#the-decodert-type)
-  - [Primitive decoders](#primitive-decoders)
-    - [`boolean`](#boolean)
-    - [`number`](#number)
-    - [`string`](#string)
-    - [`constant`](#constant)
-  - [Functions that _return_ a decoder](#functions-that-_return_-a-decoder)
-    - [Tolerant decoding](#tolerant-decoding)
-    - [`array`](#array)
-    - [`dict`](#dict)
-    - [`record`](#record)
-    - [`tuple`](#tuple)
-    - [`pair`](#pair)
-    - [`triple`](#triple)
-    - [`autoRecord`](#autorecord)
-    - [`deep`](#deep)
-    - [`optional`](#optional)
-    - [`either`](#either)
-  - [Less common decoders](#less-common-decoders)
-    - [`lazy`](#lazy)
-    - [`mixedArray`](#mixedarray)
-    - [`mixedDict`](#mixeddict)
-  - [`repr`](#repr)
-    - [Output for sensitive data](#output-for-sensitive-data)
-- [Comparison with nvie/decoders](#comparison-with-nviedecoders)
-  - [Error messages](#error-messages)
-- [Development](#development)
-  - [npm scripts](#npm-scripts)
-  - [Directories](#directories)
-- [License](#license)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- prettier-ignore-end -->
-
-## Installation
-
-```
-npm install tiny-decoders
-```
-
-## Example
-
 ```ts
 import {
   Decoder,
@@ -101,7 +47,70 @@ The error can look like this:
 */
 ```
 
-[Full example][example-readme]
+[️Full example][example-readme]
+
+---
+
+[bundlephobia-tiny-decoders]: https://bundlephobia.com/result?p=tiny-decoders
+[deps-tiny-decoders]: https://img.shields.io/david/lydell/tiny-decoders.svg
+[elm-json]: https://package.elm-lang.org/packages/elm/json/latest/Json-Decode
+[example-readme]: https://github.com/lydell/tiny-decoders/blob/master/examples/readme.test.js
+[flow]: https://flow.org/
+[min-tiny-decoders]: https://img.shields.io/bundlephobia/min/tiny-decoders.svg
+[nvie/decoders]: https://github.com/nvie/decoders
+[travis-badge]: https://travis-ci.com/lydell/tiny-decoders.svg?branch=master
+[travis-link]: https://travis-ci.com/lydell/tiny-decoders
+[typescript]: https://www.typescriptlang.org/
+
+<!-- prettier-ignore-start -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Installation](#installation)
+- [Intro](#intro)
+- [A note on type annotations](#a-note-on-type-annotations)
+- [API](#api)
+  - [The `Decoder<T>` type](#the-decodert-type)
+  - [Primitive decoders](#primitive-decoders)
+    - [`boolean`](#boolean)
+    - [`number`](#number)
+    - [`string`](#string)
+    - [`constant`](#constant)
+  - [Functions that _return_ a decoder](#functions-that-_return_-a-decoder)
+    - [Tolerant decoding](#tolerant-decoding)
+    - [`array`](#array)
+    - [`dict`](#dict)
+    - [`record`](#record)
+    - [`tuple`](#tuple)
+    - [`pair`](#pair)
+    - [`triple`](#triple)
+    - [`autoRecord`](#autorecord)
+    - [`deep`](#deep)
+    - [`optional`](#optional)
+    - [`map`](#map)
+    - [`either`](#either)
+  - [Less common decoders](#less-common-decoders)
+    - [`lazy`](#lazy)
+    - [`mixedArray`](#mixedarray)
+    - [`mixedDict`](#mixeddict)
+  - [`repr`](#repr)
+    - [Output for sensitive data](#output-for-sensitive-data)
+- [Comparison with nvie/decoders](#comparison-with-nviedecoders)
+  - [Error messages](#error-messages)
+- [Development](#development)
+  - [npm scripts](#npm-scripts)
+  - [Directories](#directories)
+- [License](#license)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- prettier-ignore-end -->
+
+## Installation
+
+```
+npm install tiny-decoders
+```
 
 ## Intro
 
@@ -937,7 +946,7 @@ You need [Node.js] 12 and npm 6.
 - `npm run prettier`: Run [Prettier] for files other than JS.
 - `npm run doctoc`: Run [doctoc] on README.md.
 - `npx jest --watch`: Run unit tests.
-- `npm build`: Compile with [Babel].
+- `npm run build`: Compile with [Babel].
 - `npm test`: Check that everything works.
 
 ### Directories
@@ -953,19 +962,15 @@ You need [Node.js] 12 and npm 6.
 
 [MIT](LICENSE)
 
-<!-- prettier-ignore-start -->
 [array]: #array
-[autoRecord]: #autoRecord
+[autorecord]: #autoRecord
 [babel]: https://babeljs.io/
 [bundlephobia-decoders]: https://bundlephobia.com/result?p=decoders
-[bundlephobia-tiny-decoders]: https://bundlephobia.com/result?p=tiny-decoders
 [constant]: #constant
 [deps-decoders]: https://img.shields.io/david/nvie/decoders.svg
-[deps-tiny-decoders]: https://img.shields.io/david/lydell/tiny-decoders.svg
 [dict]: #dict
 [doctoc]: https://github.com/thlorenz/doctoc/
 [dtslint]: https://github.com/Microsoft/dtslint/
-[elm-json]: https://package.elm-lang.org/packages/elm/json/latest/Json-Decode
 [elm-map]: https://package.elm-lang.org/packages/elm/json/latest/Json-Decode#mapping
 [eslint]: https://eslint.org/
 [example-allow-failures]: https://github.com/lydell/tiny-decoders/blob/master/examples/allow-failures.test.js
@@ -975,34 +980,26 @@ You need [Node.js] 12 and npm 6.
 [example-extra-fields]: https://github.com/lydell/tiny-decoders/blob/master/examples/extra-fields.test.js
 [example-missing-values]: https://github.com/lydell/tiny-decoders/blob/master/examples/missing-values.test.js
 [example-mixed]: https://github.com/lydell/tiny-decoders/blob/master/examples/mixed.test.js
-[example-readme]: https://github.com/lydell/tiny-decoders/blob/master/examples/readme.test.js
 [example-recursive]: https://github.com/lydell/tiny-decoders/blob/master/examples/recursive.test.js
 [example-renaming-fields]: https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-fields.test.js
 [example-sets]: https://github.com/lydell/tiny-decoders/blob/master/examples/sets.test.js
 [example-tuples]: https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.js
 [example-type-annotations]: https://github.com/lydell/tiny-decoders/blob/master/examples/type-annotations.test.js
-[flow]: https://flow.org/
 [jest]: https://jestjs.io/
 [map]: #map
 [min-decoders]: https://img.shields.io/bundlephobia/min/decoders.svg
-[min-tiny-decoders]: https://img.shields.io/bundlephobia/min/tiny-decoders.svg
 [minzip-decoders]: https://img.shields.io/bundlephobia/minzip/decoders.svg
 [minzip-tiny-decoders]: https://img.shields.io/bundlephobia/minzip/tiny-decoders.svg
 [mixedarray]: #mixedarray
 [mixeddict]: #mixeddict
 [node.js]: https://nodejs.org/en/
 [npm]: https://www.npmjs.com/
-[nvie/decoders]: https://github.com/nvie/decoders
 [pair]: #pair
 [prettier]: https://prettier.io/
 [primitive-decoders]: #primitive-decoders
 [record]: #record
 [result]: https://github.com/nvie/lemons.js#result
 [returns-decoders]: #functions-that-return-a-decoder
-[travis-badge]: https://travis-ci.com/lydell/tiny-decoders.svg?branch=master
-[travis-link]: https://travis-ci.com/lydell/tiny-decoders
 [triple]: #triple
 [tuple]: #tuple
 [typescript-type-annotations]: https://github.com/lydell/tiny-decoders/blob/master/typescript/type-annotations.ts
-[typescript]: https://www.typescriptlang.org/
-<!-- prettier-ignore-end -->

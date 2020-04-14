@@ -1,25 +1,5 @@
 {
-  "name": "tiny-decoders",
-  "version": "4.0.0",
-  "license": "MIT",
-  "author": "Simon Lydell",
-  "repository": "lydell/tiny-decoders",
-  "description": "Type-safe data decoding for the minimalist.",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "decode",
-    "decoders",
-    "elm",
-    "flow",
-    "json",
-    "typescript"
-  ],
+  "private": true,
   "scripts": {
     "doctoc": "doctoc README.md",
     "eslint": "eslint . --fix",
@@ -29,7 +9,6 @@
     "test": "eslint . && prettier --check . && flow check && npm run build && npm run dtslint && jest --coverage"
   },
   "devDependencies": {
-    "@babel/cli": "7.8.4",
     "@babel/core": "7.9.0",
     "@babel/preset-env": "7.9.5",
     "@babel/preset-flow": "7.9.0",
@@ -47,7 +26,6 @@
     "eslint-plugin-simple-import-sort": "5.0.2",
     "flow-bin": "0.122.0",
     "jest": "25.3.0",
-    "prettier": "2.0.4",
-    "shelljs": "0.8.3"
+    "prettier": "2.0.4"
   }
 }
