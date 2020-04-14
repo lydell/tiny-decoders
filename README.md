@@ -175,10 +175,10 @@ In Flow, annotate like this:
 ```js
 import { record, autoRecord } from "tiny-decoders";
 
-type Person = {|
+type Person = {
   name: string,
   age: number,
-|};
+};
 
 const personDecoder = record((field): Person => ({
   name: field("name", string),

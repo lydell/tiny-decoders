@@ -19,13 +19,13 @@ beforeEach(() => {
 });
 
 test("the main readme example", () => {
-  type User = {|
+  type User = {
     name: string,
     active: boolean,
     age: ?number,
     interests: Array<string>,
     id: string | number,
-  |};
+  };
 
   const userDecoder = record((field): User => ({
     name: field("full_name", string),
@@ -176,9 +176,7 @@ test("error messages", () => {
   );
 });
 
-function getProducts({
-  missingId = true,
-}: {| missingId: boolean |} = {}): mixed {
+function getProducts({ missingId = true }: { missingId: boolean } = {}): mixed {
   return [
     {
       id: "512971",

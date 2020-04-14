@@ -52,7 +52,7 @@ export function mixedDict(value: mixed): { +[string]: mixed, ... } {
 
 export function array<T, U>(
   decoder: Decoder<T>,
-  mode?: "throw" | "skip" | {| default: U |} = "throw"
+  mode?: "throw" | "skip" | { default: U } = "throw"
 ): Decoder<Array<T | U>> {
   return function arrayDecoder(
     value: mixed,
@@ -93,7 +93,7 @@ export function array<T, U>(
 
 export function dict<T, U>(
   decoder: Decoder<T>,
-  mode?: "throw" | "skip" | {| default: U |} = "throw"
+  mode?: "throw" | "skip" | { default: U } = "throw"
 ): Decoder<{ [key: string]: T | U, ... }> {
   return function dictDecoder(
     value: mixed,
@@ -136,7 +136,7 @@ export function record<T>(
     field: <U, V>(
       key: string,
       decoder: Decoder<U>,
-      mode?: "throw" | {| default: V |}
+      mode?: "throw" | { default: V }
     ) => U | V,
     fieldError: (key: string, message: string) => TypeError,
     obj: { +[string]: mixed, ... },
@@ -148,7 +148,7 @@ export function record<T>(
     function field<U, V>(
       key: string,
       decoder: Decoder<U>,
-      mode?: "throw" | {| default: V |} = "throw"
+      mode?: "throw" | { default: V } = "throw"
     ): U | V {
       try {
         const localErrors = [];
@@ -183,7 +183,7 @@ export function tuple<T>(
     item: <U, V>(
       index: number,
       decoder: Decoder<U>,
-      mode?: "throw" | {| default: V |}
+      mode?: "throw" | { default: V }
     ) => U | V,
     itemError: (index: number, message: string) => TypeError,
     arr: $ReadOnlyArray<mixed>,
@@ -195,7 +195,7 @@ export function tuple<T>(
     function item<U, V>(
       index: number,
       decoder: Decoder<U>,
-      mode?: "throw" | {| default: V |} = "throw"
+      mode?: "throw" | { default: V } = "throw"
     ): U | V {
       try {
         const localErrors = [];
@@ -376,13 +376,13 @@ export function repr(
     maxObjectChildren = 3,
     maxLength = 100,
     recurseMaxLength = 20,
-  }: {|
+  }: {
     recurse?: boolean,
     maxArrayChildren?: number,
     maxObjectChildren?: number,
     maxLength?: number,
     recurseMaxLength?: number,
-  |} = {}
+  } = {}
 ): string {
   const type = typeof value;
   const toStringType = Object.prototype.toString

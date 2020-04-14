@@ -19,25 +19,25 @@ import {
 test("decoding based on a field", () => {
   // First, some types:
 
-  type Product = {|
+  type Product = {
     type: "Product",
     name: string,
     price: number,
     categories: Array<string>,
-  |};
+  };
 
-  type Category = {|
+  type Category = {
     type: "Category",
     name: string,
     tags?: { [string]: string, ... },
-  |};
+  };
 
-  type Offer = {|
+  type Offer = {
     type: "Offer",
     discount: number,
     message: string,
     isActive: boolean,
-  |};
+  };
 
   type SearchResult = Product | Category | Offer;
 
@@ -285,18 +285,18 @@ test("using several fields to decide how to decode", () => {
   ];
 
   // This is how we’d like to represent the data in a type-safe way.
-  type Person = {|
-    user: ?{|
+  type Person = {
+    user: ?{
       name: string,
       email: string,
-    |},
-    admin: ?{|
+    },
+    admin: ?{
       privileges: Array<string>,
-    |},
-    partner: ?{|
+    },
+    partner: ?{
       affiliation: string,
-    |},
-  |};
+    },
+  };
 
   const personDecoder: Decoder<Person> = record((field) => {
     // First get the roles, and then decode based on those.

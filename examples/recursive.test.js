@@ -15,10 +15,10 @@ import {
 
 test("recursive data structure", () => {
   // Consider this recursive data sctructure:
-  type Person = {|
+  type Person = {
     name: string,
     friends: Array<Person>,
-  |};
+  };
 
   // When using `record` there won’t be any trouble decoding it:
   const personDecoder1: Decoder<Person> = record((field) => ({
@@ -92,7 +92,7 @@ test("recurse non-record", () => {
   // the recursiveness issue. But if you for example have a recursive dict, you
   // _have_ to use `lazy`.
 
-  type Dict = { [key: string]: number | Dict };
+  type Dict = { [key: string]: number | Dict, ... };
 
   const dictDecoder: Decoder<Dict> = dict(
     either(
@@ -130,16 +130,16 @@ test("recurse non-record", () => {
 
 test("indirectly recursive data structure", () => {
   // Here’s a silly example of an indirectly recursive data structure.
-  type Person = {|
+  type Person = {
     name: string,
     // eslint-disable-next-line no-use-before-define
     relationship: ?Relationship,
-  |};
+  };
 
-  type Relationship = {|
+  type Relationship = {
     type: string,
     person: Person,
-  |};
+  };
 
   // Again, when using `record` you shouldn’t encounter any problems, other than
   // maybe having to disable an ESLint rule.
@@ -208,10 +208,10 @@ test("indirectly recursive data structure", () => {
 test("circular objects", () => {
   // This data structure is impossible to create without mutation, because you
   // can’t create a Person without creating a Person.
-  type Person = {|
+  type Person = {
     name: string,
     likes: Person,
-  |};
+  };
 
   const personDecoder1: Decoder<Person> = record((field) => ({
     name: field("name", string),

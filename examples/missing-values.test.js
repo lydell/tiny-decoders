@@ -47,10 +47,10 @@ Expected the value null, but got: undefined
 
   type Age = "missing" | void | null | number;
 
-  type User = {|
+  type User = {
     name: string,
     age: Age,
-  |};
+  };
 
   const userDecoder: Decoder<User> = record((field, fieldError, obj) => ({
     name: field("name", string),

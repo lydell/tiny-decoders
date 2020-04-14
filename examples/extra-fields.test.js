@@ -5,11 +5,11 @@ import { type Decoder, autoRecord, map, number, record, string } from "../src";
 test("adding extra fields to records", () => {
   // Want to add an extra field to a record, that doesn’t look at the input at
   // all?
-  type Product = {|
+  type Product = {
     name: string,
     price: number,
     version: number,
-  |};
+  };
 
   const data: mixed = { name: "Comfortable Bed", price: 10e3 };
 

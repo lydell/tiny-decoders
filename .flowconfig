@@ -3,6 +3,7 @@
 # to TypeScript files.
 suppress_comment= \\(.\\|\n\\)*\\$\\(FlowIgnore\\|ExpectError$\\)
 include_warnings=true
+exact_by_default=true
 
 [lints]
 all=error

@@ -50,7 +50,7 @@ function use(value: mixed) {
 // $ExpectError
 (record(() => "")(undefined): boolean);
 // $ExpectError
-(record((field) => ({ a: field("a", string) }))(undefined): {| a: boolean |});
+(record((field) => ({ a: field("a", string) }))(undefined): { a: boolean });
 // $ExpectError
 (tuple(() => "")(undefined): boolean);
 // $ExpectError
@@ -62,7 +62,7 @@ function use(value: mixed) {
 // $ExpectError
 (autoRecord({})(undefined): boolean);
 // $ExpectError
-(autoRecord({ a: string })(undefined): {| a: boolean |});
+(autoRecord({ a: string })(undefined): { a: boolean });
 // $ExpectError
 (deep([], string)(undefined): boolean);
 // $ExpectError

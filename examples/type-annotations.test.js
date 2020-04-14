@@ -17,10 +17,10 @@ import {
 
 test("type annotations", () => {
   // First, a small test type and a function that receives it:
-  type Person = {|
+  type Person = {
     name: string,
     age: number,
-  |};
+  };
   function greet(person: Person): string {
     return `Hello, ${person.name}!`;
   }
@@ -189,16 +189,16 @@ test("type annotations", () => {
   });
   type Person2 = $ReturnType<typeof personDecoder9>;
   // type Person2 = $ReturnType<
-  //   Decoder<{| age: number, name: string |}>
+  //   Decoder<{ age: number, name: string }>
   // >
   type Person3 = $ReturnType<typeof personDecoder9Auto>;
   // type Person3 = $ReturnType<
   //   Decoder<
   //     $ObjMap<
-  //       {|
+  //       {
   //         age: (value: mixed) => number,
   //         name: (value: mixed) => string
-  //       |},
+  //       },
   //       DecoderType
   //     >
   //   >

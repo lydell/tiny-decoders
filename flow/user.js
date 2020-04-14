@@ -11,12 +11,12 @@ import {
   string,
 } from "../src";
 
-type User = {|
+type User = {
   name: string,
   age: number,
   active: boolean,
   id: string | number,
-|};
+};
 
 const verifyUser = (decoder: Decoder<User>): User => decoder(undefined);
 

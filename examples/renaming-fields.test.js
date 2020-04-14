@@ -11,12 +11,12 @@ import {
 } from "../src";
 
 test("renaming fields", () => {
-  type UserSnakeCase = {|
+  type UserSnakeCase = {
     first_name: string,
     last_name: string,
     age: number,
     active: boolean,
-  |};
+  };
 
   // Making decoders with `autoRecord` is convenient if the object you are
   // decoding and your interal type have the same key names.
@@ -42,12 +42,12 @@ test("renaming fields", () => {
     }
   `);
 
-  type UserCamelCase = {|
+  type UserCamelCase = {
     firstName: string,
     lastName: string,
     age: number,
     active: boolean,
-  |};
+  };
 
   // If you want to rename some fields, switch to `record`. This means having to
   // duplicate some field names, but it’s not so bad.

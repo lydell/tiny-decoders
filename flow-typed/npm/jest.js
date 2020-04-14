@@ -197,7 +197,7 @@ type EnzymeMatchersType = {
   toIncludeText(text: string): void,
   toMatchElement(
     element: React$Element<any>,
-    options?: {| ignoreProps?: boolean, verbose?: boolean |},
+    options?: { ignoreProps?: boolean, verbose?: boolean },
   ): void,
   toMatchSelector(selector: string): void,
   // 7.x
@@ -1060,7 +1060,7 @@ type JestPrettyFormatRefs = Array<any>;
 type JestPrettyFormatPrint = any => string;
 type JestPrettyFormatStringOrNull = string | null;
 
-type JestPrettyFormatOptions = {|
+type JestPrettyFormatOptions = {
   callToJSON: boolean,
   edgeSpacing: string,
   escapeRegex: boolean,
@@ -1071,14 +1071,14 @@ type JestPrettyFormatOptions = {|
   plugins: JestPrettyFormatPlugins,
   printFunctionName: boolean,
   spacing: string,
-  theme: {|
+  theme: {
     comment: string,
     content: string,
     prop: string,
     tag: string,
     value: string,
-  |},
-|};
+  },
+};
 
 type JestPrettyFormatPlugin = {
   print: (

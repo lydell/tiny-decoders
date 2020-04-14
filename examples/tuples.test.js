@@ -27,10 +27,10 @@ test("decoding tuples", () => {
   `);
 
   // If you’d rather produce an object like the following, use `tuple`.
-  type Point = {|
+  type Point = {
     x: number,
     y: number,
-  |};
+  };
   const pointDecoder1: Decoder<Point> = tuple((item) => ({
     x: item(0, number),
     y: item(1, number),

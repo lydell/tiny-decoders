@@ -30,10 +30,10 @@ beforeEach(() => {
 function testWithErrorsArray<T>({
   decoder,
   data,
-}: {|
+}: {
   decoder: Decoder<T>,
   data: mixed,
-|}): {| decoded: T, errors: Array<string>, shortErrors: Array<string> |} {
+}): { decoded: T, errors: Array<string>, shortErrors: Array<string> } {
   const errors = [];
   const decoded = decoder(data);
   expect(decoder(data, errors)).toEqual(decoded);

@@ -4,10 +4,10 @@ import { type Decoder, autoRecord, string } from "../src";
 
 test("decoding mixed", () => {
   // Have a piece of data with a very generic field?
-  type Message = {|
+  type Message = {
     text: string,
     data: mixed,
-  |};
+  };
 
   const message: mixed = { text: "Hello, world!", data: 15 };
 

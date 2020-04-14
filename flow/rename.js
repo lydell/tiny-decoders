@@ -2,10 +2,10 @@
 
 import { type Decoder, autoRecord, map, number, string } from "../src";
 
-type Camel = {|
+type Camel = {
   firstName: string,
   age: number,
-|};
+};
 
 const verifyCamel = (decoder: Decoder<Camel>): Camel => decoder(undefined);
 
