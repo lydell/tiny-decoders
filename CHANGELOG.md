@@ -1,77 +1,40 @@
 ### Version 4.0.0 (2019-09-29)
 
-- Removed: The “stack trace,” showing you a little of each parent object and
-  array, in error messages is now gone. After using tiny-decoders for a while I
-  noticed this not being super useful. It’s nicer to look at the whole object in
-  a tool of choice, and just use the error message to understand _where_ the
-  error is, and what is wrong.
-- Changed: `repr.short` is now called `repr.sensitive` because of the above
-  change.
-- Removed: The `key` option of `repr`. It’s not needed since the “stack traces”
-  were removed.
-- Changed: Object keys in the part showing you _where_ an error occurred are no
-  longer truncated.
-- Changed: Literals, such as strings, are now allowed to be 100 characters long
-  before being truncated. Inside objects and arrays, the limit is 20 characters,
-  just like before. The idea is that printed values are at most 100–120
-  characters roughly. Now, strings and other literals can utilize more of that
-  space (rather than always being clipped already at 20 characters).
-- Added: The `maxLength` and `recurseMaxLength` options of `repr` which control
-  the above change.
+- Removed: The “stack trace,” showing you a little of each parent object and array, in error messages is now gone. After using tiny-decoders for a while I noticed this not being super useful. It’s nicer to look at the whole object in a tool of choice, and just use the error message to understand _where_ the error is, and what is wrong.
+- Changed: `repr.short` is now called `repr.sensitive` because of the above change.
+- Removed: The `key` option of `repr`. It’s not needed since the “stack traces” were removed.
+- Changed: Object keys in the part showing you _where_ an error occurred are no longer truncated.
+- Changed: Literals, such as strings, are now allowed to be 100 characters long before being truncated. Inside objects and arrays, the limit is 20 characters, just like before. The idea is that printed values are at most 100–120 characters roughly. Now, strings and other literals can utilize more of that space (rather than always being clipped already at 20 characters).
+- Added: The `maxLength` and `recurseMaxLength` options of `repr` which control the above change.
 
 ### Version 3.1.0 (2019-09-15)
 
-- Added: You can now set `repr.short = true` to get shorter error messages,
-  containing only _where_ the error happened and the actual and expected types,
-  but not showing any actual values. This is useful if you’re dealing with
-  sensitive data, such as email addresses, passwords or social security numbers,
-  you might not want that data to potentially appear in error logs. Another use
-  case is if you simply prefer a shorter, oneline message.
+- Added: You can now set `repr.short = true` to get shorter error messages, containing only _where_ the error happened and the actual and expected types, but not showing any actual values. This is useful if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs. Another use case is if you simply prefer a shorter, oneline message.
 - Improved: Documentation on type inference in TypeScript.
 
 ### Version 3.0.1 (2019-08-08)
 
-- Fixed an oversight regarding the recommended type annotation for `autoRecord`
-  decoders in Flow. No code changes.
+- Fixed an oversight regarding the recommended type annotation for `autoRecord` decoders in Flow. No code changes.
 
 ### Version 3.0.0 (2019-08-08)
 
-After using this library for a while in a real project, I found a bunch of
-things that could be better. This version brings some bigger changes to the API,
-making it more powerful and easier to use, and working better with TypeScript.
+After using this library for a while in a real project, I found a bunch of things that could be better. This version brings some bigger changes to the API, making it more powerful and easier to use, and working better with TypeScript.
 
 The new features adds half a kilobyte to the bundle, but it’s worth it.
 
-- Added: When decoding arrays and objects, you can now opt into tolerant
-  decoding, where you can recover from errors, either by skipping values or
-  providing defaults. Whenever that happens, the message of the error that would
-  otherwise have been thrown is pushed to an `errors` array (`Array<string>`, if
-  provided), allowing you to inspect what was ignored.
+- Added: When decoding arrays and objects, you can now opt into tolerant decoding, where you can recover from errors, either by skipping values or providing defaults. Whenever that happens, the message of the error that would otherwise have been thrown is pushed to an `errors` array (`Array<string>`, if provided), allowing you to inspect what was ignored.
 
-- Added: A new `record` function. This makes renaming and combining fields much
-  easier, and allows decoding by type name easily without having to learn about
-  `andThen` and `fieldAndThen`. `field` has been integrated into `record` rather
-  than being its own decoder. The old `record` function is now called
-  `autoRecord`.
+- Added: A new `record` function. This makes renaming and combining fields much easier, and allows decoding by type name easily without having to learn about `andThen` and `fieldAndThen`. `field` has been integrated into `record` rather than being its own decoder. The old `record` function is now called `autoRecord`.
 
 - Added: `tuple`. It’s like `record`, but for arrays/tuples.
 
-- Added: `pair` and `triple`. These are convenience functions for decoding
-  tuples of length 2 and 3. I found myself decoding quite a few pairs and the
-  old way of doing it felt overly verbose. And the new `tuple` API wasn’t short
-  enough either for these common cases.
+- Added: `pair` and `triple`. These are convenience functions for decoding tuples of length 2 and 3. I found myself decoding quite a few pairs and the old way of doing it felt overly verbose. And the new `tuple` API wasn’t short enough either for these common cases.
 
-- Changed: `record` has been renamed to `autoRecord`. (A new function has been
-  added, and it’s called `record` but does not work like the old `record`.)
-  `autoRecord` also has a new TypeScript type annotation, which is better and
-  easier to understand.
+- Changed: `record` has been renamed to `autoRecord`. (A new function has been added, and it’s called `record` but does not work like the old `record`.) `autoRecord` also has a new TypeScript type annotation, which is better and easier to understand.
 
-- Changed: `fieldDeep` has been renamed to just `deep`, since `field` has been
-  removed.
+- Changed: `fieldDeep` has been renamed to just `deep`, since `field` has been removed.
 
-- Removed: `group`. There’s no need for it with the new API. It was mostly used
-  to decode objects/records while renaming some keys. Many times the migration
-  is easy:
+- Removed: `group`. There’s no need for it with the new API. It was mostly used to decode objects/records while renaming some keys. Many times the migration is easy:
 
   ```ts
   // Before:
@@ -81,15 +44,13 @@ The new features adds half a kilobyte to the bundle, but it’s worth it.
   });
 
   // After:
-  record(field => ({
+  record((field) => ({
     firstName: field("first_name", string),
     lastName: field("last_name", string),
   }));
   ```
 
-- Removed: `field`. It is now part of the new `record` and `tuple` functions
-  (for `tuple` it’s called `item`). If you used `field` to pluck a single value
-  you can migrate as follows:
+- Removed: `field`. It is now part of the new `record` and `tuple` functions (for `tuple` it’s called `item`). If you used `field` to pluck a single value you can migrate as follows:
 
   ```ts
   // Before:
@@ -97,15 +58,13 @@ The new features adds half a kilobyte to the bundle, but it’s worth it.
   field(0, string);
 
   // After:
-  record(field => field("name", string));
-  tuple(item => item(0, string));
+  record((field) => field("name", string));
+  tuple((item) => item(0, string));
   ```
 
-- Removed: `andThen`. I found no use cases for it after the new `record`
-  function was added.
+- Removed: `andThen`. I found no use cases for it after the new `record` function was added.
 
-- Removed: `fieldAndThen`. There’s no need for it with the new `record`
-  function. Here’s an example migration:
+- Removed: `fieldAndThen`. There’s no need for it with the new `record` function. Here’s an example migration:
 
   Before:
 
@@ -225,12 +184,8 @@ The new features adds half a kilobyte to the bundle, but it’s worth it.
 
 ### Version 2.0.0 (2019-06-07)
 
-- Changed: `mixedArray` now returns `$ReadOnlyArray<mixed>` instead of
-  `Array<mixed>`. See this Flow issue for more information:
-  <https://github.com/facebook/flow/issues/7684>
-- Changed: `mixedDict` now returns `{ +[string]: mixed }` (readonly) instead of
-  `{ [string]: mixed }`. See this Flow issue for more information:
-  <https://github.com/facebook/flow/issues/7685>
+- Changed: `mixedArray` now returns `$ReadOnlyArray<mixed>` instead of `Array<mixed>`. See this Flow issue for more information: <https://github.com/facebook/flow/issues/7684>
+- Changed: `mixedDict` now returns `{ +[string]: mixed }` (readonly) instead of `{ [string]: mixed }`. See this Flow issue for more information: <https://github.com/facebook/flow/issues/7685>
 
 ### Version 1.0.0 (2018-11-13)
 

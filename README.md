@@ -1,7 +1,6 @@
 # tiny-decoders [![Build Status][travis-badge]][travis-link] ![no dependencies][deps-tiny-decoders] [![minified size][min-tiny-decoders]][bundlephobia-tiny-decoders]
 
-Type-safe data decoding for the minimalist, inspired by [nvie/decoders] and
-[Elm’s JSON Decoders][elm-json].
+Type-safe data decoding for the minimalist, inspired by [nvie/decoders] and [Elm’s JSON Decoders][elm-json].
 
 Supports [TypeScript] and [Flow].
 
@@ -106,34 +105,24 @@ The error can look like this:
 
 ## Intro
 
-The central concept in tiny-decoders is the _decoder._ It’s a function that
-turns `unknown` (for Flow users: `mixed`) into some narrower type, or throws an
-error.
+The central concept in tiny-decoders is the _decoder._ It’s a function that turns `unknown` (for Flow users: `mixed`) into some narrower type, or throws an error.
 
-For example, there’s a decoder called `string` (`(value: unknown) => string`)
-that returns a string if the input is a string, and throws a `TypeError`
-otherwise. That’s all there is to a decoder!
+For example, there’s a decoder called `string` (`(value: unknown) => string`) that returns a string if the input is a string, and throws a `TypeError` otherwise. That’s all there is to a decoder!
 
 tiny-decoders contains:
 
 - [A bunch of decoders.][primitive-decoders]
 - [A bunch of functions that _return_ a decoder.][returns-decoders]
 
-Composing those functions together, you can _describe_ the shape of your objects
-and let tiny-decoders extract data that matches that description from a given
-input.
+Composing those functions together, you can _describe_ the shape of your objects and let tiny-decoders extract data that matches that description from a given input.
 
-Note that tiny-decoders is all about _extracting data,_ not validating that
-input _exactly matches_ a schema.
+Note that tiny-decoders is all about _extracting data,_ not validating that input _exactly matches_ a schema.
 
 ## A note on type annotations
 
-Most of the time, you don’t need to write any type annotations for decoders (but
-some examples in the API documentation show them explicitly for clarity).
+Most of the time, you don’t need to write any type annotations for decoders (but some examples in the API documentation show them explicitly for clarity).
 
-However, adding type annotations for record decoders results in much better
-error messages. The following is the recommended way of annotating record
-decoders in TypeScript:
+However, adding type annotations for record decoders results in much better error messages. The following is the recommended way of annotating record decoders in TypeScript:
 
 ```ts
 import { record, autoRecord } from "tiny-decoders";
@@ -159,7 +148,7 @@ const personDecoderAuto = autoRecord<Person>({
 In TypeScript, you can also write it like this:
 
 ```ts
-const personDecoder = record(field => ({
+const personDecoder = record((field) => ({
   name: field("name", string),
   age: field("age", number),
 }));
@@ -189,7 +178,7 @@ const personDecoder = record((field): Person => ({
   age: field("age", number),
 }));
 // or:
-const personDecoder2: Decoder<Person> = record(field => ({
+const personDecoder2: Decoder<Person> = record((field) => ({
   name: field("name", string),
   age: field("age", number),
 }));
@@ -200,9 +189,7 @@ const personDecoderAuto: Decoder<Person> = autoRecord({
 });
 ```
 
-See the [TypeScript type annotations example][typescript-type-annotations] and
-the [Flow type annotations example][example-type-annotations] for more
-information, tips and caveats.
+See the [TypeScript type annotations example][typescript-type-annotations] and the [Flow type annotations example][example-type-annotations] for more information, tips and caveats.
 
 ## API
 
@@ -214,15 +201,13 @@ export type Decoder<T> = (value: unknown, errors?: Array<string>) => T;
 
 This is a handy type alias for decoder functions.
 
-Note that simple decoders that do not take an optional `errors` array are also
-allowed by the above defintion:
+Note that simple decoders that do not take an optional `errors` array are also allowed by the above defintion:
 
 ```ts
 (value: unknown) => T;
 ```
 
-The type definition does not show that decoder functions throw `TypeError`s when
-the input is invalid, but do keep that in mind.
+The type definition does not show that decoder functions throw `TypeError`s when the input is invalid, but do keep that in mind.
 
 ### Primitive decoders
 
@@ -260,47 +245,30 @@ export function constant<
 >(constantValue: T): (value: unknown) => T;
 ```
 
-Returns a decoder. That decoder returns `value` if `value === constantValue` and
-throws a `TypeError` otherwise.
+Returns a decoder. That decoder returns `value` if `value === constantValue` and throws a `TypeError` otherwise.
 
-Commonly used when [Decoding by type name][example-decoding-by-type-name] to
-prevent mixups.
+Commonly used when [Decoding by type name][example-decoding-by-type-name] to prevent mixups.
 
 ### Functions that _return_ a decoder
 
 > Decode arrays, objects and optional values. Combine decoders and functions.
 
-For an array, you need to not just make sure that the value is an array, but
-also that every item _inside_ the array has the correct type. Same thing for
-objects (the values need to be checked). For these kinds of cases you need to
-_combine_ decoders. This is done through functions that take a decoder as input
-and returns a new decoder. For example, `array(string)` returns a decoder that
-handles arrays of strings.
+For an array, you need to not just make sure that the value is an array, but also that every item _inside_ the array has the correct type. Same thing for objects (the values need to be checked). For these kinds of cases you need to _combine_ decoders. This is done through functions that take a decoder as input and returns a new decoder. For example, `array(string)` returns a decoder that handles arrays of strings.
 
-Note that there is no `object` decoder, because there are two ways of decoding
-objects:
+Note that there is no `object` decoder, because there are two ways of decoding objects:
 
 - If you know all the keys, use [record] or [autoRecord].
 - If the keys are dynamic and all values have the same type, use [dict].
 
-Some languages also have _tuples_ in addition to arrays. Both TypeScript and
-Flow lets you use arrays as tuples if you want, which is also common in JSON.
-Use [tuple], [pair] and [triple] to decode tuples.
+Some languages also have _tuples_ in addition to arrays. Both TypeScript and Flow lets you use arrays as tuples if you want, which is also common in JSON. Use [tuple], [pair] and [triple] to decode tuples.
 
 (Related: The less common decoders [mixedArray] and [mixedDict].)
 
 #### Tolerant decoding
 
-Since arrays and objects can hold multiple values, their decoders allow opting
-into tolerant decoding, where you can recover from errors, either by skipping
-values or providing defaults. Whenever that happens, the message of the error
-that would otherwise have been thrown is pushed to an `errors` array
-(`Array<string>`, if provided), allowing you to inspect what was ignored.
-(Perhaps not the most beautiful API, but very simple.)
+Since arrays and objects can hold multiple values, their decoders allow opting into tolerant decoding, where you can recover from errors, either by skipping values or providing defaults. Whenever that happens, the message of the error that would otherwise have been thrown is pushed to an `errors` array (`Array<string>`, if provided), allowing you to inspect what was ignored. (Perhaps not the most beautiful API, but very simple.)
 
-For example, if you pass an `errors` array to a [record] decoder, it will both
-push to the array and pass it along to its sub-decoders so they can push to it
-as well.
+For example, if you pass an `errors` array to a [record] decoder, it will both push to the array and pass it along to its sub-decoders so they can push to it as well.
 
 #### `array`
 
@@ -311,20 +279,13 @@ export function array<T, U = T>(
 ): Decoder<Array<T | U>>;
 ```
 
-Takes a decoder as input, and returns a new decoder. The new decoder checks that
-its `unknown` input is an array, and then runs the _input_ decoder on every
-item. What happens if decoding one of the items fails depends on the `mode`:
+Takes a decoder as input, and returns a new decoder. The new decoder checks that its `unknown` input is an array, and then runs the _input_ decoder on every item. What happens if decoding one of the items fails depends on the `mode`:
 
 - `"throw"` (default): Throws a `TypeError` on the first invalid item.
-- `"skip"`: Items that fail are ignored. This means that the decoded array can
-  be shorter than the input array – even empty! Error messages are pushed to the
-  `errors` array, if present.
-- `{ default: U }`: The passed default value is used for items that fail. The
-  decoded array will always have the same length as the input array. Error
-  messages are pushed to the `errors` array, if present.
+- `"skip"`: Items that fail are ignored. This means that the decoded array can be shorter than the input array – even empty! Error messages are pushed to the `errors` array, if present.
+- `{ default: U }`: The passed default value is used for items that fail. The decoded array will always have the same length as the input array. Error messages are pushed to the `errors` array, if present.
 
-If no error was thrown, `Array<T>` is returned (or `Array<T | U>` if you use the
-`{ default: U }` mode).
+If no error was thrown, `Array<T>` is returned (or `Array<T | U>` if you use the `{ default: U }` mode).
 
 Example:
 
@@ -354,21 +315,13 @@ export function dict<T, U = T>(
 ): Decoder<{ [key: string]: T | U }>;
 ```
 
-Takes a decoder as input, and returns a new decoder. The new decoder checks that
-its `unknown` input is an object, and then goes through all keys in the object
-and runs the _input_ decoder on every value. What happens if decoding one of the
-key-values fails depends on the `mode`:
+Takes a decoder as input, and returns a new decoder. The new decoder checks that its `unknown` input is an object, and then goes through all keys in the object and runs the _input_ decoder on every value. What happens if decoding one of the key-values fails depends on the `mode`:
 
 - `"throw"` (default): Throws a `TypeError` on the first invalid item.
-- `"skip"`: Items that fail are ignored. This means that the decoded object can
-  have fewer keys than the input object – it can even be empty! Error messages
-  are pushed to the `errors` array, if present.
-- `{ default: U }`: The passed default value is used for items that fail. The
-  decoded object will always have the same set of keys as the input object.
-  Error messages are pushed to the `errors` array, if present.
+- `"skip"`: Items that fail are ignored. This means that the decoded object can have fewer keys than the input object – it can even be empty! Error messages are pushed to the `errors` array, if present.
+- `{ default: U }`: The passed default value is used for items that fail. The decoded object will always have the same set of keys as the input object. Error messages are pushed to the `errors` array, if present.
 
-If no error was thrown, `{ [key: string]: T }` is returned (or
-`{ [key: string]: T | U }` if you use the `{ default: U }` mode).
+If no error was thrown, `{ [key: string]: T }` is returned (or `{ [key: string]: T | U }` if you use the `{ default: U }` mode).
 
 ```ts
 import { dict, string } from "tiny-decoders";
@@ -407,32 +360,15 @@ export function record<T>(
 ): Decoder<T>;
 ```
 
-Takes a callback function as input, and returns a new decoder. The new decoder
-checks that its `unknown` input is an object, and then calls the callback (the
-object is passed as the `obj` parameter). The callback receives a `field`
-function that is used to pluck values out of object. The callback is allowed to
-return anything, and that is the `T` of the decoder.
+Takes a callback function as input, and returns a new decoder. The new decoder checks that its `unknown` input is an object, and then calls the callback (the object is passed as the `obj` parameter). The callback receives a `field` function that is used to pluck values out of object. The callback is allowed to return anything, and that is the `T` of the decoder.
 
-`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better
-error messages and automatic handling of the `errors` array, if provided. The
-nice thing about `field` is that it does _not_ return a new decoder – but the
-value of that field! This means that you can do for instance
-`const type: string = field("type", string)` and then use `type` however you
-want inside your callback.
+`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better error messages and automatic handling of the `errors` array, if provided. The nice thing about `field` is that it does _not_ return a new decoder – but the value of that field! This means that you can do for instance `const type: string = field("type", string)` and then use `type` however you want inside your callback.
 
-`fieldError("key", "message")` creates an error message for a certain key.
-`throw fieldError("key", "message")` gives an error that lets you know that
-something is wrong with `"key"`, while `throw new TypeError("message")` would
-not be as clear. Useful when [Decoding by type
-name][example-decoding-by-type-name].
+`fieldError("key", "message")` creates an error message for a certain key. `throw fieldError("key", "message")` gives an error that lets you know that something is wrong with `"key"`, while `throw new TypeError("message")` would not be as clear. Useful when [Decoding by type name][example-decoding-by-type-name].
 
-`obj` and `errors` are passed in case you’d need them for some edge case, such
-as if you need to [distinguish between undefined, null and missing
-values][example-missing-values].
+`obj` and `errors` are passed in case you’d need them for some edge case, such as if you need to [distinguish between undefined, null and missing values][example-missing-values].
 
-Note that if your input object and the decoded object look exactly the same and
-you don’t need any advanced features it’s often more convenient to use
-[autoRecord].
+Note that if your input object and the decoded object look exactly the same and you don’t need any advanced features it’s often more convenient to use [autoRecord].
 
 ```ts
 import {
@@ -521,7 +457,7 @@ const shapeDecoder = record(
 );
 
 // Plucking a single field out of an object:
-const ageDecoder: Decoder<number> = record(field => field("age", number));
+const ageDecoder: Decoder<number> = record((field) => field("age", number));
 ```
 
 #### `tuple`
@@ -541,14 +477,9 @@ export function tuple<T>(
 ): Decoder<T>;
 ```
 
-Takes a callback function as input, and returns a new decoder. The new decoder
-checks that its `unknown` input is an array, and then calls the callback.
-`tuple` is just like `record`, but for tuples (arrays) instead of for records
-(objects). Instead of a `field` function, there’s an `item` function that let’s
-you pluck out items of the tuple/array.
+Takes a callback function as input, and returns a new decoder. The new decoder checks that its `unknown` input is an array, and then calls the callback. `tuple` is just like `record`, but for tuples (arrays) instead of for records (objects). Instead of a `field` function, there’s an `item` function that let’s you pluck out items of the tuple/array.
 
-Note that you can return any type from the callback, not just tuples. If you’d
-rather have a record you could return that.
+Note that you can return any type from the callback, not just tuples. If you’d rather have a record you could return that.
 
 ```ts
 import { Decoder, tuple, number, string } from "tiny-decoders";
@@ -571,13 +502,12 @@ const personDecoder = tuple(
 );
 
 // Taking the first number from an array:
-const firstNumberDecoder: Decoder<number> = tuple(item => item(0, number));
+const firstNumberDecoder: Decoder<number> = tuple((item) => item(0, number));
 ```
 
 See also [Decoding tuples][example-tuples].
 
-Most tuples are 2 or 3 in length. If you want to decode such a tuple into a
-TypeScript/Flow tuple it’s usually more convenient to use [pair] and [triple].
+Most tuples are 2 or 3 in length. If you want to decode such a tuple into a TypeScript/Flow tuple it’s usually more convenient to use [pair] and [triple].
 
 #### `pair`
 
@@ -588,8 +518,7 @@ export function pair<T1, T2>(
 ): Decoder<[T1, T2]>;
 ```
 
-A convenience function around [tuple] when you want to decode `[x, y]` into
-`[T1, T2]`.
+A convenience function around [tuple] when you want to decode `[x, y]` into `[T1, T2]`.
 
 ```ts
 import { Decoder, pair, number } from "tiny-decoders";
@@ -609,8 +538,7 @@ export function triple<T1, T2, T3>(
 ): Decoder<[T1, T2, T3]>;
 ```
 
-A convenience function around [tuple] when you want to decode `[x, y, z]` into
-`[T1, T2, T3]`.
+A convenience function around [tuple] when you want to decode `[x, y, z]` into `[T1, T2, T3]`.
 
 ```ts
 import { Decoder, triple, number } from "tiny-decoders";
@@ -632,12 +560,7 @@ export function autoRecord<T>(
 ): Decoder<T>;
 ```
 
-Suppose you have a record `T`. Now make an object that looks just like `T`, but
-where every value is a decoder for its key. `autoRecord` takes such an object –
-called `mapping` – as input and returns a new decoder. The new decoder checks
-that its `unknown` input is an object, and then goes through all the key-decoder
-pairs in the `mapping`. For every key, `mapping[key](value[key])` is run. If all
-of that succeeds it returns a `T`, otherwise it throws a `TypeError`.
+Suppose you have a record `T`. Now make an object that looks just like `T`, but where every value is a decoder for its key. `autoRecord` takes such an object – called `mapping` – as input and returns a new decoder. The new decoder checks that its `unknown` input is an object, and then goes through all the key-decoder pairs in the `mapping`. For every key, `mapping[key](value[key])` is run. If all of that succeeds it returns a `T`, otherwise it throws a `TypeError`.
 
 Example:
 
@@ -659,16 +582,11 @@ const userDecoder = autoRecord<User>({
 
 Notes:
 
-- `autoRecord` is a convenience function instead of [record]. Check out [record]
-  if you need more flexibility, such as renaming fields!
+- `autoRecord` is a convenience function instead of [record]. Check out [record] if you need more flexibility, such as renaming fields!
 
-- The `unknown` input value we’re decoding is allowed to have extra keys not
-  mentioned in the `mapping`. I haven’t found a use case where it is useful to
-  disallow extra keys. This package is about extracting data in a type-safe way,
-  not validation.
+- The `unknown` input value we’re decoding is allowed to have extra keys not mentioned in the `mapping`. I haven’t found a use case where it is useful to disallow extra keys. This package is about extracting data in a type-safe way, not validation.
 
-- Want to _add_ some extra keys? Checkout the [extra
-  fields][example-extra-fields] example.
+- Want to _add_ some extra keys? Checkout the [extra fields][example-extra-fields] example.
 
 #### `deep`
 
@@ -679,19 +597,13 @@ export function deep<T>(
 ): Decoder<T>;
 ```
 
-Takes an array of keys (object keys, and array indexes) and a decoder as input,
-and returns a new decoder. It repeatedly goes deeper and deeper into its
-`unknown` input using the given `path`. If all of those checks succeed it
-returns `T`, otherwise it throws a `TypeError`.
+Takes an array of keys (object keys, and array indexes) and a decoder as input, and returns a new decoder. It repeatedly goes deeper and deeper into its `unknown` input using the given `path`. If all of those checks succeed it returns `T`, otherwise it throws a `TypeError`.
 
-`deep` is used to pick a one-off value from a deep structure, rather than having
-to decode each level manually with [record] and [tuple]. See the [Deep
-example][example-deep].
+`deep` is used to pick a one-off value from a deep structure, rather than having to decode each level manually with [record] and [tuple]. See the [Deep example][example-deep].
 
 Note that `deep([], decoder)` is equivalent to just `decoder`.
 
-You might want to [combine `deep` with `either`][example-deep] since reaching
-deeply into structures is likely to fail.
+You might want to [combine `deep` with `either`][example-deep] since reaching deeply into structures is likely to fail.
 
 Examples:
 
@@ -719,13 +631,9 @@ export function optional<T, U>(
 ): (value: unknown) => T | U;
 ```
 
-Takes a decoder as input, and returns a new decoder. The new decoder returns
-`defaultValue` if its `unknown` input is undefined or null, and runs the _input_
-decoder on the `unknown` otherwise. (If you don’t supply `defaultValue`,
-undefined is used as the default.)
+Takes a decoder as input, and returns a new decoder. The new decoder returns `defaultValue` if its `unknown` input is undefined or null, and runs the _input_ decoder on the `unknown` otherwise. (If you don’t supply `defaultValue`, undefined is used as the default.)
 
-This is especially useful to mark fields as optional in a [record] or
-[autoRecord]:
+This is especially useful to mark fields as optional in a [record] or [autoRecord]:
 
 ```ts
 import { autoRecord, optional, boolean, number, string } from "tiny-decoders";
@@ -749,10 +657,7 @@ In the above example:
 - `.age` is allowed to be undefined, null or missing (defaults to `undefined`).
 - `.active` defaults to `true` if it is undefined, null or missing.
 
-If the need should ever arise, check out the example on how to [distinguish
-between undefined, null and missing values][example-missing-values].
-tiny-decoders treats undefined, null and missing values the same by default, to
-keep things simple.
+If the need should ever arise, check out the example on how to [distinguish between undefined, null and missing values][example-missing-values]. tiny-decoders treats undefined, null and missing values the same by default, to keep things simple.
 
 #### `map`
 
@@ -763,11 +668,7 @@ export function map<T, U>(
 ): Decoder<U>;
 ```
 
-Takes a decoder and a function as input, and returns a new decoder. The new
-decoder runs the _input_ decoder on its `unknown` input, and then passes the
-result to the provided function. That function can return a transformed result.
-It can also be another decoder. If all of that succeeds it returns `U` (the
-return value of `fn`), otherwise it throws a `TypeError`.
+Takes a decoder and a function as input, and returns a new decoder. The new decoder runs the _input_ decoder on its `unknown` input, and then passes the result to the provided function. That function can return a transformed result. It can also be another decoder. If all of that succeeds it returns `U` (the return value of `fn`), otherwise it throws a `TypeError`.
 
 Example:
 
@@ -776,7 +677,7 @@ import { Decoder, map, array, number } from "tiny-decoders";
 
 const numberSetDecoder: Decoder<Set<number>> = map(
   array(number),
-  arr => new Set(arr)
+  (arr) => new Set(arr)
 );
 
 const nameDecoder: Decoder<string> = map(
@@ -789,7 +690,7 @@ const nameDecoder: Decoder<string> = map(
 
 // But the above is actually easier with `record`:
 const nameDecoder2: Decoder<string> = record(
-  field => `${field("firstName", string)} ${field("lastName", string)}`
+  (field) => `${field("firstName", string)} ${field("lastName", string)}`
 );
 ```
 
@@ -810,10 +711,7 @@ export function either<T, U>(
 ): Decoder<T | U>;
 ```
 
-Takes two decoders as input, and returns a new decoder. The new decoder tries to
-run the _first_ input decoder on its `unknown` input. If that succeeds, it
-returns `T`, otherwise it tries the _second_ input decoder. If _that_ succeeds
-it returns `U`, otherwise it throws a `TypeError`.
+Takes two decoders as input, and returns a new decoder. The new decoder tries to run the _first_ input decoder on its `unknown` input. If that succeeds, it returns `T`, otherwise it tries the _second_ input decoder. If _that_ succeeds it returns `U`, otherwise it throws a `TypeError`.
 
 Example:
 
@@ -823,8 +721,7 @@ import { Decoder, either, number, string } from "tiny-decoders";
 const stringOrNumberDecoder: Decoder<string | number> = either(string, number);
 ```
 
-What if you want to try _three_ (or more) decoders? You’ll need to nest another
-`either`:
+What if you want to try _three_ (or more) decoders? You’ll need to nest another `either`:
 
 ```ts
 import { Decoder, either, boolean, number, string } from "tiny-decoders";
@@ -835,12 +732,9 @@ const weirdDecoder: Decoder<string | number | boolean> = either(
 );
 ```
 
-That’s perhaps not very pretty, but not very common either. It would of course
-be possible to add functions like `either2`, `either3`, etc, but I don’t think
-it’s worth it.
+That’s perhaps not very pretty, but not very common either. It would of course be possible to add functions like `either2`, `either3`, etc, but I don’t think it’s worth it.
 
-You can also use `either` [distinguish between undefined, null and missing
-values][example-missing-values].
+You can also use `either` [distinguish between undefined, null and missing values][example-missing-values].
 
 ### Less common decoders
 
@@ -854,24 +748,13 @@ Related: [Decoding `unknown` values.][example-mixed]
 export function lazy<T>(callback: () => Decoder<T>): Decoder<T>;
 ```
 
-Takes a callback function that returns a decoder as input, and returns a new
-decoder. The new decoder runs the callback function to get the _input_ decoder,
-and then runs the input decoder on its `unknown` input. If that succeeds it
-returns `T` (the return value of the input decoder), otherwise it throws a
-`TypeError`.
+Takes a callback function that returns a decoder as input, and returns a new decoder. The new decoder runs the callback function to get the _input_ decoder, and then runs the input decoder on its `unknown` input. If that succeeds it returns `T` (the return value of the input decoder), otherwise it throws a `TypeError`.
 
-`lazy` lets you decode recursive structures. `lazy(() => decoder)` is equivalent
-to just `decoder`, but let’s you use `decoder` before it has been defined yet
-(which is the case for recursive structures). So all `lazy` is doing is allowing
-you to wrap a decoder in an “unnecessary” arrow function, delaying the reference
-to the decoder until it’s safe to access in JavaScript. In other words, you make
-a _lazy_ reference – one that does not evaluate until the last minute.
+`lazy` lets you decode recursive structures. `lazy(() => decoder)` is equivalent to just `decoder`, but let’s you use `decoder` before it has been defined yet (which is the case for recursive structures). So all `lazy` is doing is allowing you to wrap a decoder in an “unnecessary” arrow function, delaying the reference to the decoder until it’s safe to access in JavaScript. In other words, you make a _lazy_ reference – one that does not evaluate until the last minute.
 
-Since [record] and [tuple] take callbacks themselves, lazy is not needed most of
-the time. But `lazy` can come in handy for [array] and [dict].
+Since [record] and [tuple] take callbacks themselves, lazy is not needed most of the time. But `lazy` can come in handy for [array] and [dict].
 
-See the [Recursive example][example-recursive] to learn when and how to use this
-decoder.
+See the [Recursive example][example-recursive] to learn when and how to use this decoder.
 
 #### `mixedArray`
 
@@ -879,14 +762,9 @@ decoder.
 export function mixedArray(value: unknown): ReadonlyArray<unknown>;
 ```
 
-Usually you want to use [array] instead. `array` actually uses this decoder
-behind the scenes, to verify that its `unknown` input is an array (before
-proceeding to decode every item of the array). `mixedArray` _only_ checks that
-its `unknown` input is an array, but does not care about what’s _inside_ the
-array – all those values stay as `unknown`.
+Usually you want to use [array] instead. `array` actually uses this decoder behind the scenes, to verify that its `unknown` input is an array (before proceeding to decode every item of the array). `mixedArray` _only_ checks that its `unknown` input is an array, but does not care about what’s _inside_ the array – all those values stay as `unknown`.
 
-This can be useful for custom decoders, such as when [distinguishing between
-undefined, null and missing values][example-missing-values].
+This can be useful for custom decoders, such as when [distinguishing between undefined, null and missing values][example-missing-values].
 
 #### `mixedDict`
 
@@ -894,15 +772,9 @@ undefined, null and missing values][example-missing-values].
 export function mixedDict(value: unknown): { readonly [key: string]: unknown };
 ```
 
-Usually you want to use [dict] or [record] instead. `dict` and `record` actually
-use this decoder behind the scenes, to verify that its `unknown` input is an
-object (before proceeding to decode values of the object). `mixedDict` _only_
-checks that its `unknown` input is an object, but does not care about what’s
-_inside_ the object – all the keys remain unknown and their values stay as
-`unknown`.
+Usually you want to use [dict] or [record] instead. `dict` and `record` actually use this decoder behind the scenes, to verify that its `unknown` input is an object (before proceeding to decode values of the object). `mixedDict` _only_ checks that its `unknown` input is an object, but does not care about what’s _inside_ the object – all the keys remain unknown and their values stay as `unknown`.
 
-This can be useful for custom decoders, such as when [distinguishing between
-undefined, null and missing values][example-missing-values].
+This can be useful for custom decoders, such as when [distinguishing between undefined, null and missing values][example-missing-values].
 
 ### `repr`
 
@@ -919,18 +791,17 @@ export function repr(
 ): string;
 ```
 
-Takes any value, and returns a string representation of it for use in error
-messages. Useful when making [custom decoders][example-custom-decoders].
+Takes any value, and returns a string representation of it for use in error messages. Useful when making [custom decoders][example-custom-decoders].
 
 Options:
 
-| name              | type      | default | description                                                                                                         |
-| ----------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| recurse           | `boolean` | `true`  | Whether to recursively call `repr` on array items and object values. It only recurses once.                         |
-| maxArrayChildren  | `number`  | `5`     | The number of array items to print (when `recurse` is `true`.)                                                      |
-| maxObjectChildren | `number`  | `3`     | The number of object key-values to print (when `recurse` is `true`.)                                                |
-| maxLength         | `number`  | `100`   | The maximum length of literals, such as strings, before truncating them.                                            |
-| recurseMaxLength  | `number`  | `20`    | Like `maxLength`, but when recursing. One typically wants shorter lengths here to avoid overly long error messages. |
+| name | type | default | description |
+| --- | --- | --- | --- |
+| recurse | `boolean` | `true` | Whether to recursively call `repr` on array items and object values. It only recurses once. |
+| maxArrayChildren | `number` | `5` | The number of array items to print (when `recurse` is `true`.) |
+| maxObjectChildren | `number` | `3` | The number of object key-values to print (when `recurse` is `true`.) |
+| maxLength | `number` | `100` | The maximum length of literals, such as strings, before truncating them. |
+| recurseMaxLength | `number` | `20` | Like `maxLength`, but when recursing. One typically wants shorter lengths here to avoid overly long error messages. |
 
 Example:
 
@@ -952,20 +823,13 @@ function alignmentDecoder(value: string): Alignment {
 }
 ```
 
-This function returns _a_ string, but what that string looks like is not part of
-the public API.
+This function returns _a_ string, but what that string looks like is not part of the public API.
 
 #### Output for sensitive data
 
-By default, the tiny-decoder’s error messages try to be helpful by showing you
-the actual values that failed decoding to make it easier to understand what
-happened. However, if you’re dealing with sensitive data, such as email
-addresses, passwords or social security numbers, you might not want that data to
-potentially appear in error logs.
+By default, the tiny-decoder’s error messages try to be helpful by showing you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
 
-By setting `repr.sensitive = true` you will get error messages containing only
-_where_ the error happened and the actual and expected types, but not showing
-any actual values.
+By setting `repr.sensitive = true` you will get error messages containing only _where_ the error happened and the actual and expected types, but not showing any actual values.
 
 Standard:
 
@@ -979,29 +843,24 @@ With `repr.sensitive = true`:
 object["details"]["ssn"]: Expected a string, but got: number
 ```
 
-All decoders use `repr` internally when making their error messages, so setting
-`repr.sensitive` affect them too. This is admittedly not the most beautiful API,
-but it is tiny.
+All decoders use `repr` internally when making their error messages, so setting `repr.sensitive` affect them too. This is admittedly not the most beautiful API, but it is tiny.
 
-If you need _both_ standard _and_ sensitive output in the same application –
-remember that `repr.sensitive = true` globally affects everything. You’ll need
-to flip `repr.sensitive` back and forth as needed.
+If you need _both_ standard _and_ sensitive output in the same application – remember that `repr.sensitive = true` globally affects everything. You’ll need to flip `repr.sensitive` back and forth as needed.
 
 ## Comparison with nvie/decoders
 
-|                    | [nvie/decoders]                                                                               | tiny-decoders                                                                                                |
-| ------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Size               | [![minified size][min-decoders]<br>![minzipped size][minzip-decoders]][bundlephobia-decoders] | [![minified size][min-tiny-decoders]<br>![minzipped size][minzip-tiny-decoders]][bundlephobia-tiny-decoders] |
-| Dependencies       | ![has dependencies][deps-decoders]                                                            | ![no dependencies][deps-tiny-decoders]                                                                       |
-| Error messages     | Really fancy                                                                                  | Kinda good (size tradeoff)                                                                                   |
-| Built-in functions | Type checking + validation (regex, email)                                                     | Type checking only (validation can be plugged in)                                                            |
-| Decoders…          | …return [Result]s or throw errors                                                             | …only throw errors                                                                                           |
+|  | [nvie/decoders] | tiny-decoders |
+| --- | --- | --- |
+| Size | [![minified size][min-decoders]<br>![minzipped size][minzip-decoders]][bundlephobia-decoders] | [![minified size][min-tiny-decoders]<br>![minzipped size][minzip-tiny-decoders]][bundlephobia-tiny-decoders] |
+| Dependencies | ![has dependencies][deps-decoders] | ![no dependencies][deps-tiny-decoders] |
+| Error messages | Really fancy | Kinda good (size tradeoff) |
+| Built-in functions | Type checking + validation (regex, email) | Type checking only (validation can be plugged in) |
+| Decoders… | …return [Result]s or throw errors | …only throw errors |
 
 In other words:
 
 - [nvie/decoders]: Larger API, fancier error messages, larger size.
-- tiny-decoders: Smaller (and slightly different) API, kinda good error
-  messages, smaller size.
+- tiny-decoders: Smaller (and slightly different) API, kinda good error messages, smaller size.
 
 ### Error messages
 
@@ -1052,9 +911,7 @@ Decoding error:
 ]
 ```
 
-The errors of tiny-decoders are way shorter. As opposed to [nvie/decoders], it
-stops at the _first_ error in a record (instead of showing them all). First, the
-missing “id” field:
+The errors of tiny-decoders are way shorter. As opposed to [nvie/decoders], it stops at the _first_ error in a record (instead of showing them all). First, the missing “id” field:
 
 ```
 TypeError: array[1]["accessories"][0]["id"]: Expected a string, but got: undefined
@@ -1066,11 +923,7 @@ And if we add an “id” we get the “discount” error:
 TypeError: array[1]["accessories"][0]["discount"]: (optional) Expected a number, but got: "5%"
 ```
 
-tiny-decoders used to also print a “stack trace,” showing you a little of each
-parent object and array. After using tiny-decoders for a while I noticed this
-not being super useful. It’s nicer to look at the whole object in a tool of
-choice, and just use the error message to understand _where_ the error is, and
-what is wrong.
+tiny-decoders used to also print a “stack trace,” showing you a little of each parent object and array. After using tiny-decoders for a while I noticed this not being super useful. It’s nicer to look at the whole object in a tool of choice, and just use the error message to understand _where_ the error is, and what is wrong.
 
 ## Development
 
@@ -1084,8 +937,7 @@ You need [Node.js] 12 and npm 6.
 - `npm run dtslint`: Run [dtslint].
 - `npm run prettier`: Run [Prettier] for files other than JS.
 - `npm run doctoc`: Run [doctoc] on README.md.
-- `npm run jest`: Run unit tests. During development, `npm run jest -- --watch`
-  is nice.
+- `npm run jest`: Run unit tests. During development, `npm run jest -- --watch` is nice.
 - `npm run coverage`: Run unit tests with code coverage.
 - `npm build`: Compile with [Babel].
 - `npm test`: Check that everything works.
@@ -1096,11 +948,9 @@ You need [Node.js] 12 and npm 6.
 - `src/`: Source code.
 - `examples/`: Examples, in the form of [Jest] tests.
 - `test/`: [Jest] tests.
-- `flow/`: [Flow] typechecking tests. Turn off “ExpectError” in .flowconfig to
-  see what the errors look like.
+- `flow/`: [Flow] typechecking tests. Turn off “ExpectError” in .flowconfig to see what the errors look like.
 - `typescript/`: [TypeScript] type definitions, config and typechecking tests.
-- `dist/`: Compiled code, built by `npm run build`. This is what is published in
-  the npm package.
+- `dist/`: Compiled code, built by `npm run build`. This is what is published in the npm package.
 
 ## License
 

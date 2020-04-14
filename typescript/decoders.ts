@@ -52,13 +52,13 @@ dict(string)(undefined);
 // $ExpectType string
 record(() => "")(undefined);
 // $ExpectType { a: string; }
-record(field => ({ a: field("a", string) }))(undefined);
+record((field) => ({ a: field("a", string) }))(undefined);
 // $ExpectType string
 tuple(() => "")(undefined);
 // $ExpectType string[]
-tuple(item => [item(0, string)])(undefined);
+tuple((item) => [item(0, string)])(undefined);
 // $ExpectType [string]
-tuple<[string]>(item => [item(0, string)])(undefined);
+tuple<[string]>((item) => [item(0, string)])(undefined);
 // $ExpectType [string, boolean]
 pair(string, boolean)(undefined);
 // $ExpectType [string, boolean, boolean]
@@ -180,25 +180,25 @@ record({
   // $ExpectError
   a: string,
 });
-record(field => field("", string));
-record(field => field("", string, "throw"));
-record(field => field("", string, { default: "" }));
-record(field => field("", string, { default: null }));
+record((field) => field("", string));
+record((field) => field("", string, "throw"));
+record((field) => field("", string, { default: "" }));
+record((field) => field("", string, { default: null }));
 // Wrong key type:
 // $ExpectError
-record(field => field(0, string));
+record((field) => field(0, string));
 // Wrong order:
 // $ExpectError
-record(field => field(string, ""));
+record((field) => field(string, ""));
 // Missing key:
 // $ExpectError
-record(field => field(string));
+record((field) => field(string));
 // Wrong mode:
 // $ExpectError
-record(field => field("", string, "skip"));
+record((field) => field("", string, "skip"));
 // Accidentally passed bare default:
 // $ExpectError
-record(field => field("", string, null));
+record((field) => field("", string, null));
 
 record((field, fieldError) => fieldError("key", "message"));
 // Forgot key:
@@ -224,25 +224,25 @@ record((field, fieldError, obj, errors) => {
   }
 });
 
-tuple(item => item(0, string));
-tuple(item => item(0, string, "throw"));
-tuple(item => item(0, string, { default: "" }));
-tuple(item => item(0, string, { default: null }));
+tuple((item) => item(0, string));
+tuple((item) => item(0, string, "throw"));
+tuple((item) => item(0, string, { default: "" }));
+tuple((item) => item(0, string, { default: null }));
 // Wrong key type:
 // $ExpectError
-tuple(item => item("", string));
+tuple((item) => item("", string));
 // Wrong order:
 // $ExpectError
-tuple(item => item(string, 0));
+tuple((item) => item(string, 0));
 // Missing key:
 // $ExpectError
-tuple(item => item(string));
+tuple((item) => item(string));
 // Wrong mode:
 // $ExpectError
-tuple(item => item(0, string, "skip"));
+tuple((item) => item(0, string, "skip"));
 // Accidentally passed bare default:
 // $ExpectError
-tuple(item => item(0, string, null));
+tuple((item) => item(0, string, null));
 
 tuple((item, itemError) => itemError(0, "message"));
 // Forgot key:

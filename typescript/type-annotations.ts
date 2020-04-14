@@ -32,7 +32,7 @@ const testPerson = { name: "John", age: 30, aye: 0, extra: "" };
 // TypeScript will infer what they decode into (try hovering `personDecoder1`
 // and `personDecoder1Auto` in your editor!), but it won’t know that you
 // intended to decode a `Person`. As you can see, I’ve misspelled `age` as `aye`.
-const personDecoder1 = record(field => ({
+const personDecoder1 = record((field) => ({
   name: field("name", string),
   aye: field("age", number),
 }));
@@ -57,7 +57,7 @@ greet(personDecoder1Auto(testPerson));
 // The way to make the above type errors more clear is to provide explicit type
 // annotations, so that TypeScript knows what you’re trying to do.
 // $ExpectError
-const personDecoder2: Decoder<Person> = record(field => ({
+const personDecoder2: Decoder<Person> = record((field) => ({
   //  ^^^^^^^^^^^^^^
   // Type 'Decoder<{ name: string; aye: number; }>' is not assignable to type 'Decoder<Person>'.
   //   Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'. ts(2322)
@@ -78,7 +78,7 @@ greet(personDecoder2Auto(testPerson));
 // Here’s a shorter way of writing the above – which also gives better error
 // messages!
 // $ExpectError
-const personDecoder3 = record<Person>(field => ({
+const personDecoder3 = record<Person>((field) => ({
   name: field("name", string),
   aye: field("age", number),
 }));
@@ -113,7 +113,7 @@ greet(personDecoder4(testPerson));
  */
 
 // TypeScript allows passing extra properties, so without type annotations there are no errors:
-const personDecoder5 = record(field => ({
+const personDecoder5 = record((field) => ({
   name: field("name", string),
   age: field("age", number),
   extra: field("extra", string),
@@ -127,7 +127,7 @@ greet(personDecoder5(testPerson));
 greet(personDecoder5Auto(testPerson));
 
 // Adding `Decoder<Person>` does not seem to help TypeScript find any errors:
-const personDecoder6: Decoder<Person> = record(field => ({
+const personDecoder6: Decoder<Person> = record((field) => ({
   name: field("name", string),
   age: field("age", number),
   extra: field("extra", string),
@@ -141,7 +141,7 @@ greet(personDecoder6(testPerson));
 greet(personDecoder6Auto(testPerson));
 
 // The shorter notation does produce an error for `autoRecord`, but not for `record`.
-const personDecoder7 = record<Person>(field => ({
+const personDecoder7 = record<Person>((field) => ({
   name: field("name", string),
   age: field("age", number),
   extra: field("extra", string),
@@ -184,7 +184,7 @@ greet(personDecoder8(testPerson));
 // look almost identical to `interface` they decode to!), you can start with the
 // decoder and extract the type afterwards with TypeScript’s `ReturnType`
 // utility.
-const personDecoder9 = record(field => ({
+const personDecoder9 = record((field) => ({
   name: field("name", string),
   age: field("age", number),
 }));
@@ -269,7 +269,7 @@ const user3: User = {
 
 // Here’s the same decoder again, but written using `record` instead of
 // `autoRecord`. It should give the same inferred type.
-const userDecoder2 = record(field => ({
+const userDecoder2 = record((field) => ({
   id: field("id", either(string, number)),
   name: field("name", string),
   age: field("age", number),
@@ -410,7 +410,7 @@ const userDecoder5 = record((field, fieldError) => {
 function getUserDecoder(type: unknown) {
   switch (type) {
     case "anonymous":
-      return record(field => ({
+      return record((field) => ({
         type: field("type", constant("anonymous")),
         sessionId: field("sessionId", number),
       }));
