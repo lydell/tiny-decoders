@@ -3,21 +3,14 @@ const baseRules = require("eslint-config-lydell");
 module.exports = {
   root: true,
   parser: "babel-eslint",
-  plugins: [
-    "flowtype",
-    "flowtype-errors",
-    "import",
-    "jest",
-    "prettier",
-    "simple-import-sort",
-  ],
+  plugins: ["flowtype", "import", "jest", "simple-import-sort"],
   env: { es6: true },
-  rules: Object.assign({}, baseRules({ import: true }), {
+  rules: {
+    ...baseRules({ import: true }),
     "no-console": "error",
-    "prettier/prettier": "error",
     "simple-import-sort/sort": "error",
     "symbol-description": "off",
-  }),
+  },
   overrides: [
     {
       files: [".*.js", "*.{config,script}.js"],
@@ -28,9 +21,7 @@ module.exports = {
     },
     {
       files: ["{src,flow,examples,test}/*.js"],
-      rules: Object.assign({}, baseRules({ builtin: false, flow: true }), {
-        "flowtype-errors/show-errors": "error",
-      }),
+      rules: baseRules({ builtin: false, flow: true }),
     },
     {
       files: ["{examples,test}/*.js"],

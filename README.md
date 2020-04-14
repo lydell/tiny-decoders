@@ -931,17 +931,14 @@ You need [Node.js] 12 and npm 6.
 
 ### npm scripts
 
-- `npm run flow`: Run [Flow].
-- `npm run eslint`: Run [ESLint] \(including [Flow] and [Prettier]).
-- `npm run eslint:fix`: Autofix [ESLint] errors.
+- `npx flow`: Run [Flow].
+- `npm run eslint`: Autofix [ESLint] errors.
 - `npm run dtslint`: Run [dtslint].
 - `npm run prettier`: Run [Prettier] for files other than JS.
 - `npm run doctoc`: Run [doctoc] on README.md.
-- `npm run jest`: Run unit tests. During development, `npm run jest -- --watch` is nice.
-- `npm run coverage`: Run unit tests with code coverage.
+- `npx jest --watch`: Run unit tests.
 - `npm build`: Compile with [Babel].
 - `npm test`: Check that everything works.
-- `npm publish`: Publish to [npm], but only if `npm test` passes.
 
 ### Directories
 
