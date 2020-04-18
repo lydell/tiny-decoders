@@ -212,11 +212,12 @@ test("type annotations", () => {
 
   // If it feels like you are specifying everything twice – once in a `type` or
   // `interface`, and once in the decoder – you might find this `$ReturnType`
-  // technique interesting. Flow will make sure that your type definition and
-  // decoders stay in sync, so there’s little room for error there. But with the
-  // `$ReturnType` approach you don’t have to write what your records look like
-  // “twice.” Personally I don’t mind the “duplication,” but if you do – try out
-  // the `$ReturnType` approach!
+  // technique interesting (but it’s hard to recommend it because the many
+  // caveats documented below). Flow will make sure that your type definition
+  // and decoders stay in sync, so there’s little room for error there. But with
+  // the `$ReturnType` approach you don’t have to write what your records look
+  // like “twice.” Personally I don’t mind the “duplication,” but if you do –
+  // try out the `$ReturnType` approach!
 
   // Here’s a more complex example for trying out Flow’s inference.
   const userDecoder = autoRecord({
