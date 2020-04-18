@@ -699,29 +699,29 @@ test("either", () => {
 
   expect(() => either(string, number)(true))
     .toThrowErrorMatchingInlineSnapshot(`
-    Several decoders failed:
+    "Several decoders failed:
     Expected a string, but got: true
-    Expected a number, but got: true
+    Expected a number, but got: true"
   `);
   expect(() => either(string, either(number, boolean))(null))
     .toThrowErrorMatchingInlineSnapshot(`
-    Several decoders failed:
+    "Several decoders failed:
     Expected a string, but got: null
     Expected a number, but got: null
-    Expected a boolean, but got: null
+    Expected a boolean, but got: null"
   `);
   expect(() => either(either(string, number), boolean)(null))
     .toThrowErrorMatchingInlineSnapshot(`
-    Several decoders failed:
+    "Several decoders failed:
     Expected a string, but got: null
     Expected a number, but got: null
-    Expected a boolean, but got: null
+    Expected a boolean, but got: null"
   `);
   expect(() => either(autoRecord({ a: number }), string)({ a: true }))
     .toThrowErrorMatchingInlineSnapshot(`
-    Several decoders failed:
-    object["a"]: Expected a number, but got: true
-    Expected a string, but got: {"a": true}
+    "Several decoders failed:
+    object[\\"a\\"]: Expected a number, but got: true
+    Expected a string, but got: {\\"a\\": true}"
   `);
 });
 
@@ -755,15 +755,15 @@ test("lazy", () => {
 
   expect(() => decodeNestedNumber([[[["nope"]]]]))
     .toThrowErrorMatchingInlineSnapshot(`
-    array[0]: Several decoders failed:
+    "array[0]: Several decoders failed:
     Expected a number, but got: [Array(1)]
     array[0]: Several decoders failed:
     Expected a number, but got: [Array(1)]
     array[0]: Several decoders failed:
-    Expected a number, but got: ["nope"]
+    Expected a number, but got: [\\"nope\\"]
     array[0]: Several decoders failed:
-    Expected a number, but got: "nope"
-    Expected an array (or array-like object), but got: "nope"
+    Expected a number, but got: \\"nope\\"
+    Expected an array (or array-like object), but got: \\"nope\\""
   `);
 });
 

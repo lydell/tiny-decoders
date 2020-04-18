@@ -38,10 +38,10 @@ test("distinguishing between undefined, null and missing values", () => {
   expect(either(number, constant(null))(null)).toMatchInlineSnapshot(`null`);
   expect(() => either(number, constant(null))(undefined))
     .toThrowErrorMatchingInlineSnapshot(`
-Several decoders failed:
-Expected a number, but got: undefined
-Expected the value null, but got: undefined
-`);
+    "Several decoders failed:
+    Expected a number, but got: undefined
+    Expected the value null, but got: undefined"
+  `);
 
   // If you also need to consider missing values, here’s how to do it.
 

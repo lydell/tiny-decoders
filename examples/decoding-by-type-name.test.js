@@ -147,17 +147,17 @@ test("decoding based on a field", () => {
   expect(searchResultDecoder2(offer)).toEqual(searchResultDecoder1(offer));
   expect(() => searchResultDecoder2(incompleteProduct))
     .toThrowErrorMatchingInlineSnapshot(`
-Several decoders failed:
-object["price"] (missing): Expected a number, but got: undefined
-object["type"]: Expected the value "Category", but got: "Product"
-object["type"]: Expected the value "Offer", but got: "Product"
-`);
+    "Several decoders failed:
+    object[\\"price\\"] (missing): Expected a number, but got: undefined
+    object[\\"type\\"]: Expected the value \\"Category\\", but got: \\"Product\\"
+    object[\\"type\\"]: Expected the value \\"Offer\\", but got: \\"Product\\""
+  `);
   expect(() => searchResultDecoder2(user)).toThrowErrorMatchingInlineSnapshot(`
-Several decoders failed:
-object["type"]: Expected the value "Product", but got: "User"
-object["type"]: Expected the value "Category", but got: "User"
-object["type"]: Expected the value "Offer", but got: "User"
-`);
+    "Several decoders failed:
+    object[\\"type\\"]: Expected the value \\"Product\\", but got: \\"User\\"
+    object[\\"type\\"]: Expected the value \\"Category\\", but got: \\"User\\"
+    object[\\"type\\"]: Expected the value \\"Offer\\", but got: \\"User\\""
+  `);
 
   // This is a better approach:
 
