@@ -2,6 +2,9 @@
 // Waiting for https://github.com/Microsoft/dtslint/issues/137
 // Remove the `--onlyTestTsNext` workaround from `npm run dtslint`.
 
+// Turn off automatic exporting.
+export {};
+
 export type Decoder<T> = (value: unknown, errors?: Array<string>) => T;
 
 type RequiredKeys<T> = {
@@ -27,10 +30,6 @@ export function string(value: unknown): string;
 export function constant<
   T extends boolean | number | string | undefined | null
 >(constantValue: T): (value: unknown) => T;
-
-export function mixedArray(value: unknown): ReadonlyArray<unknown>;
-
-export function mixedDict(value: unknown): { readonly [key: string]: unknown };
 
 export function array<T, U = T>(
   decoder: Decoder<T>,

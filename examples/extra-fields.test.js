@@ -13,7 +13,7 @@ test("adding extra fields to records", () => {
 
   const data: mixed = { name: "Comfortable Bed", price: 10e3 };
 
-  // It’s easy to do with `record`.
+  // It’s easy to do with `fields`.
   const productDecoder1: Decoder<Product> = fields((field) => ({
     name: field("name", string),
     price: field("price", number),

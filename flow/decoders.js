@@ -11,14 +11,11 @@ import {
   fields,
   lazy,
   map,
-  mixedArray,
-  mixedDict,
   number,
   optional,
   pair,
   string,
   triple,
-  tuple,
 } from "../src";
 
 function use(value: mixed) {
@@ -34,10 +31,6 @@ function use(value: mixed) {
 // $ExpectError
 (string(undefined): boolean);
 // $ExpectError
-(mixedArray(undefined): boolean);
-// $ExpectError
-(mixedDict(undefined): boolean);
-// $ExpectError
 (constant("const")(undefined): boolean);
 // $ExpectError
 (array(string)(undefined): boolean);
@@ -52,9 +45,7 @@ function use(value: mixed) {
 // $ExpectError
 (fields((field) => ({ a: field("a", string) }))(undefined): { a: boolean });
 // $ExpectError
-(tuple(() => "")(undefined): boolean);
-// $ExpectError
-(tuple((item) => [item(0, string)])(undefined): [boolean]);
+(fields((field) => [field(0, string)])(undefined): [boolean]);
 // $ExpectError
 (pair(string, boolean)(undefined): [boolean, boolean]);
 // $ExpectError
@@ -76,7 +67,7 @@ function use(value: mixed) {
 // $ExpectError
 (either(
   either(boolean, string),
-  either(number, mixedDict)
+  either(number, constant(true))
 )(undefined): boolean);
 // $ExpectError
 (lazy(() => string)(undefined): boolean);
@@ -88,10 +79,6 @@ boolean(undefined, []);
 number(undefined, []);
 // $ExpectError
 string(undefined, []);
-// $ExpectError
-mixedArray(undefined, []);
-// $ExpectError
-mixedDict(undefined, []);
 // $ExpectError
 constant("const")(undefined, []);
 // $ExpectError
@@ -105,9 +92,6 @@ dict(string)(undefined, {});
 fields(() => "")(undefined, []);
 // $ExpectError
 fields(() => "")(undefined, {});
-tuple(() => "")(undefined, []);
-// $ExpectError
-tuple(() => "")(undefined, {});
 pair(string, boolean)(undefined, []);
 // $ExpectError
 pair(string, boolean)(undefined, {});
@@ -176,9 +160,10 @@ fields((field) => field("", string));
 fields((field) => field("", string, "throw"));
 fields((field) => field("", string, { default: "" }));
 fields((field) => field("", string, { default: null }));
+fields((field) => field(0, string));
 // Wrong key type:
 // $ExpectError
-fields((field) => field(0, string));
+fields((field) => field(null, string));
 // Wrong order:
 // $ExpectError
 fields((field) => field(string, ""));
@@ -193,12 +178,13 @@ fields((field) => field("", string, "skip"));
 fields((field) => field("", string, null));
 
 fields((field, fieldError) => fieldError("key", "message"));
+fields((field, fieldError) => fieldError(0, "message"));
 // Forgot key:
 // $ExpectError
 fields((field, fieldError) => fieldError("message"));
 // Wrong key type:
 // $ExpectError
-fields((field, fieldError) => fieldError(0, "message"));
+fields((field, fieldError) => fieldError(true, "message"));
 // Wrong message type:
 // $ExpectError
 fields((field, fieldError) => fieldError("key", new TypeError("message")));
@@ -208,50 +194,6 @@ fields((field, fieldError, obj, errors) => {
   // Field values are mixed.
   // $ExpectError
   obj.test.toUpperCase();
-  // errors can be null.
-  // $ExpectError
-  errors.slice();
-  if (errors != null) {
-    errors.slice();
-  }
-});
-
-tuple((item) => item(0, string));
-tuple((item) => item(0, string, "throw"));
-tuple((item) => item(0, string, { default: "" }));
-tuple((item) => item(0, string, { default: null }));
-// Wrong key type:
-// $ExpectError
-tuple((item) => item("", string));
-// Wrong order:
-// $ExpectError
-tuple((item) => item(string, 0));
-// Missing key:
-// $ExpectError
-tuple((item) => item(string));
-// Wrong mode:
-// $ExpectError
-tuple((item) => item(0, string, "skip"));
-// Accidentally passed bare default:
-// $ExpectError
-tuple((item) => item(0, string, null));
-
-tuple((item, itemError) => itemError(0, "message"));
-// Forgot key:
-// $ExpectError
-tuple((item, itemError) => itemError("message"));
-// Wrong key type:
-// $ExpectError
-tuple((item, itemError) => itemError("key", "message"));
-// Wrong message type:
-// $ExpectError
-tuple((item, itemError) => itemError(0, new TypeError("message")));
-
-tuple((item, itemError, arr, errors) => {
-  arr.slice();
-  // arr is an array, not an object.
-  // $ExpectError
-  use(arr.test);
   // errors can be null.
   // $ExpectError
   errors.slice();

@@ -9,7 +9,6 @@ import {
   pair,
   string,
   triple,
-  tuple,
 } from "../src";
 
 test("decoding tuples", () => {
@@ -26,14 +25,14 @@ test("decoding tuples", () => {
     ]
   `);
 
-  // If you’d rather produce an object like the following, use `tuple`.
+  // If you’d rather produce an object like the following, use `fields`.
   type Point = {
     x: number,
     y: number,
   };
-  const pointDecoder1: Decoder<Point> = tuple((item) => ({
-    x: item(0, number),
-    y: item(1, number),
+  const pointDecoder1: Decoder<Point> = fields((field) => ({
+    x: field(0, number),
+    y: field(1, number),
   }));
   expect((pointDecoder1(data): Point)).toMatchInlineSnapshot(`
     Object {
@@ -42,7 +41,7 @@ test("decoding tuples", () => {
     }
   `);
 
-  // Or with `pair` with `map`.
+  // Or use `pair` with `map`.
   const pointDecoder2: Decoder<Point> = map(pair(number, number), ([x, y]) => ({
     x,
     y,
@@ -58,12 +57,12 @@ test("decoding tuples", () => {
     ]
   `);
 
-  // For longer tuples, you need to use `tuple`.
-  const longTupleDecoder1 = tuple((item) => [
-    item(0, string),
-    item(1, string),
-    item(2, number),
-    item(3, string),
+  // For longer tuples, you need to use `fields`.
+  const longTupleDecoder1 = fields((field) => [
+    field(0, string),
+    field(1, string),
+    field(2, number),
+    field(3, string),
   ]);
   expect(longTupleDecoder1(["John", "Doe", 30, "Likes swimming."]))
     .toMatchInlineSnapshot(`
@@ -76,11 +75,11 @@ test("decoding tuples", () => {
     `);
 
   // But in such cases it’s probably nicer to switch to an object:
-  const longTupleDecoder2 = tuple((item) => ({
-    firstName: item(0, string),
-    lastName: item(1, string),
-    age: item(2, number),
-    description: item(3, string),
+  const longTupleDecoder2 = fields((field) => ({
+    firstName: field(0, string),
+    lastName: field(1, string),
+    age: field(2, number),
+    description: field(3, string),
   }));
   expect(longTupleDecoder2(["John", "Doe", 30, "Likes swimming."]))
     .toMatchInlineSnapshot(`

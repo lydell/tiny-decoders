@@ -1,6 +1,6 @@
 // @flow strict
 
-import { deep, either, fields, number, optional, tuple } from "../src";
+import { deep, either, fields, number, optional } from "../src";
 
 test("decoding deeply nested values", () => {
   // `deep` lets you reach into deeply nested structures. But on the way
@@ -53,16 +53,16 @@ test("decoding deeply nested values", () => {
       fields((field2) =>
         field2(
           "products",
-          tuple((item1) =>
-            item1(
+          fields((field3) =>
+            field3(
               0,
-              fields((field3) =>
-                field3(
+              fields((field4) =>
+                field4(
                   "accessories",
-                  tuple((item2) =>
-                    item2(
+                  fields((field5) =>
+                    field5(
                       0,
-                      fields((field4) => field4("price", number))
+                      fields((field6) => field6("price", number))
                     )
                   )
                 )

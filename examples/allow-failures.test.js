@@ -7,9 +7,8 @@ test("allowing decoders to fail", () => {
   // to decode, you might not want the entire thing to fail. For example, you
   // might want to use all the data that suceeded and swap in a default value
   // for the part that failed, or skip failing items of an array. The `array`,
-  // `dict`, `record` and `tuple` decoders let you specify how to handle
-  // failures, and where to save error messages. (By default, they _throw_
-  // errors.)
+  // `dict` and `fields` decoders let you specify how to handle failures, and
+  // where to save error messages. (By default, they _throw_ errors.)
 
   const productDecoder = fields((field) => ({
     id: field("id", number),

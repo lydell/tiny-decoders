@@ -399,30 +399,6 @@ Note that if your input object and the decoded object look exactly the same and 
 Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see [Decoding tuples][example-tuples]. Most tuples are 2 or 3 in length. If you want to decode such a tuple into a TypeScript/Flow tuple it’s usually more convenient to use [pair] and [triple].
 
 ```ts
-import { Decoder, tuple, number, string } from "tiny-decoders";
-
-type Person = {
-  firstName: string;
-  lastName: string;
-  age: number;
-  description: string;
-};
-
-// Decoding a tuple into a record:
-const personDecoder = tuple(
-  (item): Person => ({
-    firstName: item(0, string),
-    lastName: item(1, string),
-    age: item(2, number),
-    description: item(3, string),
-  })
-);
-
-// Taking the first number from an array:
-const firstNumberDecoder: Decoder<number> = tuple((item) => item(0, number));
-```
-
-```ts
 import {
   Decoder,
   fields,

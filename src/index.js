@@ -63,7 +63,7 @@ export function array<T, U>(
       try {
         length = number(value.length);
         Array(length);
-      } catch (error) {
+      } catch (_error) {
         throw new TypeError(
           keyErrorMessage(
             "length",

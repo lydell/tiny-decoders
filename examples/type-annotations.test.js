@@ -1,6 +1,6 @@
 // @flow strict
 
-// This file shows how best to annotate your `record` and `autoRecord` decoders
+// This file shows how best to annotate your `fields` and `autoRecord` decoders
 // to maximize the help you get from Flow.
 
 import {
@@ -62,7 +62,7 @@ test("type annotations", () => {
     aye: field("age", number),
   }));
   // ^
-  // Cannot assign `record(...)` to `personDecoder2` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
+  // Cannot assign `fields(...)` to `personDecoder2` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
   // $ExpectError
   const personDecoder2Auto: Decoder<Person> = autoRecord({
     name: string,
@@ -81,10 +81,10 @@ test("type annotations", () => {
     aye: field("age", number),
   }));
   // ^
-  // Cannot call `record` with function bound to `callback` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
+  // Cannot call `fields` with function bound to `callback` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
   greet(personDecoder3(testPerson));
 
-  // For, `record` there’s yet a way of annotating the type:
+  // For, `fields` there’s yet a way of annotating the type:
   // $ExpectError
   const personDecoder4 = fields((field): Person => ({
     name: field("name", string),
@@ -126,7 +126,7 @@ test("type annotations", () => {
     extra: field("extra", string),
   }));
   // ^
-  // Cannot assign `record(...)` to `personDecoder6` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
+  // Cannot assign `fields(...)` to `personDecoder6` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
   // $ExpectError
   const personDecoder6Auto: Decoder<Person> = autoRecord({
     name: string,
@@ -146,10 +146,10 @@ test("type annotations", () => {
     extra: field("extra", string),
   }));
   // ^
-  // Cannot call `record` with function bound to `callback` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
+  // Cannot call `fields` with function bound to `callback` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
   greet(personDecoder7(testPerson));
 
-  // The last type annotation style for `record` produces the best error message:
+  // The last type annotation style for `fields` produces the best error message:
   // $ExpectError
   const personDecoder8 = fields((field): Person => ({
     name: field("name", string),
@@ -177,7 +177,7 @@ test("type annotations", () => {
   // Now let Flow infer some types! Unfortunately, if you hover over `Person2`
   // and `Person3` in you editor, you’ll notice that you won’t see the fully
   // “resolved” type, but instead the whole `$ReturnType<...>`. That looks kinda
-  // OK when using `record`, but is a but noisy for `autoRecord` since you’ll
+  // OK when using `fields`, but is a but noisy for `autoRecord` since you’ll
   // also see the whole `$ObjMap<...>` nonsense. See below.
   const personDecoder9 = fields((field) => ({
     name: field("name", string),
@@ -281,7 +281,7 @@ test("type annotations", () => {
   // Cannot assign object literal to `user3` because property `extra` is missing in  object type [1] but exists in  object literal [2].
   expect(user3).toMatchObject(user);
 
-  // Here’s the same decoder again, but written using `record` instead of
+  // Here’s the same decoder again, but written using `fields` instead of
   // `autoRecord`. It should give the same inferred type.
   const userDecoder2 = fields((field) => ({
     id: field("id", either(string, number)),
