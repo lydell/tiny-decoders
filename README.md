@@ -152,7 +152,7 @@ In TypeScript, you can also write it like this:
 
 ```ts
 import {
-  Optionalize,
+  WithUndefinedAsOptional,
   fields,
   autoRecord,
   string,
@@ -176,9 +176,9 @@ type Person = ReturnType<typeof personDecoder>;
 type Person = ReturnType<typeof personDecoderAuto>;
 
 // If you want fields that can be `undefined` to be optional:
-type Person = Optionalize<ReturnType<typeof personDecoder>>;
+type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
 // or:
-type Person = Optionalize<ReturnType<typeof personDecoderAuto>>;
+type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoderAuto>>;
 ```
 
 In Flow, annotate like this:

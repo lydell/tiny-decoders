@@ -14,7 +14,7 @@ type OptionalKeys<T> = {
 
 type Merge<T> = { [P in keyof T]: T[P] };
 
-export type Optionalize<T> = Merge<
+export type WithUndefinedAsOptional<T> = Merge<
   { [P in RequiredKeys<T>]: T[P] } & { [P in OptionalKeys<T>]?: T[P] }
 >;
 
