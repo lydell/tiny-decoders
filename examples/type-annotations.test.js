@@ -12,6 +12,7 @@ import {
   fields,
   number,
   optional,
+  repr,
   string,
 } from "../src";
 
@@ -84,7 +85,7 @@ test("type annotations", () => {
   // Cannot call `fields` with function bound to `callback` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
   greet(personDecoder3(testPerson));
 
-  // For, `fields` there’s yet a way of annotating the type:
+  // For `fields` there’s yet a way of annotating the type:
   // $ExpectError
   const personDecoder4 = fields((field): Person => ({
     name: field("name", string),
@@ -306,6 +307,67 @@ test("type annotations", () => {
     type: "nope",
   };
   expect({ ...user4, type: "user" }).toMatchObject(user);
+
+  /*
+   * MAKING A TYPE FROM THE DECODER – CAVEATS
+   */
+
+  // Let’s say we need to support two types of users – anonymous and registered ones.
+  // Unfortunately, Flow infers a weird type.
+  const userDecoder3 = fields((field, fieldError) => {
+    const type = field("type", string);
+
+    switch (type) {
+      case "anonymous":
+        return {
+          type: "anonymous",
+          sessionId: field("sessionId", number),
+        };
+
+      case "registered":
+        return {
+          type: "registered",
+          id: field("id", number),
+          name: field("name", string),
+        };
+
+      default:
+        throw fieldError("type", `Unknown user type: ${repr(type)}`);
+    }
+  });
+
+  type User3 = $ReturnType<typeof userDecoder3>;
+
+  // `type` has been inferred to any string, and Flow requires _all_ properties
+  // from both variants to be present!
+  const user5: User3 = {
+    type: "whatever",
+    sessionId: 1,
+    id: 5,
+    name: "John",
+  };
+  expect(user5).toMatchObject({});
+
+  // Finally, there’s one last little detail to know about: How optional fields
+  // are inferred.
+  const itemDecoder = autoRecord({
+    title: string,
+    description: string,
+  });
+
+  // Flow seems to be completely confused here, allowing a completely different object:
+  type Item = $ReturnType<typeof itemDecoder>;
+  // $ExpectError
+  const item1: Item = {
+    other: true,
+  };
+  expect(item1).toMatchObject({});
+  // In TypeScript, fields using the `optional` decoder are always inferred as
+  // `key: T | undefined`, and never as `key?: T`, which means that you always
+  // have to specify the optional fields. I think this is the case in Flow as
+  // well. For TypeScript, tiny-decoders provides a `WithUndefinedAsOptional`
+  // helper that changes all `key: T | undefined` to `key?: T | undefined` of an
+  // object. I don’t know of a way to do that in Flow.
 
   // Because of the worse editor tooltips for inferred types as well as the
   // `constant` caveat, I find it hard to recommend the `$ReturnType` approach

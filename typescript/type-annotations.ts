@@ -5,10 +5,10 @@ import {
   Decoder,
   WithUndefinedAsOptional,
   autoRecord,
-  fields,
   boolean,
   constant,
   either,
+  fields,
   number,
   optional,
   string,
@@ -96,7 +96,7 @@ const personDecoder3Auto = autoRecord<Person>({
 greet(personDecoder3(testPerson));
 greet(personDecoder3Auto(testPerson));
 
-// For, `fields` there’s yet a way of annotating the type:
+// For `fields` there’s yet a way of annotating the type:
 const personDecoder4 = fields(
   (field): Person => ({
     name: field("name", string),
