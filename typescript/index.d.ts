@@ -5,15 +5,18 @@
 export type Decoder<T> = (value: unknown, errors?: Array<string>) => T;
 
 type RequiredKeys<T> = {
-  [key in keyof T]: undefined extends T[key] ? never : key;
+  [P in keyof T]: undefined extends T[P] ? never : P;
 }[keyof T];
 
 type OptionalKeys<T> = {
-  [key in keyof T]: undefined extends T[key] ? key : never;
+  [P in keyof T]: undefined extends T[P] ? P : never;
 }[keyof T];
 
-export type Optionalize<T> = { [key in RequiredKeys<T>]: T[key] } &
-  { [key in OptionalKeys<T>]?: T[key] };
+type Merge<T> = { [P in keyof T]: T[P] };
+
+export type Optionalize<T> = Merge<
+  { [P in RequiredKeys<T>]: T[P] } & { [P in OptionalKeys<T>]?: T[P] }
+>;
 
 export function boolean(value: unknown): boolean;
 
@@ -64,7 +67,7 @@ export function triple<T1, T2, T3>(
 ): Decoder<[T1, T2, T3]>;
 
 export function autoRecord<T>(
-  mapping: { [key in keyof T]: Decoder<T[key]> }
+  mapping: { [P in keyof T]: Decoder<T[P]> }
 ): Decoder<T>;
 
 export function deep<T>(

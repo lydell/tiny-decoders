@@ -581,7 +581,7 @@ See also [Decoding tuples][example-tuples].
 
 ```ts
 export function autoRecord<T>(
-  mapping: { [key in keyof T]: Decoder<T[key]> }
+  mapping: { [P in keyof T]: Decoder<T[P]> }
 ): Decoder<T>;
 ```
 
