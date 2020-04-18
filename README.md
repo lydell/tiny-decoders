@@ -128,48 +128,63 @@ Most of the time, you don’t need to write any type annotations for decoders (b
 However, adding type annotations for record decoders results in much better error messages. The following is the recommended way of annotating record decoders in TypeScript:
 
 ```ts
-import { fields, autoRecord } from "tiny-decoders";
+import { fields, autoRecord, string, number, optional } from "tiny-decoders";
 
 type Person = {
   name: string;
-  age: number;
+  age: number | undefined;
 };
 
 const personDecoder = fields(
   (field): Person => ({
     name: field("name", string),
-    age: field("age", number),
+    age: field("age", optional(number)),
   })
 );
 
 const personDecoderAuto = autoRecord<Person>({
   name: string,
-  age: number,
+  age: optional(number),
 });
 ```
 
 In TypeScript, you can also write it like this:
 
 ```ts
+import {
+  Optionalize,
+  fields,
+  autoRecord,
+  string,
+  number,
+  optional,
+} from "tiny-decoders";
+
 const personDecoder = fields((field) => ({
   name: field("name", string),
-  age: field("age", number),
+  age: field("age", optional(number)),
 }));
 
 const personDecoderAuto = autoRecord({
   name: string,
-  age: number,
+  age: optional(number),
 });
 
+// If you want all fields to be required:
 type Person = ReturnType<typeof personDecoder>;
 // or:
 type Person = ReturnType<typeof personDecoderAuto>;
+
+// If you want fields that can be `undefined` to be optional:
+type Person = Optionalize<ReturnType<typeof personDecoder>>;
+// or:
+type Person = Optionalize<ReturnType<typeof personDecoderAuto>>;
 ```
 
 In Flow, annotate like this:
 
 ```js
-import { fields, autoRecord } from "tiny-decoders";
+import { fields, autoRecord, string, number, optional } from "tiny-decoders";
 
 type Person = {
   name: string,
@@ -178,17 +193,17 @@ type Person = {
 
 const personDecoder = fields((field): Person => ({
   name: field("name", string),
-  age: field("age", number),
+  age: field("age", optional(number)),
 }));
 // or:
 const personDecoder2: Decoder<Person> = fields((field) => ({
   name: field("name", string),
-  age: field("age", number),
+  age: field("age", opitional(number)),
 }));
 
 const personDecoderAuto: Decoder<Person> = autoRecord({
   name: string,
-  age: number,
+  age: optional(number),
 });
 ```
 

@@ -4,6 +4,17 @@
 
 export type Decoder<T> = (value: unknown, errors?: Array<string>) => T;
 
+type RequiredKeys<T> = {
+  [key in keyof T]: undefined extends T[key] ? never : key;
+}[keyof T];
+
+type OptionalKeys<T> = {
+  [key in keyof T]: undefined extends T[key] ? key : never;
+}[keyof T];
+
+export type Optionalize<T> = { [key in RequiredKeys<T>]: T[key] } &
+  { [key in OptionalKeys<T>]?: T[key] };
+
 export function boolean(value: unknown): boolean;
 
 export function number(value: unknown): number;
