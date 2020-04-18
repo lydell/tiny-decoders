@@ -19,6 +19,7 @@ import {
   string,
   triple,
 } from "../src";
+import { thrownError } from "./helpers";
 
 beforeEach(() => {
   repr.sensitive = false;
@@ -699,31 +700,32 @@ test("either", () => {
     `false`
   );
 
-  expect(() => either(string, number)(true))
-    .toThrowErrorMatchingInlineSnapshot(`
-    "Several decoders failed:
+  expect(thrownError(() => either(string, number)(true)))
+    .toMatchInlineSnapshot(`
+    Several decoders failed:
     Expected a string, but got: true
-    Expected a number, but got: true"
+    Expected a number, but got: true
   `);
-  expect(() => either(string, either(number, boolean))(null))
-    .toThrowErrorMatchingInlineSnapshot(`
-    "Several decoders failed:
+  expect(thrownError(() => either(string, either(number, boolean))(null)))
+    .toMatchInlineSnapshot(`
+    Several decoders failed:
     Expected a string, but got: null
     Expected a number, but got: null
-    Expected a boolean, but got: null"
+    Expected a boolean, but got: null
   `);
-  expect(() => either(either(string, number), boolean)(null))
-    .toThrowErrorMatchingInlineSnapshot(`
-    "Several decoders failed:
+  expect(thrownError(() => either(either(string, number), boolean)(null)))
+    .toMatchInlineSnapshot(`
+    Several decoders failed:
     Expected a string, but got: null
     Expected a number, but got: null
-    Expected a boolean, but got: null"
+    Expected a boolean, but got: null
   `);
-  expect(() => either(autoRecord({ a: number }), string)({ a: true }))
-    .toThrowErrorMatchingInlineSnapshot(`
-    "Several decoders failed:
-    object[\\"a\\"]: Expected a number, but got: true
-    Expected a string, but got: {\\"a\\": true}"
+  expect(
+    thrownError(() => either(autoRecord({ a: number }), string)({ a: true }))
+  ).toMatchInlineSnapshot(`
+    Several decoders failed:
+    object["a"]: Expected a number, but got: true
+    Expected a string, but got: {"a": true}
   `);
 });
 
@@ -755,17 +757,17 @@ test("lazy", () => {
     ]
   `);
 
-  expect(() => decodeNestedNumber([[[["nope"]]]]))
-    .toThrowErrorMatchingInlineSnapshot(`
-    "array[0]: Several decoders failed:
-    Expected a number, but got: [Array(1)]
+  expect(thrownError(() => decodeNestedNumber([[[["nope"]]]])))
+    .toMatchInlineSnapshot(`
     array[0]: Several decoders failed:
     Expected a number, but got: [Array(1)]
     array[0]: Several decoders failed:
-    Expected a number, but got: [\\"nope\\"]
+    Expected a number, but got: [Array(1)]
     array[0]: Several decoders failed:
-    Expected a number, but got: \\"nope\\"
-    Expected an object/array, but got: \\"nope\\""
+    Expected a number, but got: ["nope"]
+    array[0]: Several decoders failed:
+    Expected a number, but got: "nope"
+    Expected an object/array, but got: "nope"
   `);
 });
 

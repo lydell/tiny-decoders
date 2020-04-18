@@ -9,6 +9,7 @@ import {
   optional,
   string,
 } from "../src";
+import { thrownError } from "../test/helpers";
 
 test("distinguishing between undefined, null and missing values", () => {
   // When decoding objects, arrays and tuples, the value for a property or index
@@ -36,11 +37,11 @@ test("distinguishing between undefined, null and missing values", () => {
   // `constant(null)` or `constant(undefined)`.
   expect(either(number, constant(null))(0)).toMatchInlineSnapshot(`0`);
   expect(either(number, constant(null))(null)).toMatchInlineSnapshot(`null`);
-  expect(() => either(number, constant(null))(undefined))
-    .toThrowErrorMatchingInlineSnapshot(`
-    "Several decoders failed:
+  expect(thrownError(() => either(number, constant(null))(undefined)))
+    .toMatchInlineSnapshot(`
+    Several decoders failed:
     Expected a number, but got: undefined
-    Expected the value null, but got: undefined"
+    Expected the value null, but got: undefined
   `);
 
   // If you also need to consider missing values, here’s how to do it.

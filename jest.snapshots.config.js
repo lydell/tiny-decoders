@@ -2,9 +2,6 @@
 // Before: `"\\"string\\""`
 // After: `"string"`
 module.exports = {
-  test: (value) =>
-    typeof value === "string" &&
-    value.includes("Expected") &&
-    !value.includes("\n"),
+  test: (value) => typeof value === "string" && value.includes("Expected"),
   print: (value) => value,
 };
