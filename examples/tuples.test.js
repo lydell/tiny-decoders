@@ -3,10 +3,10 @@
 import {
   type Decoder,
   autoRecord,
+  fields,
   map,
   number,
   pair,
-  record,
   string,
   triple,
   tuple,
@@ -94,7 +94,7 @@ test("decoding tuples", () => {
 
   // Finally, you can of course decode an object to a tuple as well:
   const obj: mixed = { x: 1, y: 2 };
-  const pointTupleDecoder2: Decoder<PointTuple> = record((field) => [
+  const pointTupleDecoder2: Decoder<PointTuple> = fields((field) => [
     field("x", number),
     field("y", number),
   ]);

@@ -1,6 +1,6 @@
 // @flow strict
 
-import { array, number, record, string } from "../src";
+import { array, fields, number, string } from "../src";
 
 test("allowing decoders to fail", () => {
   // If you have a record, an array or a dict and a single field or item fails
@@ -11,7 +11,7 @@ test("allowing decoders to fail", () => {
   // failures, and where to save error messages. (By default, they _throw_
   // errors.)
 
-  const productDecoder = record((field) => ({
+  const productDecoder = fields((field) => ({
     id: field("id", number),
     name: field("name", string),
     description: field("description", string, { default: "" }),

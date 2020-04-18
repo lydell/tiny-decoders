@@ -28,28 +28,15 @@ export function dict<T, U = T>(
   mode?: "throw" | "skip" | { default: U }
 ): Decoder<{ [key: string]: T | U }>;
 
-export function record<T>(
+export function fields<T>(
   callback: (
     field: <U, V = U>(
-      key: string,
+      key: string | number,
       decoder: Decoder<U>,
       mode?: "throw" | { default: V }
     ) => U | V,
-    fieldError: (key: string, message: string) => TypeError,
+    fieldError: (key: string | number, message: string) => TypeError,
     obj: { readonly [key: string]: unknown },
-    errors?: Array<string>
-  ) => T
-): Decoder<T>;
-
-export function tuple<T>(
-  callback: (
-    item: <U, V = U>(
-      index: number,
-      decoder: Decoder<U>,
-      mode?: "throw" | { default: V }
-    ) => U | V,
-    itemError: (key: number, message: string) => TypeError,
-    arr: ReadonlyArray<unknown>,
     errors?: Array<string>
   ) => T
 ): Decoder<T>;

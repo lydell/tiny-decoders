@@ -8,10 +8,10 @@ import {
   constant,
   dict,
   either,
+  fields,
   map,
   number,
   optional,
-  record,
   repr,
   string,
 } from "../src";
@@ -51,7 +51,7 @@ test("decoding based on a field", () => {
     isActive: boolean,
   });
 
-  const searchResultDecoder1: Decoder<SearchResult> = record(
+  const searchResultDecoder1: Decoder<SearchResult> = fields(
     (field, fieldError, obj, errors) => {
       const type = field("type", string);
 
@@ -178,7 +178,7 @@ object["type"]: Expected the value "Offer", but got: "User"
     }
   }
 
-  const searchResultDecoder3 = record((field, fieldError, obj, errors) => {
+  const searchResultDecoder3 = fields((field, fieldError, obj, errors) => {
     const decoder = field("type", map(string, getSearchResultDecoder));
     return decoder(obj, errors);
   });
@@ -197,7 +197,7 @@ object["type"]: Expected the value "Offer", but got: "User"
   // `searchResultDecoder3` could also have been written like this, but that
   // gives a worse error message when `type` is invalid (which doesn’t indicate
   // that the error happened in the `type` field).
-  const searchResultDecoder4 = record((field, fieldError, obj, errors) => {
+  const searchResultDecoder4 = fields((field, fieldError, obj, errors) => {
     const decoder = getSearchResultDecoder(field("type", string));
     return decoder(obj, errors);
   });
@@ -298,7 +298,7 @@ test("using several fields to decide how to decode", () => {
     },
   };
 
-  const personDecoder: Decoder<Person> = record((field) => {
+  const personDecoder: Decoder<Person> = fields((field) => {
     // First get the roles, and then decode based on those.
     const isUser = field("isUser", optional(boolean, false));
     const isAdmin = field("isAdmin", optional(boolean, false));

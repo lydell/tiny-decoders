@@ -4,9 +4,9 @@ import {
   type Decoder,
   constant,
   either,
+  fields,
   number,
   optional,
-  record,
   string,
 } from "../src";
 
@@ -52,7 +52,7 @@ Expected the value null, but got: undefined
     age: Age,
   };
 
-  const userDecoder: Decoder<User> = record((field, fieldError, obj) => ({
+  const userDecoder: Decoder<User> = fields((field, fieldError, obj) => ({
     name: field("name", string),
     // This manual checking is little bit ugly but also kind of clear in what it
     // is doing.

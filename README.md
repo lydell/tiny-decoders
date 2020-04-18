@@ -12,7 +12,7 @@ import {
   either,
   number,
   optional,
-  record,
+  fields,
   string,
 } from "tiny-decoders";
 
@@ -24,7 +24,7 @@ type User = {
   id: string | number;
 };
 
-const userDecoder = record(
+const userDecoder = fields(
   (field): User => ({
     name: field("full_name", string),
     active: field("is_active", boolean),
@@ -79,8 +79,7 @@ The error can look like this:
     - [Tolerant decoding](#tolerant-decoding)
     - [`array`](#array)
     - [`dict`](#dict)
-    - [`record`](#record)
-    - [`tuple`](#tuple)
+    - [`fields`](#fields)
     - [`pair`](#pair)
     - [`triple`](#triple)
     - [`autoRecord`](#autorecord)
@@ -88,10 +87,7 @@ The error can look like this:
     - [`optional`](#optional)
     - [`map`](#map)
     - [`either`](#either)
-  - [Less common decoders](#less-common-decoders)
-    - [`lazy`](#lazy)
-    - [`mixedArray`](#mixedarray)
-    - [`mixedDict`](#mixeddict)
+  - [Recursive decoding: `lazy`](#recursive-decoding-lazy)
   - [`repr`](#repr)
     - [Output for sensitive data](#output-for-sensitive-data)
 - [Comparison with nvie/decoders](#comparison-with-nviedecoders)
@@ -132,14 +128,14 @@ Most of the time, you don’t need to write any type annotations for decoders (b
 However, adding type annotations for record decoders results in much better error messages. The following is the recommended way of annotating record decoders in TypeScript:
 
 ```ts
-import { record, autoRecord } from "tiny-decoders";
+import { fields, autoRecord } from "tiny-decoders";
 
 type Person = {
   name: string;
   age: number;
 };
 
-const personDecoder = record(
+const personDecoder = fields(
   (field): Person => ({
     name: field("name", string),
     age: field("age", number),
@@ -155,7 +151,7 @@ const personDecoderAuto = autoRecord<Person>({
 In TypeScript, you can also write it like this:
 
 ```ts
-const personDecoder = record((field) => ({
+const personDecoder = fields((field) => ({
   name: field("name", string),
   age: field("age", number),
 }));
@@ -173,19 +169,19 @@ type Person = ReturnType<typeof personDecoderAuto>;
 In Flow, annotate like this:
 
 ```js
-import { record, autoRecord } from "tiny-decoders";
+import { fields, autoRecord } from "tiny-decoders";
 
 type Person = {
   name: string,
   age: number,
 };
 
-const personDecoder = record((field): Person => ({
+const personDecoder = fields((field): Person => ({
   name: field("name", string),
   age: field("age", number),
 }));
 // or:
-const personDecoder2: Decoder<Person> = record((field) => ({
+const personDecoder2: Decoder<Person> = fields((field) => ({
   name: field("name", string),
   age: field("age", number),
 }));
@@ -219,6 +215,8 @@ The type definition does not show that decoder functions throw `TypeError`s when
 ### Primitive decoders
 
 > Booleans, numbers and strings, plus [constant].
+
+Related: [Decoding `unknown` values.][example-mixed]
 
 #### `boolean`
 
@@ -264,18 +262,18 @@ For an array, you need to not just make sure that the value is an array, but als
 
 Note that there is no `object` decoder, because there are two ways of decoding objects:
 
-- If you know all the keys, use [record] or [autoRecord].
+- If you know all the keys, use [fields] or [autoRecord].
 - If the keys are dynamic and all values have the same type, use [dict].
 
-Some languages also have _tuples_ in addition to arrays. Both TypeScript and Flow lets you use arrays as tuples if you want, which is also common in JSON. Use [tuple], [pair] and [triple] to decode tuples.
+Some languages also have _tuples_ in addition to arrays. Both TypeScript and Flow lets you use arrays as tuples if you want, which is also common in JSON. Use [fields], [pair] and [triple] to decode tuples.
 
-(Related: The less common decoders [mixedArray] and [mixedDict].)
+All decoders that work with objects also accept arrays, because arrays are objects too.
 
 #### Tolerant decoding
 
 Since arrays and objects can hold multiple values, their decoders allow opting into tolerant decoding, where you can recover from errors, either by skipping values or providing defaults. Whenever that happens, the message of the error that would otherwise have been thrown is pushed to an `errors` array (`Array<string>`, if provided), allowing you to inspect what was ignored. (Perhaps not the most beautiful API, but very simple.)
 
-For example, if you pass an `errors` array to a [record] decoder, it will both push to the array and pass it along to its sub-decoders so they can push to it as well.
+For example, if you pass an `errors` array to a [fields] decoder, it will both push to the array and pass it along to its sub-decoders so they can push to it as well.
 
 #### `array`
 
@@ -286,13 +284,15 @@ export function array<T, U = T>(
 ): Decoder<Array<T | U>>;
 ```
 
-Takes a decoder as input, and returns a new decoder. The new decoder checks that its `unknown` input is an array, and then runs the _input_ decoder on every item. What happens if decoding one of the items fails depends on the `mode`:
+Takes a decoder as input, and returns a new decoder. The new decoder checks that its `unknown` input is an array (or array-like object), and then runs the _input_ decoder on every item. What happens if decoding one of the items fails depends on the `mode`:
 
 - `"throw"` (default): Throws a `TypeError` on the first invalid item.
 - `"skip"`: Items that fail are ignored. This means that the decoded array can be shorter than the input array – even empty! Error messages are pushed to the `errors` array, if present.
 - `{ default: U }`: The passed default value is used for items that fail. The decoded array will always have the same length as the input array. Error messages are pushed to the `errors` array, if present.
 
 If no error was thrown, `Array<T>` is returned (or `Array<T | U>` if you use the `{ default: U }` mode).
+
+An array-like object is an object with a `length` property which is a number (unsigned 32-bit integer). The decoder will go through all integers from 0 to (but not including) `length`.
 
 Example:
 
@@ -311,6 +311,10 @@ arrayOfStringsDecoder1(["a", "b", "c"]);
 // Optionally collect error messages when `mode` isn’t `"throw"`:
 const errors = [];
 arrayOfStringsDecoder2(["a", 0, "c"], errors);
+
+// Decode an array-like object, such as `Buffer`.
+const bufferDecoder: Decoder<Array<number>> = array(number);
+bufferDecoder(Buffer.from("hi"));
 ```
 
 #### `dict`
@@ -350,17 +354,17 @@ const errors = [];
 dictOfStringsDecoder2({ a: "1", b: 0 }, errors);
 ```
 
-#### `record`
+#### `fields`
 
 ```ts
-export function record<T>(
+export function fields<T>(
   callback: (
     field: <U, V = U>(
-      key: string,
+      key: string | number,
       decoder: Decoder<U>,
       mode?: "throw" | { default: V }
     ) => U | V,
-    fieldError: (key: string, message: string) => TypeError,
+    fieldError: (key: string | number, message: string) => TypeError,
     obj: { readonly [key: string]: unknown },
     errors?: Array<string>
   ) => T
@@ -377,10 +381,36 @@ Takes a callback function as input, and returns a new decoder. The new decoder c
 
 Note that if your input object and the decoded object look exactly the same and you don’t need any advanced features it’s often more convenient to use [autoRecord].
 
+Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see [Decoding tuples][example-tuples]. Most tuples are 2 or 3 in length. If you want to decode such a tuple into a TypeScript/Flow tuple it’s usually more convenient to use [pair] and [triple].
+
+```ts
+import { Decoder, tuple, number, string } from "tiny-decoders";
+
+type Person = {
+  firstName: string;
+  lastName: string;
+  age: number;
+  description: string;
+};
+
+// Decoding a tuple into a record:
+const personDecoder = tuple(
+  (item): Person => ({
+    firstName: item(0, string),
+    lastName: item(1, string),
+    age: item(2, number),
+    description: item(3, string),
+  })
+);
+
+// Taking the first number from an array:
+const firstNumberDecoder: Decoder<number> = tuple((item) => item(0, number));
+```
+
 ```ts
 import {
   Decoder,
-  record,
+  fields,
   boolean,
   number,
   string,
@@ -397,7 +427,7 @@ type User = {
   version: 1;
 };
 
-const userDecoder = record(
+const userDecoder = fields(
   (field): User => ({
     // Simple field:
     age: field("age", number),
@@ -428,6 +458,25 @@ userDecoder(userData);
 const errors = [];
 userDecoder(userData, errors);
 
+// `fields` can also be used for arrays/tuples:
+const userTupleDecoder = fields(
+  (field): User => ({
+    // You can use numbers as keys. It makes no difference, but is convenient
+    // when decoding arrays/tuples.
+    age: field(0, number),
+    active: field(1, boolean),
+    name: `${field(2, string)} ${field(3, string)}`,
+    description: field(4, optional(string)),
+    legacyId: field(5, number, { default: undefined }),
+    version: 1,
+  })
+);
+
+const userTuple: unknown = [30, true, "John", "Doe"];
+
+// Decode a user tuple:
+userTupleDecoder(userTuple);
+
 type Shape =
   | {
       type: "Circle";
@@ -440,7 +489,7 @@ type Shape =
     };
 
 // Decoding by type name:
-const shapeDecoder = record(
+const shapeDecoder = fields(
   (field): Shape => {
     const type = field("type", string);
     switch (type) {
@@ -464,57 +513,11 @@ const shapeDecoder = record(
 );
 
 // Plucking a single field out of an object:
-const ageDecoder: Decoder<number> = record((field) => field("age", number));
-```
-
-#### `tuple`
-
-```ts
-export function tuple<T>(
-  callback: (
-    item: <U, V = U>(
-      index: number,
-      decoder: Decoder<U>,
-      mode?: "throw" | { default: V }
-    ) => U | V,
-    itemError: (key: number, message: string) => TypeError,
-    arr: ReadonlyArray<unknown>,
-    errors?: Array<string>
-  ) => T
-): Decoder<T>;
-```
-
-Takes a callback function as input, and returns a new decoder. The new decoder checks that its `unknown` input is an array, and then calls the callback. `tuple` is just like `record`, but for tuples (arrays) instead of for records (objects). Instead of a `field` function, there’s an `item` function that let’s you pluck out items of the tuple/array.
-
-Note that you can return any type from the callback, not just tuples. If you’d rather have a record you could return that.
-
-```ts
-import { Decoder, tuple, number, string } from "tiny-decoders";
-
-type Person = {
-  firstName: string;
-  lastName: string;
-  age: number;
-  description: string;
-};
-
-// Decoding a tuple into a record:
-const personDecoder = tuple(
-  (item): Person => ({
-    firstName: item(0, string),
-    lastName: item(1, string),
-    age: item(2, number),
-    description: item(3, string),
-  })
-);
+const ageDecoder: Decoder<number> = fields((field) => field("age", number));
 
 // Taking the first number from an array:
-const firstNumberDecoder: Decoder<number> = tuple((item) => item(0, number));
+const firstNumberDecoder: Decoder<number> = tuple((field) => field(0, number));
 ```
-
-See also [Decoding tuples][example-tuples].
-
-Most tuples are 2 or 3 in length. If you want to decode such a tuple into a TypeScript/Flow tuple it’s usually more convenient to use [pair] and [triple].
 
 #### `pair`
 
@@ -525,7 +528,7 @@ export function pair<T1, T2>(
 ): Decoder<[T1, T2]>;
 ```
 
-A convenience function around [tuple] when you want to decode `[x, y]` into `[T1, T2]`.
+A convenience function around [fields] when you want to decode `[x, y]` into `[T1, T2]`.
 
 ```ts
 import { Decoder, pair, number } from "tiny-decoders";
@@ -545,7 +548,7 @@ export function triple<T1, T2, T3>(
 ): Decoder<[T1, T2, T3]>;
 ```
 
-A convenience function around [tuple] when you want to decode `[x, y, z]` into `[T1, T2, T3]`.
+A convenience function around [fields] when you want to decode `[x, y, z]` into `[T1, T2, T3]`.
 
 ```ts
 import { Decoder, triple, number } from "tiny-decoders";
@@ -589,7 +592,7 @@ const userDecoder = autoRecord<User>({
 
 Notes:
 
-- `autoRecord` is a convenience function instead of [record]. Check out [record] if you need more flexibility, such as renaming fields!
+- `autoRecord` is a convenience function instead of [fields]. Check out [fields] if you need more flexibility, such as renaming fields!
 
 - The `unknown` input value we’re decoding is allowed to have extra keys not mentioned in the `mapping`. I haven’t found a use case where it is useful to disallow extra keys. This package is about extracting data in a type-safe way, not validation.
 
@@ -606,7 +609,7 @@ export function deep<T>(
 
 Takes an array of keys (object keys, and array indexes) and a decoder as input, and returns a new decoder. It repeatedly goes deeper and deeper into its `unknown` input using the given `path`. If all of those checks succeed it returns `T`, otherwise it throws a `TypeError`.
 
-`deep` is used to pick a one-off value from a deep structure, rather than having to decode each level manually with [record] and [tuple]. See the [Deep example][example-deep].
+`deep` is used to pick a one-off value from a deep structure, rather than having to decode each level manually with [fields]. See the [Deep example][example-deep].
 
 Note that `deep([], decoder)` is equivalent to just `decoder`.
 
@@ -640,7 +643,7 @@ export function optional<T, U>(
 
 Takes a decoder as input, and returns a new decoder. The new decoder returns `defaultValue` if its `unknown` input is undefined or null, and runs the _input_ decoder on the `unknown` otherwise. (If you don’t supply `defaultValue`, undefined is used as the default.)
 
-This is especially useful to mark fields as optional in a [record] or [autoRecord]:
+This is especially useful to mark fields as optional in [fields] or [autoRecord]:
 
 ```ts
 import { autoRecord, optional, boolean, number, string } from "tiny-decoders";
@@ -680,7 +683,7 @@ Takes a decoder and a function as input, and returns a new decoder. The new deco
 Example:
 
 ```ts
-import { Decoder, map, array, number } from "tiny-decoders";
+import { Decoder, map, array, autoRecord, fields, number } from "tiny-decoders";
 
 const numberSetDecoder: Decoder<Set<number>> = map(
   array(number),
@@ -695,8 +698,8 @@ const nameDecoder: Decoder<string> = map(
   ({ firstName, lastName }) => `${firstName} ${lastName}`
 );
 
-// But the above is actually easier with `record`:
-const nameDecoder2: Decoder<string> = record(
+// But the above is actually easier with `fields`:
+const nameDecoder2: Decoder<string> = fields(
   (field) => `${field("firstName", string)} ${field("lastName", string)}`
 );
 ```
@@ -743,13 +746,7 @@ That’s perhaps not very pretty, but not very common either. It would of course
 
 You can also use `either` [distinguish between undefined, null and missing values][example-missing-values].
 
-### Less common decoders
-
-> Recursive structures, as well as less precise objects and arrays.
-
-Related: [Decoding `unknown` values.][example-mixed]
-
-#### `lazy`
+### Recursive decoding: `lazy`
 
 ```ts
 export function lazy<T>(callback: () => Decoder<T>): Decoder<T>;
@@ -757,31 +754,11 @@ export function lazy<T>(callback: () => Decoder<T>): Decoder<T>;
 
 Takes a callback function that returns a decoder as input, and returns a new decoder. The new decoder runs the callback function to get the _input_ decoder, and then runs the input decoder on its `unknown` input. If that succeeds it returns `T` (the return value of the input decoder), otherwise it throws a `TypeError`.
 
-`lazy` lets you decode recursive structures. `lazy(() => decoder)` is equivalent to just `decoder`, but let’s you use `decoder` before it has been defined yet (which is the case for recursive structures). So all `lazy` is doing is allowing you to wrap a decoder in an “unnecessary” arrow function, delaying the reference to the decoder until it’s safe to access in JavaScript. In other words, you make a _lazy_ reference – one that does not evaluate until the last minute.
+`lazy` lets you decode recursive structures. `lazy(() => decoder)` is equivalent to just `decoder`, but lets you use `decoder` before it has been defined yet (which is the case for recursive structures). So all `lazy` is doing is allowing you to wrap a decoder in an “unnecessary” arrow function, delaying the reference to the decoder until it’s safe to access in JavaScript. In other words, you make a _lazy_ reference – one that does not evaluate until the last minute.
 
-Since [record] and [tuple] take callbacks themselves, lazy is not needed most of the time. But `lazy` can come in handy for [array] and [dict].
+Since [fields] takes a callback itself, lazy is not needed most of the time. But `lazy` can come in handy for [array] and [dict].
 
 See the [Recursive example][example-recursive] to learn when and how to use this decoder.
-
-#### `mixedArray`
-
-```ts
-export function mixedArray(value: unknown): ReadonlyArray<unknown>;
-```
-
-Usually you want to use [array] instead. `array` actually uses this decoder behind the scenes, to verify that its `unknown` input is an array (before proceeding to decode every item of the array). `mixedArray` _only_ checks that its `unknown` input is an array, but does not care about what’s _inside_ the array – all those values stay as `unknown`.
-
-This can be useful for custom decoders, such as when [distinguishing between undefined, null and missing values][example-missing-values].
-
-#### `mixedDict`
-
-```ts
-export function mixedDict(value: unknown): { readonly [key: string]: unknown };
-```
-
-Usually you want to use [dict] or [record] instead. `dict` and `record` actually use this decoder behind the scenes, to verify that its `unknown` input is an object (before proceeding to decode values of the object). `mixedDict` _only_ checks that its `unknown` input is an object, but does not care about what’s _inside_ the object – all the keys remain unknown and their values stay as `unknown`.
-
-This can be useful for custom decoders, such as when [distinguishing between undefined, null and missing values][example-missing-values].
 
 ### `repr`
 
@@ -983,6 +960,7 @@ You need [Node.js] 12 and npm 6.
 [example-sets]: https://github.com/lydell/tiny-decoders/blob/master/examples/sets.test.js
 [example-tuples]: https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.js
 [example-type-annotations]: https://github.com/lydell/tiny-decoders/blob/master/examples/type-annotations.test.js
+[fields]: #fields
 [jest]: https://jestjs.io/
 [map]: #map
 [min-decoders]: https://img.shields.io/bundlephobia/min/decoders.svg
@@ -995,9 +973,7 @@ You need [Node.js] 12 and npm 6.
 [pair]: #pair
 [prettier]: https://prettier.io/
 [primitive-decoders]: #primitive-decoders
-[record]: #record
 [result]: https://github.com/nvie/lemons.js#result
 [returns-decoders]: #functions-that-return-a-decoder
 [triple]: #triple
-[tuple]: #tuple
 [typescript-type-annotations]: https://github.com/lydell/tiny-decoders/blob/master/typescript/type-annotations.ts

@@ -9,6 +9,7 @@ import {
   deep,
   dict,
   either,
+  fields,
   lazy,
   map,
   mixedArray,
@@ -16,7 +17,6 @@ import {
   number,
   optional,
   pair,
-  record,
   repr,
   string,
   triple,
@@ -273,9 +273,9 @@ test("dict", () => {
 });
 
 test("record", () => {
-  expect(record(() => ({}))({})).toMatchInlineSnapshot(`Object {}`);
+  expect(fields(() => ({}))({})).toMatchInlineSnapshot(`Object {}`);
   expect(
-    record((field) => ({
+    fields((field) => ({
       first: field("first", boolean),
       second: field("last", constant("renamed")),
     }))({
@@ -289,49 +289,49 @@ test("record", () => {
     }
   `);
 
-  expect(() => record(() => "")("string")).toThrowErrorMatchingInlineSnapshot(
+  expect(() => fields(() => "")("string")).toThrowErrorMatchingInlineSnapshot(
     `Expected an object, but got: "string"`
   );
   expect(() =>
-    record((field) => ({ a: field("missing", boolean) }))({})
+    fields((field) => ({ a: field("missing", boolean) }))({})
   ).toThrowErrorMatchingInlineSnapshot(
     `object["missing"] (missing): Expected a boolean, but got: undefined`
   );
 });
 
 test("record field", () => {
-  expect(record((field) => field("a", number))({ a: 1 })).toMatchInlineSnapshot(
+  expect(fields((field) => field("a", number))({ a: 1 })).toMatchInlineSnapshot(
     `1`
   );
   expect(
-    record((field) => field("size", number))(new Set([1, 2]))
+    fields((field) => field("size", number))(new Set([1, 2]))
   ).toMatchInlineSnapshot(`2`);
 
   expect(() =>
-    record((field) => field("a", number))(null)
+    fields((field) => field("a", number))(null)
   ).toThrowErrorMatchingInlineSnapshot(`Expected an object, but got: null`);
   expect(() =>
-    record((field) => field("a", number))([])
+    fields((field) => field("a", number))([])
   ).toThrowErrorMatchingInlineSnapshot(`Expected an object, but got: []`);
   expect(() =>
-    record((field) => field("a", number))({})
+    fields((field) => field("a", number))({})
   ).toThrowErrorMatchingInlineSnapshot(
     `object["a"] (missing): Expected a number, but got: undefined`
   );
   expect(() =>
-    record((field) => field("a", number))({ a: null })
+    fields((field) => field("a", number))({ a: null })
   ).toThrowErrorMatchingInlineSnapshot(
     `object["a"]: Expected a number, but got: null`
   );
   expect(() =>
-    record((field) => field("hasOwnProperty", number))({})
+    fields((field) => field("hasOwnProperty", number))({})
   ).toThrowErrorMatchingInlineSnapshot(
     `object["hasOwnProperty"] (prototype): Expected a number, but got: function "hasOwnProperty"`
   );
 
   expect(
     testWithErrorsArray({
-      decoder: record((field) => ({ a: field("a", number, { default: 0 }) })),
+      decoder: fields((field) => ({ a: field("a", number, { default: 0 }) })),
       data: { a: "1" },
     })
   ).toMatchInlineSnapshot(`
@@ -350,7 +350,7 @@ test("record field", () => {
 });
 
 test("record fieldError", () => {
-  const decoder = record((field, fieldError) => fieldError("key", "invalid"));
+  const decoder = fields((field, fieldError) => fieldError("key", "invalid"));
 
   expect(decoder({})).toMatchInlineSnapshot(
     `[TypeError: object["key"] (missing): invalid]`
@@ -365,7 +365,7 @@ test("record fieldError", () => {
 test("record obj and errors", () => {
   const objInput = {};
   const errorsInput = [];
-  const result = record((field, fieldError, obj, errors) => {
+  const result = fields((field, fieldError, obj, errors) => {
     expect(obj).toBe(objInput);
     expect(errors).toBe(errorsInput);
     return 1;
@@ -627,10 +627,10 @@ test("optional", () => {
   expect(optional(number)(null)).toMatchInlineSnapshot(`undefined`);
   expect(optional(number)(0)).toMatchInlineSnapshot(`0`);
   expect(
-    record((field) => field("missing", optional(string)))({})
+    fields((field) => field("missing", optional(string)))({})
   ).toMatchInlineSnapshot(`undefined`);
   expect(
-    record((field) => field("present", optional(string)))({ present: "string" })
+    fields((field) => field("present", optional(string)))({ present: "string" })
   ).toMatchInlineSnapshot(`"string"`);
   expect((optional(number, 5)(undefined): number)).toMatchInlineSnapshot(`5`);
   expect(
@@ -644,7 +644,7 @@ test("optional", () => {
     `(optional) Expected a number, but got: "string"`
   );
   expect(() =>
-    optional(record((field) => field("missing", string)))({})
+    optional(fields((field) => field("missing", string)))({})
   ).toThrowErrorMatchingInlineSnapshot(
     `(optional) object["missing"] (missing): Expected a string, but got: undefined`
   );
@@ -752,11 +752,11 @@ Expected an array, but got: "nope"
 });
 
 test("all decoders pass down errors", () => {
-  const subDecoder: Decoder<boolean | null> = record((field) =>
+  const subDecoder: Decoder<boolean | null> = fields((field) =>
     field("test", boolean, { default: null })
   );
 
-  const decoder = record((field) => ({
+  const decoder = fields((field) => ({
     boolean: field("boolean", boolean, { default: undefined }),
     number: field("number", number, { default: undefined }),
     string: field("string", string, { default: undefined }),
@@ -767,7 +767,7 @@ test("all decoders pass down errors", () => {
     dict: field("dict", dict(subDecoder), { default: undefined }),
     record: field(
       "record",
-      record((field2) => field2("field", subDecoder)),
+      fields((field2) => field2("field", subDecoder)),
       {
         default: undefined,
       }

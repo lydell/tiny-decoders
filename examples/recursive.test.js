@@ -6,10 +6,10 @@ import {
   autoRecord,
   dict,
   either,
+  fields,
   lazy,
   number,
   optional,
-  record,
   string,
 } from "../src";
 
@@ -21,7 +21,7 @@ test("recursive data structure", () => {
   };
 
   // When using `record` there won’t be any trouble decoding it:
-  const personDecoder1: Decoder<Person> = record((field) => ({
+  const personDecoder1: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     friends: field("friends", array(personDecoder1)),
   }));
@@ -143,7 +143,7 @@ test("indirectly recursive data structure", () => {
 
   // Again, when using `record` you shouldn’t encounter any problems, other than
   // maybe having to disable an ESLint rule.
-  const personDecoder1: Decoder<Person> = record((field) => ({
+  const personDecoder1: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     // eslint-disable-next-line no-use-before-define
     relationship: field("relationship", optional(relationshipDecoder)),
@@ -213,7 +213,7 @@ test("circular objects", () => {
     likes: Person,
   };
 
-  const personDecoder1: Decoder<Person> = record((field) => ({
+  const personDecoder1: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     likes: field("likes", personDecoder1),
   }));

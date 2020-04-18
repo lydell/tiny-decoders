@@ -8,6 +8,7 @@ import {
   deep,
   dict,
   either,
+  fields,
   lazy,
   map,
   mixedArray,
@@ -15,7 +16,6 @@ import {
   number,
   optional,
   pair,
-  record,
   string,
   triple,
   tuple,
@@ -48,9 +48,9 @@ function use(value: mixed) {
 // $ExpectError
 (dict(string)(undefined): { [string]: boolean });
 // $ExpectError
-(record(() => "")(undefined): boolean);
+(fields(() => "")(undefined): boolean);
 // $ExpectError
-(record((field) => ({ a: field("a", string) }))(undefined): { a: boolean });
+(fields((field) => ({ a: field("a", string) }))(undefined): { a: boolean });
 // $ExpectError
 (tuple(() => "")(undefined): boolean);
 // $ExpectError
@@ -102,9 +102,9 @@ array(string)(undefined, {});
 dict(string)(undefined, []);
 // $ExpectError
 dict(string)(undefined, {});
-record(() => "")(undefined, []);
+fields(() => "")(undefined, []);
 // $ExpectError
-record(() => "")(undefined, {});
+fields(() => "")(undefined, {});
 tuple(() => "")(undefined, []);
 // $ExpectError
 tuple(() => "")(undefined, {});
@@ -169,41 +169,41 @@ dict(string, "nope");
 
 // Accidentally passed an object instead of a callback:
 // $ExpectError
-record({
+fields({
   a: string,
 });
-record((field) => field("", string));
-record((field) => field("", string, "throw"));
-record((field) => field("", string, { default: "" }));
-record((field) => field("", string, { default: null }));
+fields((field) => field("", string));
+fields((field) => field("", string, "throw"));
+fields((field) => field("", string, { default: "" }));
+fields((field) => field("", string, { default: null }));
 // Wrong key type:
 // $ExpectError
-record((field) => field(0, string));
+fields((field) => field(0, string));
 // Wrong order:
 // $ExpectError
-record((field) => field(string, ""));
+fields((field) => field(string, ""));
 // Missing key:
 // $ExpectError
-record((field) => field(string));
+fields((field) => field(string));
 // Wrong mode:
 // $ExpectError
-record((field) => field("", string, "skip"));
+fields((field) => field("", string, "skip"));
 // Accidentally passed bare default:
 // $ExpectError
-record((field) => field("", string, null));
+fields((field) => field("", string, null));
 
-record((field, fieldError) => fieldError("key", "message"));
+fields((field, fieldError) => fieldError("key", "message"));
 // Forgot key:
 // $ExpectError
-record((field, fieldError) => fieldError("message"));
+fields((field, fieldError) => fieldError("message"));
 // Wrong key type:
 // $ExpectError
-record((field, fieldError) => fieldError(0, "message"));
+fields((field, fieldError) => fieldError(0, "message"));
 // Wrong message type:
 // $ExpectError
-record((field, fieldError) => fieldError("key", new TypeError("message")));
+fields((field, fieldError) => fieldError("key", new TypeError("message")));
 
-record((field, fieldError, obj, errors) => {
+fields((field, fieldError, obj, errors) => {
   use(obj.test);
   // Field values are mixed.
   // $ExpectError
