@@ -38,7 +38,7 @@ export function constant<T: boolean | number | string | void | null>(
 
 function mixedObject(value: mixed): { +[string]: mixed, ... } {
   if (typeof value !== "object" || value == null) {
-    throw new TypeError(`Expected an object, but got: ${repr(value)}`);
+    throw new TypeError(`Expected an object/array, but got: ${repr(value)}`);
   }
   return value;
 }
@@ -51,17 +51,13 @@ export function array<T, U>(
     value: mixed,
     errors?: Array<string>
   ): Array<T | U> {
-    if (typeof value !== "object" || value == null) {
-      throw new TypeError(
-        `Expected an array (or array-like object), but got: ${repr(value)}`
-      );
-    }
+    const obj = mixedObject(value);
     let length = undefined;
     if (Array.isArray(value)) {
       ({ length } = value);
     } else {
       try {
-        length = number(value.length);
+        length = number(obj.length);
         Array(length);
       } catch (_error) {
         throw new TypeError(
@@ -69,7 +65,7 @@ export function array<T, U>(
             "length",
             value,
             `Expected a valid array length (unsigned 32-bit integer), but got: ${repr(
-              value.length
+              obj.length
             )}`
           )
         );
@@ -79,7 +75,7 @@ export function array<T, U>(
     for (let index = 0; index < length; index++) {
       try {
         const localErrors = [];
-        result.push(decoder(value[index.toString()], localErrors));
+        result.push(decoder(obj[index.toString()], localErrors));
         if (errors != null) {
           for (let index2 = 0; index2 < localErrors.length; index2++) {
             errors.push(keyErrorMessage(index, value, localErrors[index2]));

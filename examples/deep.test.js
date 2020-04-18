@@ -17,7 +17,7 @@ test("decoding deeply nested values", () => {
 
   expect(decoder(data)).toMatchInlineSnapshot(`123`);
   expect(() => decoder(incompleteData)).toThrowErrorMatchingInlineSnapshot(
-    `object["store"]["products"][0]["accessories"][0] (out of bounds): Expected an object, but got: undefined`
+    `object["store"]["products"][0]["accessories"][0] (out of bounds): Expected an object/array, but got: undefined`
   );
 
   // By combining the decoder with another decoder that always succeeds (a
@@ -40,7 +40,7 @@ test("decoding deeply nested values", () => {
   expect(() =>
     optional(decoder)(incompleteData)
   ).toThrowErrorMatchingInlineSnapshot(
-    `(optional) object["store"]["products"][0]["accessories"][0] (out of bounds): Expected an object, but got: undefined`
+    `(optional) object["store"]["products"][0]["accessories"][0] (out of bounds): Expected an object/array, but got: undefined`
   );
   // `optional` only does its job if the toplevel value is missing.
   expect(optional(decoder, 0)(undefined)).toMatchInlineSnapshot(`0`);

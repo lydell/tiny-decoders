@@ -116,7 +116,7 @@ test("array", () => {
   `);
 
   expect(() => array(number)(null)).toThrowErrorMatchingInlineSnapshot(
-    `Expected an array (or array-like object), but got: null`
+    `Expected an object/array, but got: null`
   );
   expect(() => array(number)({})).toThrowErrorMatchingInlineSnapshot(
     `object["length"] (missing): Expected a valid array length (unsigned 32-bit integer), but got: undefined`
@@ -160,12 +160,12 @@ test("array", () => {
   expect(() =>
     autoRecord({ key: array(number) })({ length: null })
   ).toThrowErrorMatchingInlineSnapshot(
-    `object["key"] (missing): Expected an array (or array-like object), but got: undefined`
+    `object["key"] (missing): Expected an object/array, but got: undefined`
   );
   expect(() =>
     autoRecord({ key: array(number) })({ length: -1 })
   ).toThrowErrorMatchingInlineSnapshot(
-    `object["key"] (missing): Expected an array (or array-like object), but got: undefined`
+    `object["key"] (missing): Expected an object/array, but got: undefined`
   );
 
   expect(() => array(number)([1, "2"])).toThrowErrorMatchingInlineSnapshot(
@@ -224,7 +224,7 @@ test("dict", () => {
   expect(dict(string)([])).toMatchInlineSnapshot(`Object {}`);
 
   expect(() => dict(string)(null)).toThrowErrorMatchingInlineSnapshot(
-    `Expected an object, but got: null`
+    `Expected an object/array, but got: null`
   );
   expect(() =>
     dict(string)({ a: "a", b: 0 })
@@ -297,7 +297,7 @@ test("fields object", () => {
   `);
 
   expect(() => fields(() => "")("string")).toThrowErrorMatchingInlineSnapshot(
-    `Expected an object, but got: "string"`
+    `Expected an object/array, but got: "string"`
   );
   expect(() =>
     fields((field) => ({ a: field("missing", boolean) }))({})
@@ -337,7 +337,9 @@ test("fields field object", () => {
 
   expect(() =>
     fields((field) => field("a", number))(null)
-  ).toThrowErrorMatchingInlineSnapshot(`Expected an object, but got: null`);
+  ).toThrowErrorMatchingInlineSnapshot(
+    `Expected an object/array, but got: null`
+  );
   expect(() =>
     fields((field) => field("a", number))([])
   ).toThrowErrorMatchingInlineSnapshot(
@@ -494,7 +496,7 @@ test("autoRecord", () => {
   `);
 
   expect(() => autoRecord({})(null)).toThrowErrorMatchingInlineSnapshot(
-    `Expected an object, but got: null`
+    `Expected an object/array, but got: null`
   );
   expect(() =>
     autoRecord({ a: boolean })({})
@@ -525,7 +527,7 @@ test("pair", () => {
   expect(() =>
     pair(string, number)(undefined)
   ).toThrowErrorMatchingInlineSnapshot(
-    `Expected an object, but got: undefined`
+    `Expected an object/array, but got: undefined`
   );
   expect(() => pair(string, number)([])).toThrowErrorMatchingInlineSnapshot(
     `array[0] (out of bounds): Expected a string, but got: undefined`
@@ -568,7 +570,7 @@ test("triple", () => {
   expect(() =>
     triple(string, number, boolean)(undefined)
   ).toThrowErrorMatchingInlineSnapshot(
-    `Expected an object, but got: undefined`
+    `Expected an object/array, but got: undefined`
   );
   expect(() =>
     triple(string, number, boolean)([])
@@ -618,21 +620,21 @@ test("deep", () => {
   ).toMatchInlineSnapshot(`123`);
 
   expect(() => decoder(null)).toThrowErrorMatchingInlineSnapshot(
-    `Expected an object, but got: null`
+    `Expected an object/array, but got: null`
   );
   expect(() => decoder([])).toThrowErrorMatchingInlineSnapshot(
-    `array["store"] (missing): Expected an object, but got: undefined`
+    `array["store"] (missing): Expected an object/array, but got: undefined`
   );
   expect(() => decoder({})).toThrowErrorMatchingInlineSnapshot(
-    `object["store"] (missing): Expected an object, but got: undefined`
+    `object["store"] (missing): Expected an object/array, but got: undefined`
   );
   expect(() => decoder({ store: {} })).toThrowErrorMatchingInlineSnapshot(
-    `object["store"]["products"] (missing): Expected an object, but got: undefined`
+    `object["store"]["products"] (missing): Expected an object/array, but got: undefined`
   );
   expect(() =>
     decoder({ store: { products: [{}] } })
   ).toThrowErrorMatchingInlineSnapshot(
-    `object["store"]["products"][1] (out of bounds): Expected an object, but got: undefined`
+    `object["store"]["products"][1] (out of bounds): Expected an object/array, but got: undefined`
   );
   expect(() =>
     decoder({ store: { products: [{}, { accessories: [{ price: null }] }] } })
@@ -763,7 +765,7 @@ test("lazy", () => {
     Expected a number, but got: [\\"nope\\"]
     array[0]: Several decoders failed:
     Expected a number, but got: \\"nope\\"
-    Expected an array (or array-like object), but got: \\"nope\\""
+    Expected an object/array, but got: \\"nope\\""
   `);
 });
 
