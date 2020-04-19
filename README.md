@@ -10,9 +10,9 @@ import {
   array,
   boolean,
   either,
+  fields,
   number,
   optional,
-  fields,
   string,
 } from "tiny-decoders";
 
@@ -148,7 +148,7 @@ const personDecoderAuto = autoRecord<Person>({
 });
 ```
 
-In TypeScript, you can also write it like this:
+In TypeScript, you can also write them like this:
 
 ```ts
 import {
@@ -179,6 +179,7 @@ type Person = ReturnType<typeof personDecoderAuto>;
 type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
 // or:
 type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoderAuto>>;
+// This changes all `key: T | undefined` to `key?: T | undefined` of an object.
 ```
 
 In Flow, annotate like this:
@@ -198,7 +199,7 @@ const personDecoder = fields((field): Person => ({
 // or:
 const personDecoder2: Decoder<Person> = fields((field) => ({
   name: field("name", string),
-  age: field("age", opitional(number)),
+  age: field("age", optional(number)),
 }));
 
 const personDecoderAuto: Decoder<Person> = autoRecord({
@@ -219,7 +220,7 @@ export type Decoder<T> = (value: unknown, errors?: Array<string>) => T;
 
 This is a handy type alias for decoder functions.
 
-Note that simple decoders that do not take an optional `errors` array are also allowed by the above defintion:
+Note that simple decoders that do not take an optional `errors` array are also allowed by the above definition:
 
 ```ts
 (value: unknown) => T;
@@ -312,7 +313,7 @@ An array-like object is an object with a `length` property which is a number (un
 Example:
 
 ```ts
-import { array, string } from "tiny-decoders";
+import { array, string, number } from "tiny-decoders";
 
 const arrayOfStringsDecoder1: Decoder<Array<string>> = array(string);
 const arrayOfStringsDecoder2: Decoder<Array<string>> = array(string, "skip");
@@ -510,7 +511,7 @@ const shapeDecoder = fields(
 const ageDecoder: Decoder<number> = fields((field) => field("age", number));
 
 // Taking the first number from an array:
-const firstNumberDecoder: Decoder<number> = tuple((field) => field(0, number));
+const firstNumberDecoder: Decoder<number> = fields((field) => field(0, number));
 ```
 
 #### `pair`
@@ -960,8 +961,6 @@ You need [Node.js] 12 and npm 6.
 [min-decoders]: https://img.shields.io/bundlephobia/min/decoders.svg
 [minzip-decoders]: https://img.shields.io/bundlephobia/minzip/decoders.svg
 [minzip-tiny-decoders]: https://img.shields.io/bundlephobia/minzip/tiny-decoders.svg
-[mixedarray]: #mixedarray
-[mixeddict]: #mixeddict
 [node.js]: https://nodejs.org/en/
 [npm]: https://www.npmjs.com/
 [pair]: #pair
