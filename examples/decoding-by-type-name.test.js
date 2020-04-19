@@ -206,7 +206,7 @@ test("decoding based on a field", () => {
     `Expected a SearchResult type, but got: "User"`
   );
 
-  // Finally, a note abount `constant`. Note how the above decoders used
+  // Finally, a note about `constant`. Note how the above decoders used
   // `constant` for the `type` field. What’s the point of that? Wouldn’t this
   // work just as well?
   const categoryDecoder2: Decoder<Category> = autoRecord({

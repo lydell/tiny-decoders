@@ -326,6 +326,7 @@ arrayOfStringsDecoder1(["a", "b", "c"]);
 // Optionally collect error messages when `mode` isn’t `"throw"`:
 const errors = [];
 arrayOfStringsDecoder2(["a", 0, "c"], errors);
+console.log(errors);
 
 // Decode an array-like object, such as `Buffer`.
 const bufferDecoder: Decoder<Array<number>> = array(number);
@@ -367,6 +368,7 @@ dictOfStringsDecoder1({ a: "1", b: "2" });
 // Optionally collect error messages when `mode` isn’t `"throw"`:
 const errors = [];
 dictOfStringsDecoder2({ a: "1", b: 0 }, errors);
+console.log(errors);
 ```
 
 #### `fields`
@@ -448,6 +450,7 @@ userDecoder(userData);
 // Optionally collect error messages from fields where `mode` isn’t `"throw"`:
 const errors = [];
 userDecoder(userData, errors);
+console.log(errors);
 
 // `fields` can also be used for arrays/tuples:
 const userTupleDecoder = fields(
