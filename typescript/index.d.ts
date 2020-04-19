@@ -15,6 +15,7 @@ type OptionalKeys<T> = {
   [P in keyof T]: undefined extends T[P] ? P : never;
 }[keyof T];
 
+// Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
 type Merge<T> = { [P in keyof T]: T[P] };
 
 export type WithUndefinedAsOptional<T> = Merge<
