@@ -1,3 +1,11 @@
+### Version 5.0.0 (2020-04-19)
+
+- Changed: `record` is now called `fields` and now works with both objects and arrays. Besides being more flexible, this reduces the footprint of the library and means there’s one thing less to learn.
+- Removed: `tuple`. Use `fields` instead.
+- Changed: `pair`, `tuple` and `array` now work with any array-like objects, not just `Array`s.
+- Removed: `mixedArray` and `mixedDict`. Because of the above changes, `mixedArray` isn’t used internally anymore and `mixedDict` had to change to allow arrays. I haven’t really had a need for these outside tiny-decoders so I decided to remove them both.
+- Added: The `WithUndefinedAsOptional` helper type for TypeScript. When inferring types from `fields` and `autoRecord` decoders, all fields are inferred as required, even ones where you use the `optional` decoder. The helper type lets you turn fields that can be undefined into optional fields, by changing all `key: T | undefined` to `key?: T | undefined`.
+
 ### Version 4.0.0 (2019-09-29)
 
 - Removed: The “stack trace,” showing you a little of each parent object and array, in error messages is now gone. After using tiny-decoders for a while I noticed this not being super useful. It’s nicer to look at the whole object in a tool of choice, and just use the error message to understand _where_ the error is, and what is wrong.
