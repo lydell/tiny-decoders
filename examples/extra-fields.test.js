@@ -1,6 +1,6 @@
 // @flow strict
 
-import { type Decoder, autoRecord, map, number, record, string } from "../src";
+import { type Decoder, autoRecord, fields, map, number, string } from "../src";
 
 test("adding extra fields to records", () => {
   // Want to add an extra field to a record, that doesn’t look at the input at
@@ -13,8 +13,8 @@ test("adding extra fields to records", () => {
 
   const data: mixed = { name: "Comfortable Bed", price: 10e3 };
 
-  // It’s easy to do with `record`.
-  const productDecoder1: Decoder<Product> = record((field) => ({
+  // It’s easy to do with `fields`.
+  const productDecoder1: Decoder<Product> = fields((field) => ({
     name: field("name", string),
     price: field("price", number),
     version: 1,

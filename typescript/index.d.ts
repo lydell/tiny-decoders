@@ -2,7 +2,24 @@
 // Waiting for https://github.com/Microsoft/dtslint/issues/137
 // Remove the `--onlyTestTsNext` workaround from `npm run dtslint`.
 
+// Turn off automatic exporting.
+export {};
+
 export type Decoder<T> = (value: unknown, errors?: Array<string>) => T;
+
+type RequiredKeys<T> = {
+  [P in keyof T]: undefined extends T[P] ? never : P;
+}[keyof T];
+
+type OptionalKeys<T> = {
+  [P in keyof T]: undefined extends T[P] ? P : never;
+}[keyof T];
+
+type Merge<T> = { [P in keyof T]: T[P] };
+
+export type WithUndefinedAsOptional<T> = Merge<
+  { [P in RequiredKeys<T>]: T[P] } & { [P in OptionalKeys<T>]?: T[P] }
+>;
 
 export function boolean(value: unknown): boolean;
 
@@ -14,10 +31,6 @@ export function constant<
   T extends boolean | number | string | undefined | null
 >(constantValue: T): (value: unknown) => T;
 
-export function mixedArray(value: unknown): ReadonlyArray<unknown>;
-
-export function mixedDict(value: unknown): { readonly [key: string]: unknown };
-
 export function array<T, U = T>(
   decoder: Decoder<T>,
   mode?: "throw" | "skip" | { default: U }
@@ -28,28 +41,15 @@ export function dict<T, U = T>(
   mode?: "throw" | "skip" | { default: U }
 ): Decoder<{ [key: string]: T | U }>;
 
-export function record<T>(
+export function fields<T>(
   callback: (
     field: <U, V = U>(
-      key: string,
+      key: string | number,
       decoder: Decoder<U>,
       mode?: "throw" | { default: V }
     ) => U | V,
-    fieldError: (key: string, message: string) => TypeError,
+    fieldError: (key: string | number, message: string) => TypeError,
     obj: { readonly [key: string]: unknown },
-    errors?: Array<string>
-  ) => T
-): Decoder<T>;
-
-export function tuple<T>(
-  callback: (
-    item: <U, V = U>(
-      index: number,
-      decoder: Decoder<U>,
-      mode?: "throw" | { default: V }
-    ) => U | V,
-    itemError: (key: number, message: string) => TypeError,
-    arr: ReadonlyArray<unknown>,
     errors?: Array<string>
   ) => T
 ): Decoder<T>;
@@ -66,7 +66,7 @@ export function triple<T1, T2, T3>(
 ): Decoder<[T1, T2, T3]>;
 
 export function autoRecord<T>(
-  mapping: { [key in keyof T]: Decoder<T[key]> }
+  mapping: { [P in keyof T]: Decoder<T[P]> }
 ): Decoder<T>;
 
 export function deep<T>(

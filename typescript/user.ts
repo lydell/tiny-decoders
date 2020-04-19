@@ -2,9 +2,9 @@ import {
   autoRecord,
   boolean,
   either,
+  fields,
   number,
   optional,
-  record,
   string,
 } from "tiny-decoders";
 
@@ -27,7 +27,7 @@ const userDecoder: (value: unknown) => User = autoRecord({
 
 verifyUser(userDecoder);
 
-const userDecoder2: (value: unknown) => User = record((field) => ({
+const userDecoder2: (value: unknown) => User = fields((field) => ({
   name: field("name", string),
   age: field("age", number),
   active: field("active", boolean),
@@ -46,7 +46,7 @@ verifyUser(
   })
 );
 verifyUser(
-  record((field) => ({
+  fields((field) => ({
     id: field("id", string),
     name: field("name", string),
     age: field("age", number),
@@ -65,7 +65,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record((field) => ({
+  fields((field) => ({
     age: field("age", number),
     active: field("active", boolean),
     id: field("id", either(string, number)),
@@ -82,7 +82,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record((field) => ({
+  fields((field) => ({
     age: field("age", number),
     active: field("active", boolean),
   }))
@@ -92,12 +92,12 @@ verifyUser(
 // $ExpectError
 verifyUser(autoRecord({}));
 // $ExpectError
-verifyUser(record((field) => ({})));
+verifyUser(fields((field) => ({})));
 
 // Extra field:
 // Unlike Flow, TypeScript does not have exact objects/interfaces.
 // Instead, one can specify the wanted type instead of using inference.
-// But unfortunately not for `record` – unless you specify it as the callback
+// But unfortunately not for `fields` – unless you specify it as the callback
 // return value.
 verifyUser(
   autoRecord({
@@ -119,7 +119,7 @@ verifyUser(
   })
 );
 verifyUser(
-  record((field) => ({
+  fields((field) => ({
     extra: field("extra", string),
     name: field("name", string),
     age: field("age", number),
@@ -128,7 +128,7 @@ verifyUser(
   }))
 );
 verifyUser(
-  record<User>((field) => ({
+  fields<User>((field) => ({
     extra: field("extra", string),
     name: field("name", string),
     age: field("age", number),
@@ -137,7 +137,7 @@ verifyUser(
   }))
 );
 verifyUser(
-  record(
+  fields(
     (field): User => ({
       // $ExpectError
       extra: field("extra", string),
@@ -172,7 +172,7 @@ verifyUser(
   })
 );
 verifyUser(
-  record((field) => ({
+  fields((field) => ({
     extra: field("extra", string),
     extra2: field("extra2", () => undefined),
     name: field("name", string),
@@ -182,7 +182,7 @@ verifyUser(
   }))
 );
 verifyUser(
-  record<User>((field) => ({
+  fields<User>((field) => ({
     extra: field("extra", string),
     extra2: field("extra2", () => undefined),
     name: field("name", string),
@@ -204,7 +204,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record((field) => ({
+  fields((field) => ({
     naem: field("naem", string),
     age: field("age", number),
     active: field("active", boolean),
@@ -224,7 +224,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record((field) => ({
+  fields((field) => ({
     name: field("name", number),
     age: field("age", number),
     active: field("active", boolean),
@@ -244,7 +244,7 @@ verifyUser(
 );
 verifyUser(
   // $ExpectError
-  record((field) => ({
+  fields((field) => ({
     name: field("name", optional(string)),
     age: field("age", number),
     active: field("active", boolean),

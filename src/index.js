@@ -36,16 +36,9 @@ export function constant<T: boolean | number | string | void | null>(
   };
 }
 
-export function mixedArray(value: mixed): $ReadOnlyArray<mixed> {
-  if (!Array.isArray(value)) {
-    throw new TypeError(`Expected an array, but got: ${repr(value)}`);
-  }
-  return value;
-}
-
-export function mixedDict(value: mixed): { +[string]: mixed, ... } {
-  if (typeof value !== "object" || value == null || Array.isArray(value)) {
-    throw new TypeError(`Expected an object, but got: ${repr(value)}`);
+function mixedObject(value: mixed): { +[string]: mixed, ... } {
+  if (typeof value !== "object" || value == null) {
+    throw new TypeError(`Expected an object/array, but got: ${repr(value)}`);
   }
   return value;
 }
@@ -58,23 +51,38 @@ export function array<T, U>(
     value: mixed,
     errors?: Array<string>
   ): Array<T | U> {
-    const arr = mixedArray(value);
-    // Use a for-loop instead of `.map` to handle `array holes (`[1, , 2]`).
-    // A nicer way would be to use `Array.from(arr, (_, index) => ...)` but that
-    // unnecessarily reduces browser support.
-    // Also, not using a callback function gives a nicer stack trace.
+    const obj = mixedObject(value);
+    let length = undefined;
+    if (Array.isArray(value)) {
+      ({ length } = value);
+    } else {
+      try {
+        length = number(obj.length);
+        Array(length);
+      } catch (_error) {
+        throw new TypeError(
+          keyErrorMessage(
+            "length",
+            value,
+            `Expected a valid array length (unsigned 32-bit integer), but got: ${repr(
+              obj.length
+            )}`
+          )
+        );
+      }
+    }
     const result = [];
-    for (let index = 0; index < arr.length; index++) {
+    for (let index = 0; index < length; index++) {
       try {
         const localErrors = [];
-        result.push(decoder(arr[index], localErrors));
+        result.push(decoder(obj[index.toString()], localErrors));
         if (errors != null) {
           for (let index2 = 0; index2 < localErrors.length; index2++) {
-            errors.push(keyErrorMessage(index, arr, localErrors[index2]));
+            errors.push(keyErrorMessage(index, value, localErrors[index2]));
           }
         }
       } catch (error) {
-        const message = keyErrorMessage(index, arr, error.message);
+        const message = keyErrorMessage(index, value, error.message);
         if (mode === "throw") {
           error.message = message;
           throw error;
@@ -99,7 +107,7 @@ export function dict<T, U>(
     value: mixed,
     errors?: Array<string>
   ): { [key: string]: T | U, ... } {
-    const obj = mixedDict(value);
+    const obj = mixedObject(value);
     const keys = Object.keys(obj);
     // Using a for-loop rather than `.reduce` gives a nicer stack trace.
     const result = {};
@@ -131,28 +139,28 @@ export function dict<T, U>(
   };
 }
 
-export function record<T>(
+export function fields<T>(
   callback: (
     field: <U, V>(
-      key: string,
+      key: string | number,
       decoder: Decoder<U>,
       mode?: "throw" | { default: V }
     ) => U | V,
-    fieldError: (key: string, message: string) => TypeError,
+    fieldError: (key: string | number, message: string) => TypeError,
     obj: { +[string]: mixed, ... },
     errors?: Array<string>
   ) => T
 ): Decoder<T> {
-  return function recordDecoder(value: mixed, errors?: Array<string>): T {
-    const obj = mixedDict(value);
+  return function fieldsDecoder(value: mixed, errors?: Array<string>): T {
+    const obj = mixedObject(value);
     function field<U, V>(
-      key: string,
+      key: string | number,
       decoder: Decoder<U>,
       mode?: "throw" | { default: V } = "throw"
     ): U | V {
       try {
         const localErrors = [];
-        const result = decoder(obj[key], localErrors);
+        const result = decoder(obj[key.toString()], localErrors);
         if (errors != null) {
           for (let index2 = 0; index2 < localErrors.length; index2++) {
             errors.push(keyErrorMessage(key, obj, localErrors[index2]));
@@ -171,57 +179,10 @@ export function record<T>(
         return mode.default;
       }
     }
-    function fieldError(key: string, message: string): TypeError {
+    function fieldError(key: string | number, message: string): TypeError {
       return new TypeError(keyErrorMessage(key, obj, message));
     }
     return callback(field, fieldError, obj, errors);
-  };
-}
-
-export function tuple<T>(
-  callback: (
-    item: <U, V>(
-      index: number,
-      decoder: Decoder<U>,
-      mode?: "throw" | { default: V }
-    ) => U | V,
-    itemError: (index: number, message: string) => TypeError,
-    arr: $ReadOnlyArray<mixed>,
-    errors?: Array<string>
-  ) => T
-): Decoder<T> {
-  return function tupleDecoder(value: mixed, errors?: Array<string>): T {
-    const arr = mixedArray(value);
-    function item<U, V>(
-      index: number,
-      decoder: Decoder<U>,
-      mode?: "throw" | { default: V } = "throw"
-    ): U | V {
-      try {
-        const localErrors = [];
-        const result = decoder(arr[index], localErrors);
-        if (errors != null) {
-          for (let index2 = 0; index2 < localErrors.length; index2++) {
-            errors.push(keyErrorMessage(index, arr, localErrors[index2]));
-          }
-        }
-        return result;
-      } catch (error) {
-        const message = keyErrorMessage(index, arr, error.message);
-        if (mode === "throw") {
-          error.message = message;
-          throw error;
-        }
-        if (errors != null) {
-          errors.push(message);
-        }
-        return mode.default;
-      }
-    }
-    function itemError(index: number, message: string): TypeError {
-      return new TypeError(keyErrorMessage(index, arr, message));
-    }
-    return callback(item, itemError, arr, errors);
   };
 }
 
@@ -230,8 +191,8 @@ export function pair<T1, T2>(
   decoder2: Decoder<T2>
 ): Decoder<[T1, T2]> {
   // eslint-disable-next-line flowtype/require-parameter-type
-  return tuple(function pairDecoder(item): [T1, T2] {
-    return [item(0, decoder1), item(1, decoder2)];
+  return fields(function pairDecoder(field): [T1, T2] {
+    return [field(0, decoder1), field(1, decoder2)];
   });
 }
 
@@ -241,8 +202,8 @@ export function triple<T1, T2, T3>(
   decoder3: Decoder<T3>
 ): Decoder<[T1, T2, T3]> {
   // eslint-disable-next-line flowtype/require-parameter-type
-  return tuple(function tripleDecoder(item): [T1, T2, T3] {
-    return [item(0, decoder1), item(1, decoder2), item(2, decoder3)];
+  return fields(function tripleDecoder(field): [T1, T2, T3] {
+    return [field(0, decoder1), field(1, decoder2), field(2, decoder3)];
   });
 }
 
@@ -255,7 +216,7 @@ export function autoRecord<T: { ... }>(
     value: mixed,
     errors?: Array<string>
   ): $ObjMap<T, DecoderType> {
-    const obj = mixedDict(value);
+    const obj = mixedObject(value);
     const keys = Object.keys(mapping);
     // Using a for-loop rather than `.reduce` gives a nicer stack trace.
     const result = {};
@@ -284,16 +245,11 @@ export function deep<T>(
   decoder: Decoder<T>
 ): Decoder<T> {
   return path.reduceRight(
-    (nextDecoder, keyOrIndex) =>
-      typeof keyOrIndex === "string"
-        ? // eslint-disable-next-line flowtype/require-parameter-type
-          record(function deepRecord(field): T {
-            return field(keyOrIndex, nextDecoder);
-          })
-        : // eslint-disable-next-line flowtype/require-parameter-type
-          tuple(function deepTuple(item): T {
-            return item(keyOrIndex, nextDecoder);
-          }),
+    (nextDecoder, key) =>
+      // eslint-disable-next-line flowtype/require-parameter-type
+      fields(function deepRecord(field): T {
+        return field(key, nextDecoder);
+      }),
     decoder
   );
 }
@@ -301,7 +257,7 @@ export function deep<T>(
 export function optional<T, U>(
   decoder: Decoder<T>,
   // This parameter is implicitly optional since `U` is allowed to be `void`
-  // (undefined), but don’ mark it with a question mark (`defaultValue?: U`)
+  // (undefined), but don’t mark it with a question mark (`defaultValue?: U`)
   // because that causes `name: optional(string)` in the `User` test in
   // `flow/user.js` not to be an error for a `name: string` type annotation!
   defaultValue: U
@@ -488,8 +444,8 @@ function keyErrorMessage(
   message: string
 ): string {
   const missing =
-    typeof key === "number"
-      ? Array.isArray(value) && (key < 0 || key >= value.length)
+    typeof key === "number" && Number.isInteger(key) && Array.isArray(value)
+      ? key < 0 || key >= value.length
         ? "(out of bounds)"
         : ""
       : value == null || typeof value !== "object"
@@ -501,7 +457,7 @@ function keyErrorMessage(
       : "(missing)";
 
   return [
-    `${typeof key === "string" ? "object" : "array"}[${JSON.stringify(key)}]`,
+    `${Array.isArray(value) ? "array" : "object"}[${JSON.stringify(key)}]`,
     keyErrorPrefixRegex.test(message)
       ? ""
       : missing !== ""

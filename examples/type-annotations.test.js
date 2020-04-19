@@ -1,6 +1,6 @@
 // @flow strict
 
-// This file shows how best to annotate your `record` and `autoRecord` decoders
+// This file shows how best to annotate your `fields` and `autoRecord` decoders
 // to maximize the help you get from Flow.
 
 import {
@@ -9,9 +9,10 @@ import {
   boolean,
   constant,
   either,
+  fields,
   number,
   optional,
-  record,
+  repr,
   string,
 } from "../src";
 
@@ -34,7 +35,7 @@ test("type annotations", () => {
   // Flow will infer what they decode into (try hovering `personDecoder1`
   // and `personDecoder1Auto` in your editor!), but it won’t know that you
   // intended to decode a `Person`. As you can see, I’ve misspelled `age` as `aye`.
-  const personDecoder1 = record((field) => ({
+  const personDecoder1 = fields((field) => ({
     name: field("name", string),
     aye: field("age", number),
   }));
@@ -57,12 +58,12 @@ test("type annotations", () => {
   // The way to make the above type errors more clear is to provide explicit type
   // annotations, so that Flow knows what you’re trying to do.
   // $ExpectError
-  const personDecoder2: Decoder<Person> = record((field) => ({
+  const personDecoder2: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     aye: field("age", number),
   }));
   // ^
-  // Cannot assign `record(...)` to `personDecoder2` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
+  // Cannot assign `fields(...)` to `personDecoder2` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
   // $ExpectError
   const personDecoder2Auto: Decoder<Person> = autoRecord({
     name: string,
@@ -76,17 +77,17 @@ test("type annotations", () => {
   // Here’s a shorter way of writing the above – which also gives better error
   // messages! Note that unlike in TypeScript, `autoRecord<Person>({...})` cannot be used in Flow.
   // $ExpectError
-  const personDecoder3 = record<Person>((field) => ({
+  const personDecoder3 = fields<Person>((field) => ({
     name: field("name", string),
     aye: field("age", number),
   }));
   // ^
-  // Cannot call `record` with function bound to `callback` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
+  // Cannot call `fields` with function bound to `callback` because property `aye` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
   greet(personDecoder3(testPerson));
 
-  // For, `record` there’s yet a way of annotating the type:
+  // For `fields` there’s yet a way of annotating the type:
   // $ExpectError
-  const personDecoder4 = record((field): Person => ({
+  const personDecoder4 = fields((field): Person => ({
     name: field("name", string),
     aye: field("age", number),
   }));
@@ -99,7 +100,7 @@ test("type annotations", () => {
    */
 
   // Flow has exact objects, so even without type annotations it detects errors:
-  const personDecoder5 = record((field) => ({
+  const personDecoder5 = fields((field) => ({
     name: field("name", string),
     age: field("age", number),
     extra: field("extra", string),
@@ -120,13 +121,13 @@ test("type annotations", () => {
 
   // Adding `Decoder<Person>` moves the errors to the decoder definitions:
   // $ExpectError
-  const personDecoder6: Decoder<Person> = record((field) => ({
+  const personDecoder6: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     age: field("age", number),
     extra: field("extra", string),
   }));
   // ^
-  // Cannot assign `record(...)` to `personDecoder6` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
+  // Cannot assign `fields(...)` to `personDecoder6` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in type argument  `T` [3].
   // $ExpectError
   const personDecoder6Auto: Decoder<Person> = autoRecord({
     name: string,
@@ -140,18 +141,18 @@ test("type annotations", () => {
 
   // The shorter notation produces different error messages:
   // $ExpectError
-  const personDecoder7 = record<Person>((field) => ({
+  const personDecoder7 = fields<Person>((field) => ({
     name: field("name", string),
     age: field("age", number),
     extra: field("extra", string),
   }));
   // ^
-  // Cannot call `record` with function bound to `callback` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
+  // Cannot call `fields` with function bound to `callback` because property `extra` is missing in  `Person` [1] but exists in  object literal [2] in the return value.
   greet(personDecoder7(testPerson));
 
-  // The last type annotation style for `record` produces the best error message:
+  // The last type annotation style for `fields` produces the best error message:
   // $ExpectError
-  const personDecoder8 = record((field): Person => ({
+  const personDecoder8 = fields((field): Person => ({
     name: field("name", string),
     age: field("age", number),
     extra: field("extra", string),
@@ -177,9 +178,9 @@ test("type annotations", () => {
   // Now let Flow infer some types! Unfortunately, if you hover over `Person2`
   // and `Person3` in you editor, you’ll notice that you won’t see the fully
   // “resolved” type, but instead the whole `$ReturnType<...>`. That looks kinda
-  // OK when using `record`, but is a but noisy for `autoRecord` since you’ll
+  // OK when using `fields`, but is a but noisy for `autoRecord` since you’ll
   // also see the whole `$ObjMap<...>` nonsense. See below.
-  const personDecoder9 = record((field) => ({
+  const personDecoder9 = fields((field) => ({
     name: field("name", string),
     age: field("age", number),
   }));
@@ -281,9 +282,9 @@ test("type annotations", () => {
   // Cannot assign object literal to `user3` because property `extra` is missing in  object type [1] but exists in  object literal [2].
   expect(user3).toMatchObject(user);
 
-  // Here’s the same decoder again, but written using `record` instead of
+  // Here’s the same decoder again, but written using `fields` instead of
   // `autoRecord`. It should give the same inferred type.
-  const userDecoder2 = record((field) => ({
+  const userDecoder2 = fields((field) => ({
     id: field("id", either(string, number)),
     name: field("name", string),
     age: field("age", number),
@@ -306,6 +307,67 @@ test("type annotations", () => {
     type: "nope",
   };
   expect({ ...user4, type: "user" }).toMatchObject(user);
+
+  /*
+   * MAKING A TYPE FROM THE DECODER – CAVEATS
+   */
+
+  // Let’s say we need to support two types of users – anonymous and registered ones.
+  // Unfortunately, Flow infers a weird type.
+  const userDecoder3 = fields((field, fieldError) => {
+    const type = field("type", string);
+
+    switch (type) {
+      case "anonymous":
+        return {
+          type: "anonymous",
+          sessionId: field("sessionId", number),
+        };
+
+      case "registered":
+        return {
+          type: "registered",
+          id: field("id", number),
+          name: field("name", string),
+        };
+
+      default:
+        throw fieldError("type", `Unknown user type: ${repr(type)}`);
+    }
+  });
+
+  type User3 = $ReturnType<typeof userDecoder3>;
+
+  // `type` has been inferred to any string, and Flow requires _all_ properties
+  // from both variants to be present!
+  const user5: User3 = {
+    type: "whatever",
+    sessionId: 1,
+    id: 5,
+    name: "John",
+  };
+  expect(user5).toMatchObject({});
+
+  // Finally, there’s one last little detail to know about: How optional fields
+  // are inferred.
+  const itemDecoder = autoRecord({
+    title: string,
+    description: string,
+  });
+
+  // Flow seems to be completely confused here, allowing a completely different object:
+  type Item = $ReturnType<typeof itemDecoder>;
+  // $ExpectError
+  const item1: Item = {
+    other: true,
+  };
+  expect(item1).toMatchObject({});
+  // In TypeScript, fields using the `optional` decoder are always inferred as
+  // `key: T | undefined`, and never as `key?: T`, which means that you always
+  // have to specify the optional fields. I think this is the case in Flow as
+  // well. For TypeScript, tiny-decoders provides a `WithUndefinedAsOptional`
+  // helper that changes all `key: T | undefined` to `key?: T | undefined` of an
+  // object. I don’t know of a way to do that in Flow.
 
   // Because of the worse editor tooltips for inferred types as well as the
   // `constant` caveat, I find it hard to recommend the `$ReturnType` approach

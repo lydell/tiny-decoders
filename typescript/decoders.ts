@@ -6,17 +6,14 @@ import {
   deep,
   dict,
   either,
+  fields,
   lazy,
   map,
-  mixedArray,
-  mixedDict,
   number,
   optional,
   pair,
-  record,
   string,
   triple,
-  tuple,
 } from "tiny-decoders";
 
 function use(value: unknown) {
@@ -29,10 +26,6 @@ boolean(undefined);
 number(undefined);
 // $ExpectType string
 string(undefined);
-// $ExpectType readonly unknown[]
-mixedArray(undefined);
-// $ExpectType { readonly [key: string]: unknown; }
-mixedDict(undefined);
 // $ExpectType true
 constant(true)(undefined);
 // $ExpectType false
@@ -50,15 +43,13 @@ array(string)(undefined);
 // $ExpectType { [key: string]: string; }
 dict(string)(undefined);
 // $ExpectType string
-record(() => "")(undefined);
+fields(() => "")(undefined);
 // $ExpectType { a: string; }
-record((field) => ({ a: field("a", string) }))(undefined);
-// $ExpectType string
-tuple(() => "")(undefined);
+fields((field) => ({ a: field("a", string) }))(undefined);
 // $ExpectType string[]
-tuple((item) => [item(0, string)])(undefined);
+fields((field) => [field(0, string)])(undefined);
 // $ExpectType [string]
-tuple<[string]>((item) => [item(0, string)])(undefined);
+fields<[string]>((field) => [field(0, string)])(undefined);
 // $ExpectType [string, boolean]
 pair(string, boolean)(undefined);
 // $ExpectType [string, boolean, boolean]
@@ -85,8 +76,8 @@ optional(string, null)(undefined);
 map(string, string)(undefined);
 // $ExpectType string | number
 either(string, number)(undefined);
-// $ExpectType string | number | boolean | { readonly [key: string]: unknown; }
-either(either(boolean, string), either(number, mixedDict))(undefined);
+// $ExpectType string | number | boolean
+either(either(boolean, string), either(number, constant(true)))(undefined);
 // $ExpectType string
 lazy(() => string)(undefined);
 
@@ -97,10 +88,6 @@ number(undefined, []);
 // $ExpectError
 string(undefined, []);
 // $ExpectError
-mixedArray(undefined, []);
-// $ExpectError
-mixedDict(undefined, []);
-// $ExpectError
 constant("const")(undefined, []);
 // $ExpectError
 constant("const")(undefined, {});
@@ -110,12 +97,9 @@ array(string)(undefined, {});
 dict(string)(undefined, []);
 // $ExpectError
 dict(string)(undefined, {});
-record(() => "")(undefined, []);
+fields(() => "")(undefined, []);
 // $ExpectError
-record(() => "")(undefined, {});
-tuple(() => "")(undefined, []);
-// $ExpectError
-tuple(() => "")(undefined, {});
+fields(() => "")(undefined, {});
 pair(string, boolean)(undefined, []);
 // $ExpectError
 pair(string, boolean)(undefined, {});
@@ -176,90 +160,48 @@ dict(string, { default: [1] });
 dict(string, "nope");
 
 // Accidentally passed an object instead of a callback:
-record({
+fields({
   // $ExpectError
   a: string,
 });
-record((field) => field("", string));
-record((field) => field("", string, "throw"));
-record((field) => field("", string, { default: "" }));
-record((field) => field("", string, { default: null }));
+fields((field) => field("", string));
+fields((field) => field("", string, "throw"));
+fields((field) => field("", string, { default: "" }));
+fields((field) => field("", string, { default: null }));
+fields((field) => field(0, string));
 // Wrong key type:
 // $ExpectError
-record((field) => field(0, string));
+fields((field) => field(null, string));
 // Wrong order:
 // $ExpectError
-record((field) => field(string, ""));
+fields((field) => field(string, ""));
 // Missing key:
 // $ExpectError
-record((field) => field(string));
+fields((field) => field(string));
 // Wrong mode:
 // $ExpectError
-record((field) => field("", string, "skip"));
+fields((field) => field("", string, "skip"));
 // Accidentally passed bare default:
 // $ExpectError
-record((field) => field("", string, null));
+fields((field) => field("", string, null));
 
-record((field, fieldError) => fieldError("key", "message"));
+fields((field, fieldError) => fieldError("key", "message"));
+fields((field, fieldError) => fieldError(0, "message"));
 // Forgot key:
 // $ExpectError
-record((field, fieldError) => fieldError("message"));
+fields((field, fieldError) => fieldError("message"));
 // Wrong key type:
 // $ExpectError
-record((field, fieldError) => fieldError(0, "message"));
+fields((field, fieldError) => fieldError(true, "message"));
 // Wrong message type:
 // $ExpectError
-record((field, fieldError) => fieldError("key", new TypeError("message")));
+fields((field, fieldError) => fieldError("key", new TypeError("message")));
 
-record((field, fieldError, obj, errors) => {
+fields((field, fieldError, obj, errors) => {
   use(obj.test);
   // Field values are mixed.
   // $ExpectError
   obj.test.toUpperCase();
-  // errors can be null.
-  // $ExpectError
-  errors.slice();
-  if (errors != null) {
-    errors.slice();
-  }
-});
-
-tuple((item) => item(0, string));
-tuple((item) => item(0, string, "throw"));
-tuple((item) => item(0, string, { default: "" }));
-tuple((item) => item(0, string, { default: null }));
-// Wrong key type:
-// $ExpectError
-tuple((item) => item("", string));
-// Wrong order:
-// $ExpectError
-tuple((item) => item(string, 0));
-// Missing key:
-// $ExpectError
-tuple((item) => item(string));
-// Wrong mode:
-// $ExpectError
-tuple((item) => item(0, string, "skip"));
-// Accidentally passed bare default:
-// $ExpectError
-tuple((item) => item(0, string, null));
-
-tuple((item, itemError) => itemError(0, "message"));
-// Forgot key:
-// $ExpectError
-tuple((item, itemError) => itemError("message"));
-// Wrong key type:
-// $ExpectError
-tuple((item, itemError) => itemError("key", "message"));
-// Wrong message type:
-// $ExpectError
-tuple((item, itemError) => itemError(0, new TypeError("message")));
-
-tuple((item, itemError, arr, errors) => {
-  arr.slice();
-  // arr is an array, not an object.
-  // $ExpectError
-  use(arr.test);
   // errors can be null.
   // $ExpectError
   errors.slice();

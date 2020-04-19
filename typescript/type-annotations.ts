@@ -1,13 +1,14 @@
-// This file shows how best to annotate your `record` and `autoRecord` decoders
+// This file shows how best to annotate your `fields` and `autoRecord` decoders
 // to maximize the help you get from TypeScript.
 
 import {
   Decoder,
+  WithUndefinedAsOptional,
   autoRecord,
-  record,
   boolean,
   constant,
   either,
+  fields,
   number,
   optional,
   string,
@@ -32,7 +33,7 @@ const testPerson = { name: "John", age: 30, aye: 0, extra: "" };
 // TypeScript will infer what they decode into (try hovering `personDecoder1`
 // and `personDecoder1Auto` in your editor!), but it won’t know that you
 // intended to decode a `Person`. As you can see, I’ve misspelled `age` as `aye`.
-const personDecoder1 = record((field) => ({
+const personDecoder1 = fields((field) => ({
   name: field("name", string),
   aye: field("age", number),
 }));
@@ -57,7 +58,7 @@ greet(personDecoder1Auto(testPerson));
 // The way to make the above type errors more clear is to provide explicit type
 // annotations, so that TypeScript knows what you’re trying to do.
 // $ExpectError
-const personDecoder2: Decoder<Person> = record((field) => ({
+const personDecoder2: Decoder<Person> = fields((field) => ({
   //  ^^^^^^^^^^^^^^
   // Type 'Decoder<{ name: string; aye: number; }>' is not assignable to type 'Decoder<Person>'.
   //   Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'. ts(2322)
@@ -78,7 +79,7 @@ greet(personDecoder2Auto(testPerson));
 // Here’s a shorter way of writing the above – which also gives better error
 // messages!
 // $ExpectError
-const personDecoder3 = record<Person>((field) => ({
+const personDecoder3 = fields<Person>((field) => ({
   name: field("name", string),
   aye: field("age", number),
 }));
@@ -95,8 +96,8 @@ const personDecoder3Auto = autoRecord<Person>({
 greet(personDecoder3(testPerson));
 greet(personDecoder3Auto(testPerson));
 
-// For, `record` there’s yet a way of annotating the type:
-const personDecoder4 = record(
+// For `fields` there’s yet a way of annotating the type:
+const personDecoder4 = fields(
   (field): Person => ({
     name: field("name", string),
     // $ExpectError
@@ -113,7 +114,7 @@ greet(personDecoder4(testPerson));
  */
 
 // TypeScript allows passing extra properties, so without type annotations there are no errors:
-const personDecoder5 = record((field) => ({
+const personDecoder5 = fields((field) => ({
   name: field("name", string),
   age: field("age", number),
   extra: field("extra", string),
@@ -127,7 +128,7 @@ greet(personDecoder5(testPerson));
 greet(personDecoder5Auto(testPerson));
 
 // Adding `Decoder<Person>` does not seem to help TypeScript find any errors:
-const personDecoder6: Decoder<Person> = record((field) => ({
+const personDecoder6: Decoder<Person> = fields((field) => ({
   name: field("name", string),
   age: field("age", number),
   extra: field("extra", string),
@@ -140,8 +141,8 @@ const personDecoder6Auto: Decoder<Person> = autoRecord({
 greet(personDecoder6(testPerson));
 greet(personDecoder6Auto(testPerson));
 
-// The shorter notation does produce an error for `autoRecord`, but not for `record`.
-const personDecoder7 = record<Person>((field) => ({
+// The shorter notation does produce an error for `autoRecord`, but not for `fields`.
+const personDecoder7 = fields<Person>((field) => ({
   name: field("name", string),
   age: field("age", number),
   extra: field("extra", string),
@@ -158,8 +159,8 @@ const personDecoder7Auto = autoRecord<Person>({
 greet(personDecoder7(testPerson));
 greet(personDecoder7Auto(testPerson));
 
-// Luckily, the last type annotation style for `record` does produce an error!
-const personDecoder8 = record(
+// Luckily, the last type annotation style for `fields` does produce an error!
+const personDecoder8 = fields(
   (field): Person => ({
     name: field("name", string),
     age: field("age", number),
@@ -184,7 +185,7 @@ greet(personDecoder8(testPerson));
 // look almost identical to `interface` they decode to!), you can start with the
 // decoder and extract the type afterwards with TypeScript’s `ReturnType`
 // utility.
-const personDecoder9 = record((field) => ({
+const personDecoder9 = fields((field) => ({
   name: field("name", string),
   age: field("age", number),
 }));
@@ -206,7 +207,7 @@ meet(personDecoder9(testPerson), personDecoder9Auto(testPerson));
 // If it feels like you are specifying everything twice – once in a `type` or
 // `interface`, and once in the decoder – you might find this `ReturnType`
 // technique interesting. If annotating your decoders like shown earlier in this
-// file (`record((field): MyType => ({...}))` and `autoRecord<MyType>({...})`),
+// file (`fields((field): MyType => ({...}))` and `autoRecord<MyType>({...})`),
 // TypeScript will make sure that your type definition and decoders stay in
 // sync, so there’s little room for error there. But with the `ReturnType`
 // approach you don’t have to write what your records look like “twice.”
@@ -267,9 +268,9 @@ const user3: User = {
   //   Object literal may only specify known properties, and 'extra' does not exist in type '{ id: string | number; name: string; age: number; active: boolean; country: string | undefined; type: "user"; }'. ts(2322)
 };
 
-// Here’s the same decoder again, but written using `record` instead of
+// Here’s the same decoder again, but written using `fields` instead of
 // `autoRecord`. It should give the same inferred type.
-const userDecoder2 = record((field) => ({
+const userDecoder2 = fields((field) => ({
   id: field("id", either(string, number)),
   name: field("name", string),
   age: field("age", number),
@@ -300,7 +301,7 @@ const user4: User2 = {
 // Let’s say we need to support two types of users – anonymous and registered ones.
 // Unfortunately, TypeScript doesn’t infer the type you might have expected:
 // $ExpectType Decoder<{ type: string; sessionId: number; id?: undefined; name?: undefined; } | { type: string; id: number; name: string; sessionId?: undefined; }>
-const userDecoder3 = record((field, fieldError) => {
+const userDecoder3 = fields((field, fieldError) => {
   const type = field("type", string);
 
   switch (type) {
@@ -325,7 +326,7 @@ const userDecoder3 = record((field, fieldError) => {
 // To turn `type: string` into `type: "anonymous"` and `type: "registered"`, add
 // `as const` (using the `constant` decoder does not seem to help):
 // $ExpectType Decoder<{ type: "anonymous"; sessionId: number; id?: undefined; name?: undefined; } | { type: "registered"; id: number; name: string; sessionId?: undefined; }>
-const userDecoder4 = record((field, fieldError) => {
+const userDecoder4 = fields((field, fieldError) => {
   const type = field("type", string);
 
   switch (type) {
@@ -384,7 +385,7 @@ const id = <T>(x: T): T => x;
 
 // And when wrapping each `return` in `id(...)` the extra properties vanish!
 // $ExpectType Decoder<{ type: "anonymous"; sessionId: number; } | { type: "registered"; id: number; name: string; }>
-const userDecoder5 = record((field, fieldError) => {
+const userDecoder5 = fields((field, fieldError) => {
   const type = field("type", string);
 
   switch (type) {
@@ -410,7 +411,7 @@ const userDecoder5 = record((field, fieldError) => {
 function getUserDecoder(type: unknown) {
   switch (type) {
     case "anonymous":
-      return record((field) => ({
+      return fields((field) => ({
         type: field("type", constant("anonymous")),
         sessionId: field("sessionId", number),
       }));
@@ -433,7 +434,7 @@ function getUserDecoder(type: unknown) {
 // _new_ decoder, which we immediately call. I haven’t found a nicer way to do
 // this so far.
 // $ExpectType Decoder<{ type: "anonymous"; sessionId: number; } | { type: "registered"; id: number; name: string; }>
-const userDecoder6 = record((field, _fieldError, obj, errors) =>
+const userDecoder6 = fields((field, _fieldError, obj, errors) =>
   field("type", getUserDecoder)(obj, errors)
 );
 
@@ -455,7 +456,7 @@ const item1: Item = {
   // Property 'description' is missing in type '{ title: string; }' but required in type '{ title: string; description: string | undefined; } ts(2741)
   title: "Pencil",
 };
-const item2: Item = {
+const item1_2: Item = {
   title: "Pencil",
   description: undefined,
 };
@@ -463,16 +464,54 @@ const item2: Item = {
 // This may or may not be what you want. If you have a large number of optional
 // fields and need to construct a lot of such objects in code it might be
 // convenient not having to specify all optional fields at all times. To achieve
-// that you must provide an explicit type annotation:
-interface Item2 {
-  title: string;
-  description?: string;
-}
-// $ExpectType Decoder<Item2>
+// that, you can use `WithUndefinedAsOptional`. It changes all `key: T |
+// undefined` to `key?: T | undefined` of an object.
+type Item2 = WithUndefinedAsOptional<ReturnType<typeof itemDecoder>>;
+// Hover over `Item2`! You should see something like this:
+//   type Item2 = {
+//       title: string;
+//       description?: string | undefined;
+//   }
+// However, hovering over `itemDecoder2` might not be as nice:
+// $ExpectType Decoder<Merge<{ title: string; } & { description?: string | undefined; }>>
 const itemDecoder2 = autoRecord<Item2>({
   title: string,
   description: optional(string),
 });
-const item3: Item2 = {
+const item2: Item2 = {
+  title: "Pencil",
+};
+const item2_1: Item2 = {
+  title: "Pencil",
+  description: undefined,
+};
+const item2_2: Item2 = {
+  title: "Pencil",
+  description: "Mighty fine writer’s tool.",
+};
+// $ExpectError
+const item2_3: Item = {};
+//    ^^^^^^^
+// Type '{}' is missing the following properties from type '{ title: string; description: string | undefined; }': title, description ts(2739)
+const item2_4: Item = {
+  title: "Pencil",
+  // $ExpectError
+  price: 10,
+  // ^^^^^^
+  // Type '{ title: string; price: number; }' is not assignable to type '{ title: string; description: string | undefined; }'.
+  //   Object literal may only specify known properties, and 'price' does not exist in type '{ title: string; description: string | undefined; }'. ts(2322)
+};
+
+// Or provide an explicit type annotation:
+interface Item3 {
+  title: string;
+  description?: string;
+}
+// $ExpectType Decoder<Item3>
+const itemDecoder3 = autoRecord<Item3>({
+  title: string,
+  description: optional(string),
+});
+const item3: Item3 = {
   title: "Pencil",
 };

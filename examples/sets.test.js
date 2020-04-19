@@ -4,10 +4,10 @@ import {
   type Decoder,
   array,
   autoRecord,
+  fields,
   map,
   number,
   optional,
-  record,
   string,
 } from "../src";
 
@@ -33,7 +33,7 @@ test("decoding to a Set", () => {
   };
 
   // Still no problem, really:
-  const objDecoder1 = record((field) => ({
+  const objDecoder1 = fields((field) => ({
     id: field("id", string),
     numbers: new Set(field("numbers", array(number))),
   }));
@@ -58,7 +58,7 @@ test("decoding to a Set", () => {
   // of the `map` call is a function that looks like this:
   //
   //    (value: mixed) => Set<number>
-  const objDecoder2 = record((field) => ({
+  const objDecoder2 = fields((field) => ({
     id: field("id", string),
     numbers: field(
       "numbers",

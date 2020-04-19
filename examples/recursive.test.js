@@ -6,10 +6,10 @@ import {
   autoRecord,
   dict,
   either,
+  fields,
   lazy,
   number,
   optional,
-  record,
   string,
 } from "../src";
 
@@ -20,8 +20,8 @@ test("recursive data structure", () => {
     friends: Array<Person>,
   };
 
-  // When using `record` there won’t be any trouble decoding it:
-  const personDecoder1: Decoder<Person> = record((field) => ({
+  // When using `fields` there won’t be any trouble decoding it:
+  const personDecoder1: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     friends: field("friends", array(personDecoder1)),
   }));
@@ -30,14 +30,14 @@ test("recursive data structure", () => {
   // This wouldn’t work to decode it, because we’re trying to use
   // `personDecoder` in the definition of `personDecoder` itself.
   /*
-  const personDecoder2: Decoder<Person> = record({
+  const personDecoder2: Decoder<Person> = fields({
     name: string,
     friends: array(personDecoder2), // ReferenceError: personDecoder2 is not defined
   });
   */
 
   // With `lazy` we can delay the reference to `personDecoder2`.
-  // (You can of course also switch from `autoRecord` to `record` instead of
+  // (You can of course also switch from `autoRecord` to `fields` instead of
   // using `lazy` if you want.)
   const personDecoder2: Decoder<Person> = autoRecord({
     name: string,
@@ -88,7 +88,7 @@ test("recursive data structure", () => {
 });
 
 test("recurse non-record", () => {
-  // In the case of records, you can switch from `autoRecord` to `record` to fix
+  // In the case of records, you can switch from `autoRecord` to `fields` to fix
   // the recursiveness issue. But if you for example have a recursive dict, you
   // _have_ to use `lazy`.
 
@@ -141,9 +141,9 @@ test("indirectly recursive data structure", () => {
     person: Person,
   };
 
-  // Again, when using `record` you shouldn’t encounter any problems, other than
+  // Again, when using `fields` you shouldn’t encounter any problems, other than
   // maybe having to disable an ESLint rule.
-  const personDecoder1: Decoder<Person> = record((field) => ({
+  const personDecoder1: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     // eslint-disable-next-line no-use-before-define
     relationship: field("relationship", optional(relationshipDecoder)),
@@ -213,7 +213,7 @@ test("circular objects", () => {
     likes: Person,
   };
 
-  const personDecoder1: Decoder<Person> = record((field) => ({
+  const personDecoder1: Decoder<Person> = fields((field) => ({
     name: field("name", string),
     likes: field("likes", personDecoder1),
   }));

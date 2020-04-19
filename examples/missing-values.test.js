@@ -4,11 +4,12 @@ import {
   type Decoder,
   constant,
   either,
+  fields,
   number,
   optional,
-  record,
   string,
 } from "../src";
+import { thrownError } from "../test/helpers";
 
 test("distinguishing between undefined, null and missing values", () => {
   // When decoding objects, arrays and tuples, the value for a property or index
@@ -36,12 +37,12 @@ test("distinguishing between undefined, null and missing values", () => {
   // `constant(null)` or `constant(undefined)`.
   expect(either(number, constant(null))(0)).toMatchInlineSnapshot(`0`);
   expect(either(number, constant(null))(null)).toMatchInlineSnapshot(`null`);
-  expect(() => either(number, constant(null))(undefined))
-    .toThrowErrorMatchingInlineSnapshot(`
-Several decoders failed:
-Expected a number, but got: undefined
-Expected the value null, but got: undefined
-`);
+  expect(thrownError(() => either(number, constant(null))(undefined)))
+    .toMatchInlineSnapshot(`
+    Several decoders failed:
+    Expected a number, but got: undefined
+    Expected the value null, but got: undefined
+  `);
 
   // If you also need to consider missing values, here’s how to do it.
 
@@ -52,7 +53,7 @@ Expected the value null, but got: undefined
     age: Age,
   };
 
-  const userDecoder: Decoder<User> = record((field, fieldError, obj) => ({
+  const userDecoder: Decoder<User> = fields((field, fieldError, obj) => ({
     name: field("name", string),
     // This manual checking is little bit ugly but also kind of clear in what it
     // is doing.

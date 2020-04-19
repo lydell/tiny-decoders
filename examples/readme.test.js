@@ -7,9 +7,9 @@ import {
   autoRecord,
   boolean,
   either,
+  fields,
   number,
   optional,
-  record,
   repr,
   string,
 } from "../src";
@@ -27,7 +27,7 @@ test("the main readme example", () => {
     id: string | number,
   };
 
-  const userDecoder = record((field): User => ({
+  const userDecoder = fields((field): User => ({
     name: field("full_name", string),
     active: field("is_active", boolean),
     age: field("age", optional(number)),

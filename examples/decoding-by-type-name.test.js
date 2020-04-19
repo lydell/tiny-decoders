@@ -8,13 +8,14 @@ import {
   constant,
   dict,
   either,
+  fields,
   map,
   number,
   optional,
-  record,
   repr,
   string,
 } from "../src";
+import { thrownError } from "../test/helpers";
 
 test("decoding based on a field", () => {
   // First, some types:
@@ -51,7 +52,7 @@ test("decoding based on a field", () => {
     isActive: boolean,
   });
 
-  const searchResultDecoder1: Decoder<SearchResult> = record(
+  const searchResultDecoder1: Decoder<SearchResult> = fields(
     (field, fieldError, obj, errors) => {
       const type = field("type", string);
 
@@ -145,19 +146,19 @@ test("decoding based on a field", () => {
     either(categoryDecoder, offerDecoder)
   );
   expect(searchResultDecoder2(offer)).toEqual(searchResultDecoder1(offer));
-  expect(() => searchResultDecoder2(incompleteProduct))
-    .toThrowErrorMatchingInlineSnapshot(`
-Several decoders failed:
-object["price"] (missing): Expected a number, but got: undefined
-object["type"]: Expected the value "Category", but got: "Product"
-object["type"]: Expected the value "Offer", but got: "Product"
-`);
-  expect(() => searchResultDecoder2(user)).toThrowErrorMatchingInlineSnapshot(`
-Several decoders failed:
-object["type"]: Expected the value "Product", but got: "User"
-object["type"]: Expected the value "Category", but got: "User"
-object["type"]: Expected the value "Offer", but got: "User"
-`);
+  expect(thrownError(() => searchResultDecoder2(incompleteProduct)))
+    .toMatchInlineSnapshot(`
+    Several decoders failed:
+    object["price"] (missing): Expected a number, but got: undefined
+    object["type"]: Expected the value "Category", but got: "Product"
+    object["type"]: Expected the value "Offer", but got: "Product"
+  `);
+  expect(thrownError(() => searchResultDecoder2(user))).toMatchInlineSnapshot(`
+    Several decoders failed:
+    object["type"]: Expected the value "Product", but got: "User"
+    object["type"]: Expected the value "Category", but got: "User"
+    object["type"]: Expected the value "Offer", but got: "User"
+  `);
 
   // This is a better approach:
 
@@ -178,7 +179,7 @@ object["type"]: Expected the value "Offer", but got: "User"
     }
   }
 
-  const searchResultDecoder3 = record((field, fieldError, obj, errors) => {
+  const searchResultDecoder3 = fields((field, fieldError, obj, errors) => {
     const decoder = field("type", map(string, getSearchResultDecoder));
     return decoder(obj, errors);
   });
@@ -197,7 +198,7 @@ object["type"]: Expected the value "Offer", but got: "User"
   // `searchResultDecoder3` could also have been written like this, but that
   // gives a worse error message when `type` is invalid (which doesn’t indicate
   // that the error happened in the `type` field).
-  const searchResultDecoder4 = record((field, fieldError, obj, errors) => {
+  const searchResultDecoder4 = fields((field, fieldError, obj, errors) => {
     const decoder = getSearchResultDecoder(field("type", string));
     return decoder(obj, errors);
   });
@@ -298,7 +299,7 @@ test("using several fields to decide how to decode", () => {
     },
   };
 
-  const personDecoder: Decoder<Person> = record((field) => {
+  const personDecoder: Decoder<Person> = fields((field) => {
     // First get the roles, and then decode based on those.
     const isUser = field("isUser", optional(boolean, false));
     const isAdmin = field("isAdmin", optional(boolean, false));
