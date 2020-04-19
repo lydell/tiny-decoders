@@ -906,13 +906,13 @@ You need [Node.js] 12 and npm 6.
 
 ### npm scripts
 
-- `npx flow`: Run [Flow].
-- `npm run eslint`: Autofix [ESLint] errors.
-- `npm run dtslint`: Run [dtslint].
-- `npm run prettier`: Run [Prettier] for files other than JS.
-- `npm run doctoc`: Run [doctoc] on README.md.
 - `npx jest --watch`: Run unit tests.
-- `npm run build`: Compile with [Babel].
+- `npx flow`: Run [Flow].
+- `npm run dtslint`: Run [dtslint].
+- `npm run eslint`: Autofix [ESLint] errors.
+- `npm run prettier`: Autoformat files with [Prettier].
+- `npm run doctoc`: Auto-generate table of contents with [doctoc].
+- `npm run build`: Compile with [Babel], creating `dist/`.
 - `npm test`: Check that everything works.
 
 ### Directories
@@ -922,7 +922,7 @@ You need [Node.js] 12 and npm 6.
 - `test/`: [Jest] tests.
 - `flow/`: [Flow] typechecking tests. Turn off “ExpectError” in .flowconfig to see what the errors look like.
 - `typescript/`: [TypeScript] type definitions, config and typechecking tests.
-- `dist/`: Compiled code, built by `npm run build`. This is what is published in the npm package.
+- `dist/`: Compiled code, built by `npm run build`. This is what’s published in the npm package.
 
 ## License
 
