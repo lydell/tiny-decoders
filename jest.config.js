@@ -1,5 +1,7 @@
 module.exports = {
-  collectCoverageFrom: ["src/**/*.js"],
+  preset: "ts-jest",
+  testEnvironment: "node",
+  collectCoverageFrom: ["index.ts"],
   coverageThreshold: {
     global: {
       branches: 100,
@@ -8,5 +10,4 @@ module.exports = {
       statements: 100,
     },
   },
-  snapshotSerializers: ["./jest.snapshots.config.js"],
 };
