@@ -66,6 +66,10 @@ test("boolean", () => {
   expect(boolean(true)).toBe(true);
   expect(boolean(false)).toBe(false);
 
+  expectType<boolean>(boolean(true));
+  // @ts-expect-error Expected 1 arguments, but got 2.
+  boolean(true, []);
+
   expect(run(boolean, 0)).toMatchInlineSnapshot(`
     At root:
     Expected a boolean
@@ -80,6 +84,10 @@ test("number", () => {
   expect(number(Infinity)).toMatchInlineSnapshot(`Infinity`);
   expect(number(-Infinity)).toMatchInlineSnapshot(`-Infinity`);
 
+  expectType<number>(number(0));
+  // @ts-expect-error Expected 1 arguments, but got 2.
+  number(0, []);
+
   expect(run(number, undefined)).toMatchInlineSnapshot(`
     At root:
     Expected a number
@@ -90,6 +98,10 @@ test("number", () => {
 test("string", () => {
   expect(string("")).toBe("");
   expect(string("string")).toBe("string");
+
+  expectType<string>(string(""));
+  // @ts-expect-error Expected 1 arguments, but got 2.
+  string("", []);
 
   expect(run(string, Symbol("desc"))).toMatchInlineSnapshot(`
     At root:
@@ -132,6 +144,15 @@ test("constant", () => {
   expectType<TypeEqual<ReturnType<typeof stringDecoder>, "string">>(true);
   expect(stringDecoder("string")).toBe("string");
 
+  // @ts-expect-error Expected 1 arguments, but got 2.
+  constant(true, []);
+  // @ts-expect-error Arrays can’t be compared easily:
+  constant([]);
+  // @ts-expect-error Objects can’t be compared easily:
+  constant({});
+  // @ts-expect-error Accidentally passed a decoder:
+  constant(string);
+
   // `NaN !== NaN`. Not the best error message. Maybe we should use `Object.is`
   // in the future.
   const nanDecoder = constant(NaN);
@@ -164,6 +185,11 @@ describe("stringUnion", () => {
     expect(colorDecoder("red")).toBe("red");
     expect(colorDecoder("green")).toBe("green");
     expect(colorDecoder("blue")).toBe("blue");
+
+    expectType<Color>(colorDecoder("red"));
+    // @ts-expect-error Passed array instead of object.
+    stringUnion(["one", "two"]);
+
     expect(run(colorDecoder, "Red")).toMatchInlineSnapshot(`
       At root:
       Expected one of these variants: ["red", "green", "blue"]
@@ -223,6 +249,7 @@ describe("array", () => {
     const bitsDecoder = array(stringUnion({ "0": null, "1": null }));
 
     expectType<TypeEqual<Bits, Array<"0" | "1">>>(true);
+    expectType<Bits>(bitsDecoder([]));
 
     expect(bitsDecoder([])).toStrictEqual([]);
     expect(bitsDecoder(["0"])).toStrictEqual(["0"]);
@@ -241,6 +268,9 @@ describe("array", () => {
   });
 
   describe("allow", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
+    array(number, { allow: "nope" });
+
     test("allows only arrays by default", () => {
       expect(run(array(number), [0])).toStrictEqual([0]);
       expect(run(array(number, { allow: "array" }), [0])).toStrictEqual([0]);
@@ -311,6 +341,9 @@ Got: ${repr(length)}
   });
 
   describe("mode", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"skip" | "throw" | { default: never; } | undefined'.
+    array(number, { mode: "nope" });
+
     test("throw", () => {
       expect(runWithErrorsArray(array(number), [1, "2", 3]))
         .toMatchInlineSnapshot(`
@@ -370,6 +403,7 @@ describe("record", () => {
     const registersDecoder = record(stringUnion({ "0": null, "1": null }));
 
     expectType<TypeEqual<Registers, Record<string, "0" | "1">>>(true);
+    expectType<Registers>(registersDecoder({}));
 
     expect(registersDecoder({})).toStrictEqual({});
     expect(registersDecoder({ a: "0" })).toStrictEqual({ a: "0" });
@@ -424,6 +458,9 @@ describe("record", () => {
   });
 
   describe("allow", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
+    record(number, { allow: "nope" });
+
     test("allows only objects by default", () => {
       expect(run(record(number), { a: 0 })).toStrictEqual({ a: 0 });
       expect(run(record(number, { allow: "object" }), { a: 0 })).toStrictEqual({
@@ -472,6 +509,9 @@ describe("record", () => {
   });
 
   describe("mode", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"skip" | "throw" | { default: never; } | undefined'.
+    record(number, { mode: "nope" });
+
     test("throw", () => {
       expect(runWithErrorsArray(record(number), { a: 1, b: "2", c: 3 }))
         .toMatchInlineSnapshot(`
