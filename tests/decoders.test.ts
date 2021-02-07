@@ -20,31 +20,34 @@ import {
   // optional,
   // optionalNullable,
   // record,
+  repr,
   string,
   stringUnion,
   // tuple,
 } from "../";
 
-// function testWithErrorsArray<T>({
-//   decoder,
-//   data,
-// }: {
-//   decoder: Decoder<T>;
-//   data: unknown;
-// }): { decoded: T; errors: Array<string>; shortErrors: Array<string> } {
-//   const errors: Array<DecoderError> = [];
-//   const decoded = decoder(data);
-//   expect(decoder(data, errors)).toEqual(decoded);
-//   return {
-//     decoded,
-//     errors: errors.map((error) => error.format()),
-//     shortErrors: errors.map((error) => error.format({ sensitive: true })),
-//   };
-// }
-
 function run<T>(decoder: Decoder<T>, value: unknown): T | string {
   try {
     return decoder(value);
+  } catch (error) {
+    return error instanceof DecoderError
+      ? error.format()
+      : "Not a DecoderError";
+  }
+}
+
+function runWithErrorsArray<T>(
+  decoder: Decoder<T>,
+  value: unknown
+): string | { decoded: T; errors: Array<string> } {
+  const errors: Array<DecoderError> = [];
+  try {
+    const decoded = decoder(value);
+    expect(decoder(value, errors)).toStrictEqual(decoded);
+    return {
+      decoded,
+      errors: errors.map((error) => error.format()),
+    };
   } catch (error) {
     return error instanceof DecoderError
       ? error.format()
@@ -235,144 +238,130 @@ describe("array", () => {
       Got: "2"
     `);
   });
+
+  describe("allow", () => {
+    test("allows only arrays by default", () => {
+      expect(run(array(number), [0])).toStrictEqual([0]);
+      expect(run(array(number, { allow: "array" }), [0])).toStrictEqual([0]);
+      expect(run(array(number), { length: 0 })).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: {"length": 0}
+      `);
+      expect(run(array(number), new Int32Array(2))).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: Int32Array
+      `);
+    });
+
+    test("allow only object", () => {
+      expect(
+        run(array(number, { allow: "object" }), { length: 0 })
+      ).toStrictEqual([]);
+      expect(
+        run(array(number, { allow: "object" }), new Int32Array(2))
+      ).toStrictEqual([0, 0]);
+      expect(run(array(number, { allow: "object" }), []))
+        .toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: []
+      `);
+    });
+
+    test("allow both", () => {
+      expect(
+        run(array(number, { allow: "object/array" }), { length: 0 })
+      ).toStrictEqual([]);
+      expect(
+        run(array(number, { allow: "object/array" }), new Int32Array(2))
+      ).toStrictEqual([0, 0]);
+      expect(run(array(number, { allow: "object/array" }), [])).toStrictEqual(
+        []
+      );
+    });
+
+    describe("invalid length attribute", () => {
+      const variants: Array<unknown> = [
+        "1",
+        1.5,
+        -1,
+        -0.1,
+        2 ** 32,
+        NaN,
+        Infinity,
+        null,
+        -1,
+      ];
+
+      for (const length of variants) {
+        test(`${repr(length)}`, () => {
+          expect(run(array(number, { allow: "object" }), { length })).toBe(
+            `
+At root["length"]:
+Expected a valid array length (unsigned 32-bit integer)
+Got: ${repr(length)}
+          `.trim()
+          );
+        });
+      }
+    });
+  });
+
+  describe("mode", () => {
+    test("throw", () => {
+      expect(runWithErrorsArray(array(number), [1, "2", 3]))
+        .toMatchInlineSnapshot(`
+        At root[1]:
+        Expected a number
+        Got: "2"
+      `);
+      expect(runWithErrorsArray(array(number, { mode: "throw" }), [1, "2"]))
+        .toMatchInlineSnapshot(`
+        At root[1]:
+        Expected a number
+        Got: "2"
+      `);
+    });
+
+    test("skip", () => {
+      expect(runWithErrorsArray(array(number, { mode: "skip" }), [1, "2", 3]))
+        .toMatchInlineSnapshot(`
+        Object {
+          "decoded": Array [
+            1,
+            3,
+          ],
+          "errors": Array [
+            At root[1]:
+        Expected a number
+        Got: "2",
+          ],
+        }
+      `);
+    });
+
+    test("default", () => {
+      expect(
+        runWithErrorsArray(array(number, { mode: { default: 0 } }), [1, "2", 3])
+      ).toMatchInlineSnapshot(`
+        Object {
+          "decoded": Array [
+            1,
+            0,
+            3,
+          ],
+          "errors": Array [
+            At root[1]:
+        Expected a number
+        Got: "2",
+          ],
+        }
+      `);
+    });
+  });
 });
-
-// test("array", () => {
-//   expect(array(number)([])).toMatchInlineSnapshot(`Array []`);
-//   expect(array(number)([1])).toMatchInlineSnapshot(`
-//     Array [
-//       1,
-//     ]
-//   `);
-//   expect(array(number, { allow: "object/array" })(Buffer.from("a")))
-//     .toMatchInlineSnapshot(`
-//     Array [
-//       97,
-//     ]
-//   `);
-//   expect(array(number, { allow: "object/array" })(new Int32Array(2)))
-//     .toMatchInlineSnapshot(`
-//     Array [
-//       0,
-//       0,
-//     ]
-//   `);
-//   expect(array(number, { allow: "object" })({ length: 1, "0": 1 }))
-//     .toMatchInlineSnapshot(`
-//     Array [
-//       1,
-//     ]
-//   `);
-
-//   expect(() => array(number)(null)).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an array
-//     Got: null"
-//   `);
-//   expect(() => array(number)({})).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an array
-//     Got: {}"
-//   `);
-//   expect(() => array(number, { allow: "object/array" })({ length: "1" }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a valid array length (unsigned 32-bit integer)
-//     Got: string"
-//   `);
-//   expect(() => array(number, { allow: "object/array" })({ length: 1.5 }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a valid array length (unsigned 32-bit integer)
-//     Got: number"
-//   `);
-//   expect(() => array(number, { allow: "object/array" })({ length: -1 }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a valid array length (unsigned 32-bit integer)
-//     Got: number"
-//   `);
-//   expect(() => array(number, { allow: "object/array" })({ length: -0.1 }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a valid array length (unsigned 32-bit integer)
-//     Got: number"
-//   `);
-//   expect(() => array(number, { allow: "object/array" })({ length: 2 ** 32 }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a valid array length (unsigned 32-bit integer)
-//     Got: number"
-//   `);
-//   expect(() => array(number, { allow: "object/array" })({ length: NaN }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a valid array length (unsigned 32-bit integer)
-//     Got: number"
-//   `);
-//   expect(() => array(number, { allow: "object/array" })({ length: Infinity }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a valid array length (unsigned 32-bit integer)
-//     Got: number"
-//   `);
-
-//   expect(() => autoFields({ key: array(number) })({ length: null }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an array
-//     Got: undefined"
-//   `);
-//   expect(() => autoFields({ key: array(number) })({ length: -1 }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an array
-//     Got: undefined"
-//   `);
-
-//   expect(() => array(number)([1, "2"])).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: string"
-//   `);
-
-//   expect(
-//     testWithErrorsArray({
-//       decoder: array(number, { mode: "skip" }),
-//       data: [1, "2", 3],
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "decoded": Array [
-//         1,
-//         3,
-//       ],
-//       "errors": Array [
-//         "At root[1]:
-//     Expected a number
-//     Got: \\"2\\"",
-//       ],
-//       "shortErrors": Array [
-//         "At root[1]:
-//     Expected a number
-//     Got: string",
-//       ],
-//     }
-//   `);
-
-//   expect(
-//     testWithErrorsArray({
-//       decoder: array(number, { mode: { default: 0 } }),
-//       data: [1, "2", 3],
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "decoded": Array [
-//         1,
-//         0,
-//         3,
-//       ],
-//       "errors": Array [
-//         "At root[1]:
-//     Expected a number
-//     Got: \\"2\\"",
-//       ],
-//       "shortErrors": Array [
-//         "At root[1]:
-//     Expected a number
-//     Got: string",
-//       ],
-//     }
-//   `);
-// });
 
 // test("record", () => {
 //   expect(record(string)({})).toMatchInlineSnapshot(`Object {}`);
