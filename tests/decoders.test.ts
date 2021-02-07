@@ -3,7 +3,7 @@ import { expectType, TypeEqual } from "ts-expect";
 // TODO: Test all of them!
 import {
   array,
-  // autoFields,
+  autoFields,
   boolean,
   constant,
   Decoder,
@@ -11,15 +11,14 @@ import {
   // deep,
   // fields,
   // fieldsUnion,
-  // formatDecoderErrorVariant,
   // lazy,
-  // map,
+  map,
   // multi,
   // nullable,
   number,
   // optional,
   // optionalNullable,
-  // record,
+  record,
   repr,
   string,
   stringUnion,
@@ -32,7 +31,9 @@ function run<T>(decoder: Decoder<T>, value: unknown): T | string {
   } catch (error) {
     return error instanceof DecoderError
       ? error.format()
-      : "Not a DecoderError";
+      : error instanceof Error
+      ? error.message
+      : `Unknown error: ${repr(error)}`;
   }
 }
 
@@ -57,7 +58,7 @@ function runWithErrorsArray<T>(
 
 expect.addSnapshotSerializer({
   test: (value: unknown): boolean =>
-    typeof value === "string" && value.includes("Expected"),
+    typeof value === "string" && value.includes("At root"),
   print: String,
 });
 
@@ -255,7 +256,7 @@ describe("array", () => {
       `);
     });
 
-    test("allow only object", () => {
+    test("allow only objects", () => {
       expect(
         run(array(number, { allow: "object" }), { length: 0 })
       ).toStrictEqual([]);
@@ -317,7 +318,7 @@ Got: ${repr(length)}
         Expected a number
         Got: "2"
       `);
-      expect(runWithErrorsArray(array(number, { mode: "throw" }), [1, "2"]))
+      expect(runWithErrorsArray(array(number, { mode: "throw" }), [1, "2", 3]))
         .toMatchInlineSnapshot(`
         At root[1]:
         Expected a number
@@ -363,81 +364,180 @@ Got: ${repr(length)}
   });
 });
 
-// test("record", () => {
-//   expect(record(string)({})).toMatchInlineSnapshot(`Object {}`);
-//   expect(record(string)({ a: "string" })).toMatchInlineSnapshot(`
-//     Object {
-//       "a": "string",
-//     }
-//   `);
-//   expect(record(string, { allow: "array" })([])).toMatchInlineSnapshot(
-//     `Object {}`
-//   );
+describe("record", () => {
+  test("Basic", () => {
+    type Registers = ReturnType<typeof registersDecoder>;
+    const registersDecoder = record(stringUnion({ "0": null, "1": null }));
 
-//   expect(() => record(string)(null)).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: null"
-//   `);
-//   expect(() => record(string)({ a: "a", b: 0 }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a string
-//     Got: number"
-//   `);
-//   expect(() => record(string)({ '"), "key": "other value"': 1 }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a string
-//     Got: number"
-//   `);
+    expectType<TypeEqual<Registers, Record<string, "0" | "1">>>(true);
 
-//   expect(
-//     testWithErrorsArray({
-//       decoder: record(number, { mode: "skip" }),
-//       data: { a: 1, b: "2", c: 3 },
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "decoded": Object {
-//         "a": 1,
-//         "c": 3,
-//       },
-//       "errors": Array [
-//         "At root[\\"b\\"]:
-//     Expected a number
-//     Got: \\"2\\"",
-//       ],
-//       "shortErrors": Array [
-//         "At root[\\"b\\"]:
-//     Expected a number
-//     Got: string",
-//       ],
-//     }
-//   `);
+    expect(registersDecoder({})).toStrictEqual({});
+    expect(registersDecoder({ a: "0" })).toStrictEqual({ a: "0" });
+    expect(registersDecoder({ a: "0", b: "1", c: "1", d: "0" })).toStrictEqual({
+      a: "0",
+      b: "1",
+      c: "1",
+      d: "0",
+    });
 
-//   expect(
-//     testWithErrorsArray({
-//       decoder: record(number, { mode: { default: 0 } }),
-//       data: { a: 1, b: "2", c: 3 },
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "decoded": Object {
-//         "a": 1,
-//         "b": 0,
-//         "c": 3,
-//       },
-//       "errors": Array [
-//         "At root[\\"b\\"]:
-//     Expected a number
-//     Got: \\"2\\"",
-//       ],
-//       "shortErrors": Array [
-//         "At root[\\"b\\"]:
-//     Expected a number
-//     Got: string",
-//       ],
-//     }
-//   `);
-// });
+    expect(run(registersDecoder, { a: "0", b: "2" })).toMatchInlineSnapshot(`
+      At root["b"]:
+      Expected one of these variants: ["0", "1"]
+      Got: "2"
+    `);
+  });
+
+  test("Keys to regex", () => {
+    const decoder = map(record(string), (items) =>
+      Object.entries(items).map(
+        ([key, value]) => [RegExp(key, "u"), value] as const
+      )
+    );
+
+    expectType<
+      TypeEqual<ReturnType<typeof decoder>, Array<readonly [RegExp, string]>>
+    >(true);
+
+    const good = { "\\d{4}:\\d{2}": "Year/month", ".*": "Rest" };
+    const bad = { "\\d{4}:\\d{2": "Year/month", ".*": "Rest" };
+
+    expect(run(decoder, good)).toStrictEqual([
+      [/\d{4}:\d{2}/u, "Year/month"],
+      [/.*/u, "Rest"],
+    ]);
+
+    expect(run(decoder, bad)).toMatchInlineSnapshot(
+      `"Invalid regular expression: /\\\\d{4}:\\\\d{2/: Incomplete quantifier"`
+    );
+
+    expect(run(autoFields({ regexes: decoder }), { regexes: bad }))
+      .toMatchInlineSnapshot(`
+      At root["regexes"]:
+      Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier
+    `);
+  });
+
+  test("ignores __proto__", () => {
+    expect(
+      run(record(number), JSON.parse(`{"a": 1, "__proto__": 2, "b": 3}`))
+    ).toStrictEqual({ a: 1, b: 3 });
+  });
+
+  describe("allow", () => {
+    test("allows only objects by default", () => {
+      expect(run(record(number), { a: 0 })).toStrictEqual({ a: 0 });
+      expect(run(record(number, { allow: "object" }), { a: 0 })).toStrictEqual({
+        a: 0,
+      });
+      expect(run(record(number), new Int32Array(2))).toStrictEqual({
+        0: 0,
+        1: 0,
+      });
+      expect(run(record(number), [1])).toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: [1]
+      `);
+    });
+
+    test("allow only arrays", () => {
+      expect(run(record(number, { allow: "array" }), [1])).toStrictEqual({
+        0: 1,
+      });
+      expect(run(record(number, { allow: "array" }), new Int32Array(2)))
+        .toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: Int32Array
+      `);
+      expect(run(record(number, { allow: "array" }), {}))
+        .toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: {}
+      `);
+    });
+
+    test("allow both", () => {
+      expect(
+        run(record(number, { allow: "object/array" }), [1])
+      ).toStrictEqual({ 0: 1 });
+      expect(
+        run(record(number, { allow: "object/array" }), new Int32Array(2))
+      ).toStrictEqual({ 0: 0, 1: 0 });
+      expect(run(record(number, { allow: "object/array" }), {})).toStrictEqual(
+        {}
+      );
+    });
+  });
+
+  describe("mode", () => {
+    test("throw", () => {
+      expect(runWithErrorsArray(record(number), { a: 1, b: "2", c: 3 }))
+        .toMatchInlineSnapshot(`
+        At root["b"]:
+        Expected a number
+        Got: "2"
+      `);
+      expect(
+        runWithErrorsArray(record(number, { mode: "throw" }), {
+          a: 1,
+          b: "2",
+          c: 3,
+        })
+      ).toMatchInlineSnapshot(`
+        At root["b"]:
+        Expected a number
+        Got: "2"
+      `);
+    });
+
+    test("skip", () => {
+      expect(
+        runWithErrorsArray(record(number, { mode: "skip" }), {
+          a: 1,
+          b: "2",
+          c: 3,
+        })
+      ).toMatchInlineSnapshot(`
+        Object {
+          "decoded": Object {
+            "a": 1,
+            "c": 3,
+          },
+          "errors": Array [
+            At root["b"]:
+        Expected a number
+        Got: "2",
+          ],
+        }
+      `);
+    });
+
+    test("default", () => {
+      expect(
+        runWithErrorsArray(record(number, { mode: { default: 0 } }), {
+          a: 1,
+          b: "2",
+          c: 3,
+        })
+      ).toMatchInlineSnapshot(`
+        Object {
+          "decoded": Object {
+            "a": 1,
+            "b": 0,
+            "c": 3,
+          },
+          "errors": Array [
+            At root["b"]:
+        Expected a number
+        Got: "2",
+          ],
+        }
+      `);
+    });
+  });
+});
 
 // test("fields object", () => {
 //   expect(fields(() => ({}))({})).toMatchInlineSnapshot(`Object {}`);
