@@ -60,7 +60,9 @@ export function constant<
 
 export function stringUnion<T extends Record<string, null>>(
   mapping: keyof T extends string
-    ? T
+    ? keyof T extends never
+      ? "stringUnion must have at least one key"
+      : T
     : {
         [P in keyof T]: P extends number
           ? "stringUnion keys must be strings, not numbers!"
