@@ -23,7 +23,7 @@ import {
   repr,
   string,
   stringUnion,
-  // tuple,
+  tuple,
 } from "../";
 
 function run<T>(decoder: Decoder<T>, value: unknown): T | string {
@@ -1008,67 +1008,192 @@ describe("autoFields", () => {
   });
 });
 
-// test("tuple", () => {
-//   expect(tuple([string, number])(["", 0])).toMatchInlineSnapshot(`
-//     Array [
-//       "",
-//       0,
-//     ]
-//   `);
-//   expect(tuple([string, number])(["", 0, true])).toMatchInlineSnapshot(`
-//     Array [
-//       "",
-//       0,
-//     ]
-//   `);
-//   expect(tuple([string, number], { allow: "object" })({ "0": "", "1": 0 }))
-//     .toMatchInlineSnapshot(`
-//     Array [
-//       "",
-//       0,
-//     ]
-//   `);
-//   expect(() => tuple([string, number])(undefined))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an array
-//     Got: undefined"
-//   `);
-//   expect(() => tuple([string, number])([])).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a string
-//     Got: undefined"
-//   `);
-//   expect(() => tuple([string, number])([""]))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: undefined"
-//   `);
-//   expect(() => tuple([string, number])(["", ""]))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: string"
-//   `);
+describe("tuple", () => {
+  // @ts-expect-error Argument of type '{}' is not assignable to parameter of type 'readonly Decoder<unknown, unknown>[]'.
+  tuple({});
+  // @ts-expect-error Argument of type '(value: unknown) => number' is not assignable to parameter of type 'readonly Decoder<unknown, unknown>[]'.
+  tuple(number);
 
-//   expect(tuple([string, number, boolean])(["", 0, true]))
-//     .toMatchInlineSnapshot(`
-//     Array [
-//       "",
-//       0,
-//       true,
-//     ]
-//   `);
+  test("0 items", () => {
+    type Type = ReturnType<typeof decoder>;
+    const decoder = tuple([]);
 
-//   expect(tuple([number, number, tuple([string, string])])([1, 1, ["a", "b"]]))
-//     .toMatchInlineSnapshot(`
-//       Array [
-//         1,
-//         1,
-//         Array [
-//           "a",
-//           "b",
-//         ],
-//       ]
-//     `);
-// });
+    expectType<TypeEqual<Type, []>>(true);
+    expectType<Type>(decoder([]));
+
+    expect(decoder([])).toStrictEqual([]);
+  });
+
+  test("1 item", () => {
+    type Type = ReturnType<typeof decoder>;
+    const decoder = tuple([number]);
+
+    expectType<TypeEqual<Type, [number]>>(true);
+    expectType<Type>(decoder([1]));
+
+    expect(decoder([1])).toStrictEqual([1]);
+
+    expect(run(decoder, [])).toMatchInlineSnapshot(`
+      At root[0]:
+      Expected a number
+      Got: undefined
+    `);
+  });
+
+  test("2 items", () => {
+    type Type = ReturnType<typeof decoder>;
+    const decoder = tuple([number, string]);
+
+    expectType<TypeEqual<Type, [number, string]>>(true);
+    expectType<Type>(decoder([1, "a"]));
+
+    expect(decoder([1, "a"])).toStrictEqual([1, "a"]);
+
+    expect(run(decoder, [1])).toMatchInlineSnapshot(`
+      At root[1]:
+      Expected a string
+      Got: undefined
+    `);
+
+    expect(run(decoder, ["a", 1])).toMatchInlineSnapshot(`
+      At root[0]:
+      Expected a number
+      Got: "a"
+    `);
+  });
+
+  test("3 items", () => {
+    type Type = ReturnType<typeof decoder>;
+    const decoder = tuple([number, string, boolean]);
+
+    expectType<TypeEqual<Type, [number, string, boolean]>>(true);
+    expectType<Type>(decoder([1, "a", true]));
+
+    expect(decoder([1, "a", true])).toStrictEqual([1, "a", true]);
+
+    expect(run(decoder, [1, "a"])).toMatchInlineSnapshot(`
+      At root[2]:
+      Expected a boolean
+      Got: undefined
+    `);
+  });
+
+  test("4 items", () => {
+    type Type = ReturnType<typeof decoder>;
+    const decoder = tuple([number, string, boolean, number]);
+
+    expectType<TypeEqual<Type, [number, string, boolean, number]>>(true);
+    expectType<Type>(decoder([1, "a", true, 2]));
+
+    expect(decoder([1, "a", true, 2])).toStrictEqual([1, "a", true, 2]);
+
+    expect(run(decoder, [1, "a", true])).toMatchInlineSnapshot(`
+      At root[3]:
+      Expected a number
+      Got: undefined
+    `);
+  });
+
+  describe("allow", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
+    tuple([], { allow: "nope" });
+
+    test("allows only arrays by default", () => {
+      expect(run(tuple([number]), [0])).toStrictEqual([0]);
+      expect(run(tuple([number], { allow: "array" }), [0])).toStrictEqual([0]);
+      expect(run(tuple([number]), { length: 0 })).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: {"length": 0}
+      `);
+      expect(run(tuple([number]), new Int32Array(2))).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: Int32Array
+      `);
+    });
+
+    test("allow only objects", () => {
+      expect(
+        run(tuple([number], { allow: "object" }), { length: 1, 0: 1 })
+      ).toStrictEqual([1]);
+      expect(
+        run(tuple([number], { allow: "object" }), new Int32Array(2))
+      ).toStrictEqual([0]);
+      expect(run(tuple([number], { allow: "object" }), []))
+        .toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: []
+      `);
+    });
+
+    test("allow both", () => {
+      expect(
+        run(tuple([number], { allow: "object/array" }), { length: 1, 0: 1 })
+      ).toStrictEqual([1]);
+      expect(
+        run(tuple([number], { allow: "object/array" }), new Int32Array(2))
+      ).toStrictEqual([0]);
+      expect(
+        run(tuple([number], { allow: "object/array" }), [1])
+      ).toStrictEqual([1]);
+    });
+  });
+
+  describe("exact", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"push" | "throw" | "allow extra" | undefined'.
+    tuple([], { exact: "nope" });
+
+    test("allows excess items by default", () => {
+      expect(run(tuple([string, boolean]), ["a", true, 3, {}])).toStrictEqual([
+        "a",
+        true,
+      ]);
+      expect(
+        run(tuple([string, boolean], { exact: "allow extra" }), [
+          "a",
+          true,
+          3,
+          {},
+        ])
+      ).toStrictEqual(["a", true]);
+    });
+
+    test("throw on excess items", () => {
+      expect(
+        run(tuple([string, boolean], { exact: "throw" }), ["a", true, 3, {}])
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields: ["0", "1"]
+        Found extra fields: ["2", "3"]
+      `);
+    });
+
+    test("push error on excess items", () => {
+      expect(
+        runWithErrorsArray(tuple([string, boolean], { exact: "push" }), [
+          "a",
+          true,
+          3,
+          {},
+        ])
+      ).toMatchInlineSnapshot(`
+        Object {
+          "decoded": Array [
+            "a",
+            true,
+          ],
+          "errors": Array [
+            At root:
+        Expected only these fields: ["0", "1"]
+        Found extra fields: ["2", "3"],
+          ],
+        }
+      `);
+    });
+  });
+});
 
 // test("deep", () => {
 //   const decoder = deep(
