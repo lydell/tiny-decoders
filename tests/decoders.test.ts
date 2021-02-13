@@ -859,42 +859,154 @@ describe("fields", () => {
   });
 });
 
-// test("autoFields", () => {
-//   expect(autoFields({})({})).toMatchInlineSnapshot(`Object {}`);
-//   expect(autoFields({}, { allow: "array" })([])).toMatchInlineSnapshot(
-//     `Object {}`
-//   );
-//   expect(
-//     autoFields({
-//       first: boolean,
-//       last: constant("not renamed"),
-//     })({
-//       first: true,
-//       last: "not renamed",
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "first": true,
-//       "last": "not renamed",
-//     }
-//   `);
-//   expect(autoFields({ "0": string }, { allow: "array" })(["a"]))
-//     .toMatchInlineSnapshot(`
-//     Object {
-//       "0": "a",
-//     }
-//   `);
+describe("autoFields", () => {
+  test("Basic", () => {
+    type Person = ReturnType<typeof personDecoder>;
+    const personDecoder = autoFields({
+      id: number,
+      firstName: string,
+    });
 
-//   expect(() => autoFields({})(null)).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: null"
-//   `);
-//   expect(() => autoFields({ a: boolean })({}))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a boolean
-//     Got: undefined"
-//   `);
-// });
+    expectType<TypeEqual<Person, { id: number; firstName: string }>>(true);
+    expectType<Person>(personDecoder({ id: 1, firstName: "John" }));
+
+    expect(personDecoder({ id: 1, firstName: "John" })).toStrictEqual({
+      id: 1,
+      firstName: "John",
+    });
+
+    expect(run(personDecoder, { id: "1", firstName: "John" }))
+      .toMatchInlineSnapshot(`
+      At root["id"]:
+      Expected a number
+      Got: "1"
+    `);
+
+    expect(run(personDecoder, { id: 1, first_name: "John" }))
+      .toMatchInlineSnapshot(`
+      At root["firstName"]:
+      Expected a string
+      Got: undefined
+    `);
+  });
+
+  describe("allow", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
+    autoFields({}, { allow: "nope" });
+
+    test("allows only objects by default", () => {
+      expect(run(autoFields({ a: number }), { a: 0 })).toStrictEqual({ a: 0 });
+      expect(
+        run(autoFields({ a: number }, { allow: "object" }), { a: 0 })
+      ).toStrictEqual({ a: 0 });
+      expect(run(autoFields({ 0: number }), new Int32Array(2))).toStrictEqual({
+        0: 0,
+      });
+      expect(run(autoFields({ 0: number }), [1])).toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: [1]
+      `);
+    });
+
+    test("allow only arrays", () => {
+      expect(
+        run(autoFields({ 0: number }, { allow: "array" }), [1])
+      ).toStrictEqual({ 0: 1 });
+      expect(
+        run(autoFields({ 0: number }, { allow: "array" }), new Int32Array(2))
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: Int32Array
+      `);
+      expect(run(autoFields({ 0: number }, { allow: "array" }), {}))
+        .toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: {}
+      `);
+    });
+
+    test("allow both", () => {
+      expect(
+        run(autoFields({ 0: number }, { allow: "object/array" }), [1])
+      ).toStrictEqual({ 0: 1 });
+      expect(
+        run(
+          autoFields({ 0: number }, { allow: "object/array" }),
+          new Int32Array(2)
+        )
+      ).toStrictEqual({ 0: 0 });
+      expect(
+        run(autoFields({ 0: number }, { allow: "object/array" }), { "0": 1 })
+      ).toStrictEqual({ 0: 1 });
+    });
+  });
+
+  describe("exact", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"push" | "throw" | "allow extra" | undefined'.
+    autoFields({}, { exact: "nope" });
+
+    test("allows excess properties by default", () => {
+      expect(
+        run(autoFields({ one: string, two: boolean }), {
+          one: "a",
+          two: true,
+          three: 3,
+          four: {},
+        })
+      ).toStrictEqual({ one: "a", two: true });
+      expect(
+        run(
+          autoFields({ one: string, two: boolean }, { exact: "allow extra" }),
+          { one: "a", two: true, three: 3, four: {} }
+        )
+      ).toStrictEqual({ one: "a", two: true });
+    });
+
+    test("throw on excess properties", () => {
+      expect(
+        run(autoFields({ one: string, two: boolean }, { exact: "throw" }), {
+          one: "a",
+          two: true,
+          three: 3,
+          four: {},
+        })
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields: ["one", "two"]
+        Found extra fields: ["three", "four"]
+      `);
+    });
+
+    test("push error on excess properties", () => {
+      expect(
+        runWithErrorsArray(
+          autoFields({ one: string, two: boolean }, { exact: "push" }),
+          {
+            one: "a",
+            two: true,
+            three: 3,
+            four: {},
+          }
+        )
+      ).toMatchInlineSnapshot(`
+        Object {
+          "decoded": Object {
+            "one": "a",
+            "two": true,
+          },
+          "errors": Array [
+            At root:
+        Expected only these fields: ["one", "two"]
+        Found extra fields: ["three", "four"],
+          ],
+        }
+      `);
+    });
+  });
+});
 
 // test("tuple", () => {
 //   expect(tuple([string, number])(["", 0])).toMatchInlineSnapshot(`
