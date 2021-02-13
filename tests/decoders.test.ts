@@ -9,13 +9,14 @@ import {
   Decoder,
   DecoderError,
   // deep,
-  // fields,
+  fields,
   // fieldsUnion,
   // lazy,
   map,
   // multi,
   // nullable,
   number,
+  optional,
   // optional,
   // optionalNullable,
   record,
@@ -579,185 +580,284 @@ describe("record", () => {
   });
 });
 
-// test("fields object", () => {
-//   expect(fields(() => ({}))({})).toMatchInlineSnapshot(`Object {}`);
-//   expect(
-//     fields((field) => ({
-//       first: field("first", boolean),
-//       second: field("last", constant("renamed")),
-//     }))({
-//       first: true,
-//       last: "renamed",
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "first": true,
-//       "second": "renamed",
-//     }
-//   `);
+describe("fields", () => {
+  test("Basic", () => {
+    type Person = ReturnType<typeof personDecoder>;
+    const personDecoder = fields((field) => ({
+      id: field("id", number),
+      firstName: field("first_name", string),
+    }));
 
-//   expect(() => fields(() => "")("string")).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: string"
-//   `);
-//   expect(() => fields((field) => ({ a: field("missing", boolean) }))({}))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a boolean
-//     Got: undefined"
-//   `);
-// });
+    expectType<TypeEqual<Person, { id: number; firstName: string }>>(true);
+    expectType<Person>(personDecoder({ id: 1, first_name: "John" }));
 
-// test("fields array", () => {
-//   expect(fields(() => [], { allow: "array" })([])).toMatchInlineSnapshot(
-//     `Array []`
-//   );
-//   expect(
-//     fields(
-//       (field) => ({
-//         first: field(0, boolean),
-//         second: field(1, constant("renamed")),
-//       }),
-//       { allow: "object/array" }
-//     )([true, "renamed"])
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "first": true,
-//       "second": "renamed",
-//     }
-//   `);
+    expect(personDecoder({ id: 1, first_name: "John" })).toStrictEqual({
+      id: 1,
+      firstName: "John",
+    });
 
-//   expect(() =>
-//     fields((field) => [field(99, boolean)], { allow: "object/array" })([])
-//   ).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a boolean
-//     Got: undefined"
-//   `);
-// });
+    expect(run(personDecoder, { id: "1", first_name: "John" }))
+      .toMatchInlineSnapshot(`
+      At root["id"]:
+      Expected a number
+      Got: "1"
+    `);
 
-// test("fields field object", () => {
-//   expect(fields((field) => field("a", number))({ a: 1 })).toMatchInlineSnapshot(
-//     `1`
-//   );
-//   expect(
-//     fields((field) => field("size", number))(new Set([1, 2]))
-//   ).toMatchInlineSnapshot(`2`);
+    expect(run(personDecoder, { id: 1, firstName: "John" }))
+      .toMatchInlineSnapshot(`
+      At root["first_name"]:
+      Expected a string
+      Got: undefined
+    `);
+  });
 
-//   expect(() => fields((field) => field("a", number))(null))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: null"
-//   `);
-//   expect(() => fields((field) => field("a", number))([]))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: []"
-//   `);
-//   expect(() => fields((field) => field("a", number))({}))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: undefined"
-//   `);
-//   expect(() => fields((field) => field("a", number))({ a: null }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: null"
-//   `);
-//   expect(() => fields((field) => field("hasOwnProperty", number))({}))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: function \\"hasOwnProperty\\""
-//   `);
+  describe("allow", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
+    fields(() => undefined, { allow: "nope" });
 
-//   expect(
-//     testWithErrorsArray({
-//       decoder: fields((field) => ({
-//         a: field("a", number, { mode: { default: 0 } }),
-//       })),
-//       data: { a: "1" },
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "decoded": Object {
-//         "a": 0,
-//       },
-//       "errors": Array [
-//         "At root[\\"a\\"]:
-//     Expected a number
-//     Got: \\"1\\"",
-//       ],
-//       "shortErrors": Array [
-//         "At root[\\"a\\"]:
-//     Expected a number
-//     Got: string",
-//       ],
-//     }
-//   `);
-// });
+    test("allows only objects by default", () => {
+      expect(
+        run(
+          fields(() => 0),
+          {}
+        )
+      ).toBe(0);
+      expect(
+        run(
+          fields(() => 0, { allow: "object" }),
+          { a: 0 }
+        )
+      ).toBe(0);
+      expect(
+        run(
+          fields((field) => field(0, number)),
+          new Int32Array(2)
+        )
+      ).toBe(0);
+      expect(
+        run(
+          fields((field) => field(0, number)),
+          [1]
+        )
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: [1]
+      `);
+    });
 
-// test("fields field array", () => {
-//   expect(() => fields((field) => field(0, number), { allow: "array" })([]))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: undefined"
-//   `);
-//   expect(() => fields((field) => field(0, number), { allow: "array" })([true]))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: boolean"
-//   `);
-//   expect(() => fields((field) => field(-1, number), { allow: "array" })([]))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: undefined"
-//   `);
-//   expect(() => fields((field) => field(1, number), { allow: "array" })([1]))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: undefined"
-//   `);
-//   expect(
-//     fields((field) => field("length", number), { allow: "array" })([
-//       true,
-//       false,
-//     ])
-//   ).toMatchInlineSnapshot(`2`);
+    test("allow only arrays", () => {
+      expect(
+        run(
+          fields((field) => field(0, number), { allow: "array" }),
+          [1]
+        )
+      ).toBe(1);
+      expect(
+        run(
+          fields((field) => field(0, number), { allow: "array" }),
+          new Int32Array(2)
+        )
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: Int32Array
+      `);
+      expect(
+        run(
+          fields((field) => field(0, number), { allow: "array" }),
+          {}
+        )
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: {}
+      `);
+    });
 
-//   expect(
-//     testWithErrorsArray({
-//       decoder: fields((field) => [field(0, number, { mode: { default: 0 } })], {
-//         allow: "object/array",
-//       }),
-//       data: ["1"],
-//     })
-//   ).toMatchInlineSnapshot(`
-//     Object {
-//       "decoded": Array [
-//         0,
-//       ],
-//       "errors": Array [
-//         "At root[0]:
-//     Expected a number
-//     Got: \\"1\\"",
-//       ],
-//       "shortErrors": Array [
-//         "At root[0]:
-//     Expected a number
-//     Got: string",
-//       ],
-//     }
-//   `);
-// });
+    test("allow both", () => {
+      expect(
+        run(
+          fields((field) => field(0, number), { allow: "object/array" }),
+          [1]
+        )
+      ).toBe(1);
+      expect(
+        run(
+          fields((field) => field(0, number), { allow: "object/array" }),
+          new Int32Array(2)
+        )
+      ).toBe(0);
+      expect(
+        run(
+          fields((field) => field(0, number), { allow: "object/array" }),
+          { "0": 1 }
+        )
+      ).toBe(1);
+    });
+  });
 
-// test("fields obj and errors", () => {
-//   const objInput = {};
-//   const errorsInput: Array<DecoderError> = [];
-//   const result = fields((_field, obj, errors) => {
-//     expect(obj).toBe(objInput);
-//     expect(errors).toBe(errorsInput);
-//     return 1;
-//   })(objInput, errorsInput);
-//   expect(result).toBe(1);
-// });
+  describe("mode", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"throw" | { default: never; } | undefined'.
+    fields((field) => field("test", number, { mode: "nope" }));
+
+    test("throw", () => {
+      expect(
+        runWithErrorsArray(
+          fields((field) => field("test", number)),
+          { test: "2" }
+        )
+      ).toMatchInlineSnapshot(`
+        At root["test"]:
+        Expected a number
+        Got: "2"
+      `);
+      expect(
+        runWithErrorsArray(
+          fields((field) => field("test", number, { mode: "throw" })),
+          { test: "2" }
+        )
+      ).toMatchInlineSnapshot(`
+        At root["test"]:
+        Expected a number
+        Got: "2"
+      `);
+    });
+
+    test("default", () => {
+      expect(
+        runWithErrorsArray(
+          fields((field) => field("test", number, { mode: { default: 0 } })),
+          { test: "2" }
+        )
+      ).toMatchInlineSnapshot(`
+        Object {
+          "decoded": 0,
+          "errors": Array [
+            At root["test"]:
+        Expected a number
+        Got: "2",
+          ],
+        }
+      `);
+    });
+  });
+
+  describe("exact", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"push" | "throw" | "allow extra" | undefined'.
+    fields(() => undefined, { exact: "nope" });
+
+    test("allows excess properties by default", () => {
+      expect(
+        run(
+          fields((field) => [field("one", string), field("two", boolean)]),
+          { one: "a", two: true, three: 3, four: {} }
+        )
+      ).toStrictEqual(["a", true]);
+      expect(
+        run(
+          fields((field) => [field("one", string), field("two", boolean)], {
+            exact: "allow extra",
+          }),
+          { one: "a", two: true, three: 3, four: {} }
+        )
+      ).toStrictEqual(["a", true]);
+    });
+
+    test("throw on excess properties", () => {
+      expect(
+        run(
+          fields((field) => [field("one", string), field("two", boolean)], {
+            exact: "throw",
+          }),
+          { one: "a", two: true, three: 3, four: {} }
+        )
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields: ["one", "two"]
+        Found extra fields: ["three", "four"]
+      `);
+    });
+
+    test("push error on excess properties", () => {
+      expect(
+        runWithErrorsArray(
+          fields((field) => [field("one", string), field("two", boolean)], {
+            exact: "push",
+          }),
+          { one: "a", two: true, three: 3, four: {} }
+        )
+      ).toMatchInlineSnapshot(`
+        Object {
+          "decoded": Array [
+            "a",
+            true,
+          ],
+          "errors": Array [
+            At root:
+        Expected only these fields: ["one", "two"]
+        Found extra fields: ["three", "four"],
+          ],
+        }
+      `);
+    });
+
+    test("different fields based on one field", () => {
+      const userDecoder = fields(
+        (field) =>
+          field("isAdmin", boolean)
+            ? {
+                isAdmin: true,
+                name: field("name", string),
+                access: field("access", array(string)),
+              }
+            : {
+                isAdmin: false,
+                name: field("name", string),
+                location: optional(string),
+              },
+        { exact: "throw" }
+      );
+
+      expect(
+        run(userDecoder, {
+          isAdmin: true,
+          name: "John",
+          access: [],
+          age: 12,
+        })
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields: ["isAdmin", "name", "access"]
+        Found extra fields: ["age"]
+      `);
+
+      expect(
+        run(userDecoder, {
+          isAdmin: false,
+          name: "Jane",
+          access: [],
+          age: 12,
+        })
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields: ["isAdmin", "name"]
+        Found extra fields: ["access", "age"]
+      `);
+    });
+  });
+
+  test("obj and errors", () => {
+    const objInput = {};
+    const errorsInput: Array<DecoderError> = [];
+    const result = fields((_field, obj, errors) => {
+      expect(obj).toBe(objInput);
+      expect(errors).toBe(errorsInput);
+      return 1;
+    })(objInput, errorsInput);
+    expect(result).toBe(1);
+  });
+});
 
 // test("autoFields", () => {
 //   expect(autoFields({})({})).toMatchInlineSnapshot(`Object {}`);
