@@ -471,13 +471,6 @@ export function nullable<T, U = undefined>(
   };
 }
 
-export function optionalNullable<T, U = undefined>(
-  decoder: Decoder<T>,
-  defaultValue?: U
-): Decoder<T | U> {
-  return optional(nullable(decoder, defaultValue), defaultValue);
-}
-
 export function map<T, U>(decoder: Decoder<T>, f: Decoder<U, T>): Decoder<U> {
   return function mapDecoder(value: unknown, errors?: Array<DecoderError>): U {
     return f(decoder(value, errors), errors);
