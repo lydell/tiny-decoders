@@ -1498,284 +1498,212 @@ test("lazy", () => {
   `);
 });
 
-// test("all decoders pass down errors", () => {
-//   const subDecoder: Decoder<boolean | null> = fields((field) =>
-//     field("test", boolean, { mode: { default: null } })
-//   );
+test("all decoders pass down errors", () => {
+  const subDecoder: Decoder<boolean | null> = fields((field) =>
+    field("test", boolean, { mode: { default: null } })
+  );
 
-//   const decoder = fields((field) => ({
-//     boolean: field("boolean", boolean, { mode: { default: undefined } }),
-//     number: field("number", number, { mode: { default: undefined } }),
-//     string: field("string", string, { mode: { default: undefined } }),
-//     constant: field("constant", constant(1), { mode: { default: undefined } }),
-//     array: field("array", array(subDecoder), { mode: { default: undefined } }),
-//     dict: field("dict", record(subDecoder), { mode: { default: undefined } }),
-//     record: field(
-//       "record",
-//       fields((field2) => field2("field", subDecoder)),
-//       {
-//         mode: { default: undefined },
-//       }
-//     ),
-//     tuple: field(
-//       "tuple",
-//       fields((field2) => field2(0, subDecoder)),
-//       {
-//         mode: { default: undefined },
-//       }
-//     ),
-//     pair1: field("pair1", tuple([subDecoder, boolean]), {
-//       mode: { default: undefined },
-//     }),
-//     pair2: field("pair2", tuple([boolean, subDecoder]), {
-//       mode: { default: undefined },
-//     }),
-//     triple1: field("triple1", tuple([subDecoder, boolean, boolean]), {
-//       mode: { default: undefined },
-//     }),
-//     triple2: field("triple2", tuple([boolean, subDecoder, boolean]), {
-//       mode: { default: undefined },
-//     }),
-//     triple3: field("triple3", tuple([boolean, boolean, subDecoder]), {
-//       mode: { default: undefined },
-//     }),
-//     autoFields: field("autoFields", autoFields({ field: subDecoder }), {
-//       mode: { default: undefined },
-//     }),
-//     deep: field("deep", deep(["field", 0], subDecoder), {
-//       mode: { default: undefined },
-//     }),
-//     optional: field("optional", optional(subDecoder), {
-//       mode: { default: undefined },
-//     }),
-//     map1: field("map1", map(subDecoder, constant(null)), {
-//       mode: { default: undefined },
-//     }),
-//     map2: field(
-//       "map2",
-//       map((value) => value, subDecoder),
-//       {
-//         mode: { default: undefined },
-//       }
-//     ),
-//     either1: field("either1", multi({ boolean, object: subDecoder }), {
-//       mode: { default: undefined },
-//     }),
-//     either2: field("either2", multi({ object: subDecoder, boolean }), {
-//       mode: { default: undefined },
-//     }),
-//     lazy: field(
-//       "lazy",
-//       lazy(() => subDecoder),
-//       { mode: { default: undefined } }
-//     ),
-//   }));
+  const decoder = fields((field) => ({
+    boolean: field("boolean", boolean, { mode: { default: undefined } }),
+    number: field("number", number, { mode: { default: undefined } }),
+    string: field("string", string, { mode: { default: undefined } }),
+    constant: field("constant", constant(1), { mode: { default: undefined } }),
+    stringUnion: field("stringUnion", stringUnion({ a: null }), {
+      mode: { default: undefined },
+    }),
+    array: field("array", array(subDecoder), { mode: { default: undefined } }),
+    record: field("record", record(subDecoder), {
+      mode: { default: undefined },
+    }),
+    fields: field(
+      "fields",
+      fields((field2) => field2("field", subDecoder)),
+      {
+        mode: { default: undefined },
+      }
+    ),
+    arrayFields: field(
+      "arrayFields",
+      fields((field2) => field2("0", subDecoder), { allow: "array" }),
+      {
+        mode: { default: undefined },
+      }
+    ),
+    autoFields: field("autoFields", autoFields({ field: subDecoder }), {
+      mode: { default: undefined },
+    }),
+    tuple1: field("tuple1", tuple([subDecoder]), {
+      mode: { default: undefined },
+    }),
+    tuple2: field("tuple2", tuple([subDecoder, boolean]), {
+      mode: { default: undefined },
+    }),
+    tuple3: field("tuple3", tuple([boolean, boolean, subDecoder]), {
+      mode: { default: undefined },
+    }),
+    fieldsUnion: field("fieldsUnion", fieldsUnion("tag", { a: subDecoder }), {
+      mode: { default: undefined },
+    }),
+    multi1: field("multi1", multi({ boolean, object: subDecoder }), {
+      mode: { default: undefined },
+    }),
+    multi2: field("multi2", multi({ object: subDecoder, boolean }), {
+      mode: { default: undefined },
+    }),
+    optional: field("optional", optional(subDecoder), {
+      mode: { default: undefined },
+    }),
+    nullable: field("nullable", nullable(subDecoder), {
+      mode: { default: undefined },
+    }),
+    map1: field("map1", map(subDecoder, constant(null)), {
+      mode: { default: undefined },
+    }),
+    map2: field(
+      "map2",
+      map((value) => value, subDecoder),
+      {
+        mode: { default: undefined },
+      }
+    ),
+    lazy: field(
+      "lazy",
+      lazy(() => subDecoder),
+      { mode: { default: undefined } }
+    ),
+  }));
 
-//   const subData: unknown = { test: 0 };
+  const subData: unknown = { test: 0 };
 
-//   const data: unknown = {
-//     boolean: 0,
-//     number: false,
-//     string: false,
-//     constant: false,
-//     array: [subData],
-//     dict: { key: subData },
-//     record: { field: subData },
-//     tuple: [subData],
-//     pair1: [subData, true],
-//     pair2: [true, subData],
-//     triple1: [subData, true, true],
-//     triple2: [true, subData, true],
-//     triple3: [true, true, subData],
-//     autoFields: { field: subData },
-//     deep: { field: [subData] },
-//     optional: subData,
-//     map1: subData,
-//     map2: subData,
-//     either1: subData,
-//     either2: subData,
-//     lazy: subData,
-//   };
+  const data: unknown = {
+    boolean: 0,
+    number: false,
+    string: false,
+    constant: false,
+    stringUnion: false,
+    array: [subData],
+    record: { key: subData },
+    fields: { field: subData },
+    arrayFields: [subData],
+    autoFields: { field: subData },
+    tuple1: [subData],
+    tuple2: [subData, true],
+    tuple3: [true, true, subData],
+    fieldsUnion: { tag: "a", test: 0 },
+    multi1: subData,
+    multi2: subData,
+    optional: subData,
+    nullable: subData,
+    map1: subData,
+    map2: subData,
+    lazy: subData,
+  };
 
-//   expect(testWithErrorsArray({ decoder, data })).toMatchInlineSnapshot(`
-//     Object {
-//       "decoded": Object {
-//         "array": Array [
-//           null,
-//         ],
-//         "autoFields": Object {
-//           "field": null,
-//         },
-//         "boolean": undefined,
-//         "constant": undefined,
-//         "deep": null,
-//         "dict": Object {
-//           "key": null,
-//         },
-//         "either1": null,
-//         "either2": null,
-//         "lazy": null,
-//         "map1": null,
-//         "map2": null,
-//         "number": undefined,
-//         "optional": null,
-//         "pair1": Array [
-//           null,
-//           true,
-//         ],
-//         "pair2": Array [
-//           true,
-//           null,
-//         ],
-//         "record": null,
-//         "string": undefined,
-//         "triple1": Array [
-//           null,
-//           true,
-//           true,
-//         ],
-//         "triple2": Array [
-//           true,
-//           null,
-//           true,
-//         ],
-//         "triple3": Array [
-//           true,
-//           true,
-//           null,
-//         ],
-//         "tuple": undefined,
-//       },
-//       "errors": Array [
-//         "At root[\\"boolean\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"number\\"]:
-//     Expected a number
-//     Got: false",
-//         "At root[\\"string\\"]:
-//     Expected a string
-//     Got: false",
-//         "At root[\\"constant\\"]:
-//     Expected the value 1
-//     Got: false",
-//         "At root[\\"array\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"dict\\"][\\"key\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"record\\"][\\"field\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"tuple\\"]:
-//     Expected an object
-//     Got: [Object(1)]",
-//         "At root[\\"pair1\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"pair2\\"][1][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"triple1\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"triple2\\"][1][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"triple3\\"][2][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"autoFields\\"][\\"field\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"deep\\"][\\"field\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"optional\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"map1\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"map2\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"either1\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"either2\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//         "At root[\\"lazy\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: 0",
-//       ],
-//       "shortErrors": Array [
-//         "At root[\\"boolean\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"number\\"]:
-//     Expected a number
-//     Got: boolean",
-//         "At root[\\"string\\"]:
-//     Expected a string
-//     Got: boolean",
-//         "At root[\\"constant\\"]:
-//     Expected the value 1
-//     Got: boolean",
-//         "At root[\\"array\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"dict\\"][\\"key\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"record\\"][\\"field\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"tuple\\"]:
-//     Expected an object
-//     Got: [Object(1)]",
-//         "At root[\\"pair1\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"pair2\\"][1][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"triple1\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"triple2\\"][1][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"triple3\\"][2][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"autoFields\\"][\\"field\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"deep\\"][\\"field\\"][0][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"optional\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"map1\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"map2\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"either1\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"either2\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//         "At root[\\"lazy\\"][\\"test\\"]:
-//     Expected a boolean
-//     Got: number",
-//       ],
-//     }
-//   `);
-// });
+  expect(runWithErrorsArray(decoder, data)).toMatchInlineSnapshot(`
+    Object {
+      "decoded": Object {
+        "array": Array [
+          null,
+        ],
+        "arrayFields": null,
+        "autoFields": Object {
+          "field": null,
+        },
+        "boolean": undefined,
+        "constant": undefined,
+        "fields": null,
+        "fieldsUnion": null,
+        "lazy": null,
+        "map1": null,
+        "map2": null,
+        "multi1": null,
+        "multi2": null,
+        "nullable": null,
+        "number": undefined,
+        "optional": null,
+        "record": Object {
+          "key": null,
+        },
+        "string": undefined,
+        "stringUnion": undefined,
+        "tuple1": Array [
+          null,
+        ],
+        "tuple2": Array [
+          null,
+          true,
+        ],
+        "tuple3": Array [
+          true,
+          true,
+          null,
+        ],
+      },
+      "errors": Array [
+        At root["boolean"]:
+    Expected a boolean
+    Got: 0,
+        At root["number"]:
+    Expected a number
+    Got: false,
+        At root["string"]:
+    Expected a string
+    Got: false,
+        At root["constant"]:
+    Expected the value 1
+    Got: false,
+        At root["stringUnion"]:
+    Expected a string
+    Got: false,
+        At root["array"][0]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["record"]["key"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["fields"]["field"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["arrayFields"]["0"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["autoFields"]["field"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["tuple1"][0]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["tuple2"][0]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["tuple3"][2]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["fieldsUnion"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["multi1"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["multi2"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["optional"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["nullable"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["map1"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["map2"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["lazy"]["test"]:
+    Expected a boolean
+    Got: 0,
+      ],
+    }
+  `);
+});
