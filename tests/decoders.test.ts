@@ -856,6 +856,16 @@ describe("fields", () => {
     })(objInput, errorsInput);
     expect(result).toBe(1);
   });
+
+  test("empty object", () => {
+    const decoder = fields(() => 1, { exact: "throw" });
+    expect(decoder({})).toBe(1);
+    expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
+      At root:
+      Expected only these fields: []
+      Found extra fields: ["a"]
+    `);
+  });
 });
 
 describe("autoFields", () => {
@@ -1012,6 +1022,16 @@ describe("autoFields", () => {
     expect(
       run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`))
     ).toStrictEqual({ a: 1, b: 3 });
+  });
+
+  test("empty object", () => {
+    const decoder = autoFields({}, { exact: "throw" });
+    expect(decoder({})).toStrictEqual({});
+    expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
+      At root:
+      Expected only these fields: []
+      Found extra fields: ["a"]
+    `);
   });
 });
 
