@@ -10,14 +10,13 @@ import {
   DecoderError,
   // deep,
   fields,
-  // fieldsUnion,
+  fieldsUnion,
   // lazy,
   map,
   // multi,
   // nullable,
   number,
   optional,
-  // optional,
   // optionalNullable,
   record,
   repr,
@@ -1192,6 +1191,64 @@ describe("tuple", () => {
         }
       `);
     });
+  });
+});
+
+describe("fieldsUnion", () => {
+  test("Basic", () => {
+    type Shape = ReturnType<typeof shapeDecoder>;
+    const shapeDecoder = fieldsUnion("tag", {
+      Circle: autoFields({
+        tag: constant("Circle"),
+        radius: number,
+      }),
+      Rectangle: fields((field) => ({
+        tag: "Rectangle" as const,
+        width: field("width", number),
+        height: field("height", number),
+      })),
+    });
+
+    expectType<
+      TypeEqual<
+        Shape,
+        | { tag: "Circle"; radius: number }
+        | { tag: "Rectangle"; width: number; height: number }
+      >
+    >(true);
+    expectType<Shape>(shapeDecoder({ tag: "Circle", radius: 5 }));
+
+    expect(shapeDecoder({ tag: "Circle", radius: 5 })).toStrictEqual({
+      tag: "Circle",
+      radius: 5,
+    });
+
+    expect(run(shapeDecoder, { tag: "Rectangle", radius: 5 }))
+      .toMatchInlineSnapshot(`
+      At root["width"]:
+      Expected a number
+      Got: undefined
+    `);
+
+    expect(run(shapeDecoder, { tag: "Square", size: 5 }))
+      .toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: ["Circle", "Rectangle"]
+      Got: "Square"
+    `);
+  });
+
+  test("Empty object is not allowed", () => {
+    // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"fieldsUnion must have at least one member"'.
+    const emptyDecoder = fieldsUnion("tag", {});
+    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'Record<string, Decoder<unknown, unknown>>'.
+    fieldsUnion("tag", "fieldsUnion must have at least one member");
+    expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
+    expect(run(emptyDecoder, { tag: "test" })).toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: []
+      Got: "test"
+    `);
   });
 });
 

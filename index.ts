@@ -363,7 +363,9 @@ type Values<T> = T[keyof T] extends infer O ? { [K in keyof O]: O[K] } : never;
 
 export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   key: number | string,
-  mapping: T,
+  mapping: keyof T extends never
+    ? "fieldsUnion must have at least one member"
+    : T,
   {
     allow = "object",
   }: {
@@ -376,7 +378,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
     function fieldsUnionFields(field, object, errors) {
       const tag = field(key, string);
       if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
-        const decoder = mapping[tag];
+        const decoder = (mapping as T)[tag];
         return decoder(object, errors) as Values<
           { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
         >;
