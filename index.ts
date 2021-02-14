@@ -82,58 +82,29 @@ export function stringUnion<T extends Record<string, null>>(
   };
 }
 
-function unknownRecord(
-  value: unknown,
-  allow: "array" | "object" | "object/array"
-): Record<string, unknown> {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    (allow === "object" && Array.isArray(value)) ||
-    (allow === "array" && !Array.isArray(value))
-  ) {
-    throw new DecoderError({ tag: allow, got: value });
+function unknownRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new DecoderError({ tag: "object", got: value });
   }
   return value as Record<string, unknown>;
 }
 
 export function array<T, U = never>(
   decoder: Decoder<T>,
-  {
-    mode = "throw",
-    allow = "array",
-  }: {
-    mode?: "skip" | "throw" | { default: U };
-    allow?: "array" | "object" | "object/array";
-  } = {}
+  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
 ): Decoder<Array<T | U>> {
   return function arrayDecoder(
     value: unknown,
     errors?: Array<DecoderError>
   ): Array<T | U> {
-    const object = unknownRecord(value, allow);
-    const result = [];
-    let length = undefined;
-
-    if (Array.isArray(value)) {
-      ({ length } = value);
-    } else {
-      try {
-        length = number(object.length);
-        Array(length);
-      } catch (_error) {
-        throw new DecoderError({
-          tag: "valid array length",
-          got: object.length,
-          key: "length",
-        });
-      }
+    if (!Array.isArray(value)) {
+      throw new DecoderError({ tag: "array", got: value });
     }
-
-    for (let index = 0; index < length; index++) {
+    const result = [];
+    for (let index = 0; index < value.length; index++) {
       try {
         const localErrors: Array<DecoderError> = [];
-        result.push(decoder(object[index.toString()], localErrors));
+        result.push(decoder(value[index], localErrors));
         if (errors != null) {
           errors.push(
             ...localErrors.map((error) => DecoderError.at(error, index))
@@ -151,26 +122,19 @@ export function array<T, U = never>(
         }
       }
     }
-
     return result;
   };
 }
 
 export function record<T, U = never>(
   decoder: Decoder<T>,
-  {
-    mode = "throw",
-    allow = "object",
-  }: {
-    mode?: "skip" | "throw" | { default: U };
-    allow?: "array" | "object" | "object/array";
-  } = {}
+  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
 ): Decoder<Record<string, T | U>> {
   return function recordDecoder(
     value: unknown,
     errors?: Array<DecoderError>
   ): Record<string, T | U> {
-    const object = unknownRecord(value, allow);
+    const object = unknownRecord(value);
     const keys = Object.keys(object);
     const result: Record<string, T | U> = {};
 
@@ -206,42 +170,36 @@ export function record<T, U = never>(
 export function fields<T>(
   callback: (
     field: <U, V = never>(
-      key: number | string,
+      key: string,
       decoder: Decoder<U>,
       options?: { mode?: "throw" | { default: V } }
     ) => U | V,
     object: Record<string, unknown>,
     errors?: Array<DecoderError>
   ) => T,
-  {
-    exact = "allow extra",
-    allow = "object",
-  }: {
-    exact?: "allow extra" | "push" | "throw";
-    allow?: "array" | "object" | "object/array";
-  } = {}
+  { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
 ): Decoder<T> {
   return function fieldsDecoder(
     value: unknown,
     errors?: Array<DecoderError>
   ): T {
-    const object = unknownRecord(value, allow);
+    const object = unknownRecord(value);
     const knownFields = Object.create(null) as Record<string, null>;
 
     function field<U, V = never>(
-      key: number | string,
+      key: string,
       decoder: Decoder<U>,
       { mode = "throw" }: { mode?: "throw" | { default: V } } = {}
     ): U | V {
       try {
         const localErrors: Array<DecoderError> = [];
-        const result = decoder(object[key.toString()], localErrors);
+        const result = decoder(object[key], localErrors);
         if (errors != null) {
           errors.push(
             ...localErrors.map((error) => DecoderError.at(error, key))
           );
         }
-        knownFields[key.toString()] = null;
+        knownFields[key] = null;
         return result;
       } catch (error) {
         if (mode === "throw") {
@@ -280,19 +238,13 @@ export function fields<T>(
 
 export function autoFields<T extends Record<string, unknown>>(
   mapping: { [P in keyof T]: P extends "__proto__" ? never : Decoder<T[P]> },
-  {
-    exact = "allow extra",
-    allow = "object",
-  }: {
-    exact?: "allow extra" | "push" | "throw";
-    allow?: "array" | "object" | "object/array";
-  } = {}
+  { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
 ): Decoder<T> {
   return function autoFieldsDecoder(
     value: unknown,
     errors?: Array<DecoderError>
   ): T {
-    const object = unknownRecord(value, allow);
+    const object = unknownRecord(value);
     const keys = Object.keys(mapping);
     const result: Record<string, unknown> = {};
 
@@ -337,32 +289,45 @@ export function autoFields<T extends Record<string, unknown>>(
 }
 
 export function tuple<T extends ReadonlyArray<unknown>>(
-  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }],
-  {
-    exact = "allow extra",
-    allow = "array",
-  }: {
-    exact?: "allow extra" | "push" | "throw";
-    allow?: "array" | "object" | "object/array";
-  } = {}
+  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
 ): Decoder<[...T]> {
-  return fields(
-    function tupleFields(field) {
-      return mapping.map(function tupleField(decoder, index) {
-        return field(index, decoder);
-      }) as [...T];
-    },
-    { exact, allow }
-  );
+  return function tupleDecoder(
+    value: unknown,
+    errors?: Array<DecoderError>
+  ): [...T] {
+    if (!Array.isArray(value)) {
+      throw new DecoderError({ tag: "array", got: value });
+    }
+    if (value.length !== mapping.length) {
+      throw new DecoderError({
+        tag: "tuple size",
+        expected: mapping.length,
+        got: value.length,
+      });
+    }
+    const result = [];
+    for (let index = 0; index < value.length; index++) {
+      try {
+        const decoder = mapping[index];
+        const localErrors: Array<DecoderError> = [];
+        result.push(decoder(value[index], localErrors));
+        if (errors != null) {
+          errors.push(
+            ...localErrors.map((error) => DecoderError.at(error, index))
+          );
+        }
+      } catch (error) {
+        throw DecoderError.at(error, index);
+      }
+    }
+    return result as [...T];
+  };
 }
 
-// This could have been just: `type Values<T> = T[keyof T]`
-// And used as such: `Expand<Values<T>>`
-// But I had to bake them together to get the tuple union test to expand.
-type Values<T> = T[keyof T] extends infer O ? { [K in keyof O]: O[K] } : never;
+type Values<T> = T[keyof T];
 
 export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
-  key: number | string,
+  key: string,
   mapping: keyof T extends string
     ? keyof T extends never
       ? "fieldsUnion must have at least one member"
@@ -371,50 +336,31 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
         [P in keyof T]: P extends number
           ? "fieldsUnion keys must be strings, not numbers!"
           : T[P];
-      },
-  {
-    allow = "object",
-  }: {
-    allow?: "array" | "object" | "object/array";
-  } = {}
-): Decoder<
-  Values<{ [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }>
-> {
-  return fields(
-    function fieldsUnionFields(field, object, errors) {
-      const tag = field(key, string);
-      if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
-        const decoder = (mapping as T)[tag];
-        return decoder(object, errors) as Values<
-          { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
-        >;
-      } else {
-        throw new DecoderError({
-          tag: "unknown fieldsUnion tag",
-          knownTags: Object.keys(mapping),
-          got: tag,
-          key,
-        });
       }
-    },
-    { allow }
-  );
-}
-
-export function deep<T>(
-  path: Array<number | string>,
-  decoder: Decoder<T>
-): Decoder<T> {
-  return path.reduceRight(
-    (nextDecoder, key) =>
-      fields(
-        function deepFields(field): T {
-          return field(key, nextDecoder);
-        },
-        { allow: typeof key === "number" ? "array" : "object" }
-      ),
-    decoder
-  );
+): Decoder<
+  Expand<
+    Values<
+      { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
+    >
+  >
+> {
+  return fields(function fieldsUnionFields(field, object, errors) {
+    const tag = field(key, string);
+    if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
+      const decoder = (mapping as T)[tag];
+      return decoder(object, errors) as Expand<
+        Values<
+          { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
+        >
+      >;
+    }
+    throw new DecoderError({
+      tag: "unknown fieldsUnion tag",
+      knownTags: Object.keys(mapping),
+      got: tag,
+      key,
+    });
+  });
 }
 
 export function multi<
@@ -549,6 +495,11 @@ export type DecoderErrorVariant =
       got: Array<string>;
     }
   | {
+      tag: "tuple size";
+      expected: number;
+      got: number;
+    }
+  | {
       tag: "unknown fieldsUnion tag";
       knownTags: Array<string>;
       got: string;
@@ -567,9 +518,7 @@ export type DecoderErrorVariant =
   | { tag: "boolean"; got: unknown }
   | { tag: "number"; got: unknown }
   | { tag: "object"; got: unknown }
-  | { tag: "object/array"; got: unknown }
-  | { tag: "string"; got: unknown }
-  | { tag: "valid array length"; got: unknown };
+  | { tag: "string"; got: unknown };
 
 export function formatDecoderErrorVariant(
   variant: DecoderErrorVariant,
@@ -599,18 +548,11 @@ export function formatDecoderErrorVariant(
 
     case "array":
     case "object":
-    case "object/array":
       return got(`Expected an ${variant.tag}`, variant.got);
 
     case "constant":
       return got(
         `Expected the value ${formatExpected(variant.expected)}`,
-        variant.got
-      );
-
-    case "valid array length":
-      return got(
-        "Expected a valid array length (unsigned 32-bit integer)",
         variant.got
       );
 
@@ -633,6 +575,9 @@ export function formatDecoderErrorVariant(
       return `Expected only these fields: ${formatExpected(
         variant.knownFields
       )}\nFound extra fields: ${formatGot(variant.got)}`;
+
+    case "tuple size":
+      return `Expected ${variant.expected} items\nGot: ${variant.got}`;
 
     case "custom":
       return got(variant.message, variant.got);

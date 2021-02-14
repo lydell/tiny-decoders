@@ -8,7 +8,6 @@ import {
   constant,
   Decoder,
   DecoderError,
-  // deep,
   fields,
   fieldsUnion,
   // lazy,
@@ -265,85 +264,20 @@ describe("array", () => {
       Expected one of these variants: ["0", "1"]
       Got: "2"
     `);
-  });
 
-  describe("allow", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
-    array(number, { allow: "nope" });
-
-    test("allows only arrays by default", () => {
-      expect(run(array(number), [0])).toStrictEqual([0]);
-      expect(run(array(number, { allow: "array" }), [0])).toStrictEqual([0]);
-      expect(run(array(number), { length: 0 })).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: {"length": 0}
-      `);
-      expect(run(array(number), new Int32Array(2))).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: Int32Array
-      `);
-    });
-
-    test("allow only objects", () => {
-      expect(
-        run(array(number, { allow: "object" }), { length: 0 })
-      ).toStrictEqual([]);
-      expect(
-        run(array(number, { allow: "object" }), new Int32Array(2))
-      ).toStrictEqual([0, 0]);
-      expect(run(array(number, { allow: "object" }), []))
-        .toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: []
-      `);
-    });
-
-    test("allow both", () => {
-      expect(
-        run(array(number, { allow: "object/array" }), { length: 0 })
-      ).toStrictEqual([]);
-      expect(
-        run(array(number, { allow: "object/array" }), new Int32Array(2))
-      ).toStrictEqual([0, 0]);
-      expect(run(array(number, { allow: "object/array" }), [])).toStrictEqual(
-        []
-      );
-    });
-
-    describe("invalid length attribute", () => {
-      const variants: Array<unknown> = [
-        "1",
-        1.5,
-        -1,
-        -0.1,
-        2 ** 32,
-        NaN,
-        Infinity,
-        null,
-        -1,
-      ];
-
-      for (const length of variants) {
-        test(`${repr(length)}`, () => {
-          expect(run(array(number, { allow: "object" }), { length })).toBe(
-            `
-At root["length"]:
-Expected a valid array length (unsigned 32-bit integer)
-Got: ${repr(length)}
-          `.trim()
-          );
-        });
-      }
-    });
+    expect(run(array(number), { length: 0 })).toMatchInlineSnapshot(`
+      At root:
+      Expected an array
+      Got: {"length": 0}
+    `);
+    expect(run(array(number), new Int32Array(2))).toMatchInlineSnapshot(`
+      At root:
+      Expected an array
+      Got: Int32Array
+    `);
   });
 
   describe("mode", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"skip" | "throw" | { default: never; } | undefined'.
-    array(number, { mode: "nope" });
-
     test("throw", () => {
       expect(runWithErrorsArray(array(number), [1, "2", 3]))
         .toMatchInlineSnapshot(`
@@ -419,6 +353,12 @@ describe("record", () => {
       Expected one of these variants: ["0", "1"]
       Got: "2"
     `);
+
+    expect(run(record(number), [1])).toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: [1]
+      `);
   });
 
   test("Keys to regex", () => {
@@ -457,61 +397,7 @@ describe("record", () => {
     ).toStrictEqual({ a: 1, b: 3 });
   });
 
-  describe("allow", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
-    record(number, { allow: "nope" });
-
-    test("allows only objects by default", () => {
-      expect(run(record(number), { a: 0 })).toStrictEqual({ a: 0 });
-      expect(run(record(number, { allow: "object" }), { a: 0 })).toStrictEqual({
-        a: 0,
-      });
-      expect(run(record(number), new Int32Array(2))).toStrictEqual({
-        0: 0,
-        1: 0,
-      });
-      expect(run(record(number), [1])).toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: [1]
-      `);
-    });
-
-    test("allow only arrays", () => {
-      expect(run(record(number, { allow: "array" }), [1])).toStrictEqual({
-        0: 1,
-      });
-      expect(run(record(number, { allow: "array" }), new Int32Array(2)))
-        .toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: Int32Array
-      `);
-      expect(run(record(number, { allow: "array" }), {}))
-        .toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: {}
-      `);
-    });
-
-    test("allow both", () => {
-      expect(
-        run(record(number, { allow: "object/array" }), [1])
-      ).toStrictEqual({ 0: 1 });
-      expect(
-        run(record(number, { allow: "object/array" }), new Int32Array(2))
-      ).toStrictEqual({ 0: 0, 1: 0 });
-      expect(run(record(number, { allow: "object/array" }), {})).toStrictEqual(
-        {}
-      );
-    });
-  });
-
   describe("mode", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"skip" | "throw" | { default: never; } | undefined'.
-    record(number, { mode: "nope" });
-
     test("throw", () => {
       expect(runWithErrorsArray(record(number), { a: 1, b: "2", c: 3 }))
         .toMatchInlineSnapshot(`
@@ -608,98 +494,20 @@ describe("fields", () => {
       Expected a string
       Got: undefined
     `);
-  });
 
-  describe("allow", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
-    fields(() => undefined, { allow: "nope" });
-
-    test("allows only objects by default", () => {
-      expect(
-        run(
-          fields(() => 0),
-          {}
-        )
-      ).toBe(0);
-      expect(
-        run(
-          fields(() => 0, { allow: "object" }),
-          { a: 0 }
-        )
-      ).toBe(0);
-      expect(
-        run(
-          fields((field) => field(0, number)),
-          new Int32Array(2)
-        )
-      ).toBe(0);
-      expect(
-        run(
-          fields((field) => field(0, number)),
-          [1]
-        )
-      ).toMatchInlineSnapshot(`
+    expect(
+      run(
+        fields((field) => field("0", number)),
+        [1]
+      )
+    ).toMatchInlineSnapshot(`
         At root:
         Expected an object
         Got: [1]
       `);
-    });
-
-    test("allow only arrays", () => {
-      expect(
-        run(
-          fields((field) => field(0, number), { allow: "array" }),
-          [1]
-        )
-      ).toBe(1);
-      expect(
-        run(
-          fields((field) => field(0, number), { allow: "array" }),
-          new Int32Array(2)
-        )
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: Int32Array
-      `);
-      expect(
-        run(
-          fields((field) => field(0, number), { allow: "array" }),
-          {}
-        )
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: {}
-      `);
-    });
-
-    test("allow both", () => {
-      expect(
-        run(
-          fields((field) => field(0, number), { allow: "object/array" }),
-          [1]
-        )
-      ).toBe(1);
-      expect(
-        run(
-          fields((field) => field(0, number), { allow: "object/array" }),
-          new Int32Array(2)
-        )
-      ).toBe(0);
-      expect(
-        run(
-          fields((field) => field(0, number), { allow: "object/array" }),
-          { "0": 1 }
-        )
-      ).toBe(1);
-    });
   });
 
   describe("mode", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"throw" | { default: never; } | undefined'.
-    fields((field) => field("test", number, { mode: "nope" }));
-
     test("throw", () => {
       expect(
         runWithErrorsArray(
@@ -743,9 +551,6 @@ describe("fields", () => {
   });
 
   describe("exact", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"push" | "throw" | "allow extra" | undefined'.
-    fields(() => undefined, { exact: "nope" });
-
     test("allows excess properties by default", () => {
       expect(
         run(
@@ -897,66 +702,15 @@ describe("autoFields", () => {
       Expected a string
       Got: undefined
     `);
-  });
 
-  describe("allow", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
-    autoFields({}, { allow: "nope" });
-
-    test("allows only objects by default", () => {
-      expect(run(autoFields({ a: number }), { a: 0 })).toStrictEqual({ a: 0 });
-      expect(
-        run(autoFields({ a: number }, { allow: "object" }), { a: 0 })
-      ).toStrictEqual({ a: 0 });
-      expect(run(autoFields({ 0: number }), new Int32Array(2))).toStrictEqual({
-        0: 0,
-      });
-      expect(run(autoFields({ 0: number }), [1])).toMatchInlineSnapshot(`
+    expect(run(autoFields({ 0: number }), [1])).toMatchInlineSnapshot(`
         At root:
         Expected an object
         Got: [1]
       `);
-    });
-
-    test("allow only arrays", () => {
-      expect(
-        run(autoFields({ 0: number }, { allow: "array" }), [1])
-      ).toStrictEqual({ 0: 1 });
-      expect(
-        run(autoFields({ 0: number }, { allow: "array" }), new Int32Array(2))
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: Int32Array
-      `);
-      expect(run(autoFields({ 0: number }, { allow: "array" }), {}))
-        .toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: {}
-      `);
-    });
-
-    test("allow both", () => {
-      expect(
-        run(autoFields({ 0: number }, { allow: "object/array" }), [1])
-      ).toStrictEqual({ 0: 1 });
-      expect(
-        run(
-          autoFields({ 0: number }, { allow: "object/array" }),
-          new Int32Array(2)
-        )
-      ).toStrictEqual({ 0: 0 });
-      expect(
-        run(autoFields({ 0: number }, { allow: "object/array" }), { "0": 1 })
-      ).toStrictEqual({ 0: 1 });
-    });
   });
 
   describe("exact", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"push" | "throw" | "allow extra" | undefined'.
-    autoFields({}, { exact: "nope" });
-
     test("allows excess properties by default", () => {
       expect(
         run(autoFields({ one: string, two: boolean }), {
@@ -1049,6 +803,12 @@ describe("tuple", () => {
     expectType<Type>(decoder([]));
 
     expect(decoder([])).toStrictEqual([]);
+
+    expect(run(decoder, [1])).toMatchInlineSnapshot(`
+      At root:
+      Expected 0 items
+      Got: 1
+    `);
   });
 
   test("1 item", () => {
@@ -1061,9 +821,15 @@ describe("tuple", () => {
     expect(decoder([1])).toStrictEqual([1]);
 
     expect(run(decoder, [])).toMatchInlineSnapshot(`
-      At root[0]:
-      Expected a number
-      Got: undefined
+      At root:
+      Expected 1 items
+      Got: 0
+    `);
+
+    expect(run(decoder, [1, 2])).toMatchInlineSnapshot(`
+      At root:
+      Expected 1 items
+      Got: 2
     `);
   });
 
@@ -1077,15 +843,21 @@ describe("tuple", () => {
     expect(decoder([1, "a"])).toStrictEqual([1, "a"]);
 
     expect(run(decoder, [1])).toMatchInlineSnapshot(`
-      At root[1]:
-      Expected a string
-      Got: undefined
+      At root:
+      Expected 2 items
+      Got: 1
     `);
 
     expect(run(decoder, ["a", 1])).toMatchInlineSnapshot(`
       At root[0]:
       Expected a number
       Got: "a"
+    `);
+
+    expect(run(decoder, [1, "a", 2])).toMatchInlineSnapshot(`
+      At root:
+      Expected 2 items
+      Got: 3
     `);
   });
 
@@ -1099,9 +871,15 @@ describe("tuple", () => {
     expect(decoder([1, "a", true])).toStrictEqual([1, "a", true]);
 
     expect(run(decoder, [1, "a"])).toMatchInlineSnapshot(`
-      At root[2]:
-      Expected a boolean
-      Got: undefined
+      At root:
+      Expected 3 items
+      Got: 2
+    `);
+
+    expect(run(decoder, [1, "a", true, 2])).toMatchInlineSnapshot(`
+      At root:
+      Expected 3 items
+      Got: 4
     `);
   });
 
@@ -1115,110 +893,32 @@ describe("tuple", () => {
     expect(decoder([1, "a", true, 2])).toStrictEqual([1, "a", true, 2]);
 
     expect(run(decoder, [1, "a", true])).toMatchInlineSnapshot(`
-      At root[3]:
-      Expected a number
-      Got: undefined
+      At root:
+      Expected 4 items
+      Got: 3
+    `);
+
+    expect(
+      // eslint-disable-next-line no-sparse-arrays
+      run(decoder, [1, "a", true, 2, "too", , , "many"])
+    ).toMatchInlineSnapshot(`
+      At root:
+      Expected 4 items
+      Got: 8
     `);
   });
 
-  describe("allow", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
-    tuple([], { allow: "nope" });
-
-    test("allows only arrays by default", () => {
-      expect(run(tuple([number]), [0])).toStrictEqual([0]);
-      expect(run(tuple([number], { allow: "array" }), [0])).toStrictEqual([0]);
-      expect(run(tuple([number]), { length: 0 })).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: {"length": 0}
-      `);
-      expect(run(tuple([number]), new Int32Array(2))).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: Int32Array
-      `);
-    });
-
-    test("allow only objects", () => {
-      expect(
-        run(tuple([number], { allow: "object" }), { length: 1, 0: 1 })
-      ).toStrictEqual([1]);
-      expect(
-        run(tuple([number], { allow: "object" }), new Int32Array(2))
-      ).toStrictEqual([0]);
-      expect(run(tuple([number], { allow: "object" }), []))
-        .toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: []
-      `);
-    });
-
-    test("allow both", () => {
-      expect(
-        run(tuple([number], { allow: "object/array" }), { length: 1, 0: 1 })
-      ).toStrictEqual([1]);
-      expect(
-        run(tuple([number], { allow: "object/array" }), new Int32Array(2))
-      ).toStrictEqual([0]);
-      expect(
-        run(tuple([number], { allow: "object/array" }), [1])
-      ).toStrictEqual([1]);
-    });
-  });
-
-  describe("exact", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"push" | "throw" | "allow extra" | undefined'.
-    tuple([], { exact: "nope" });
-
-    test("allows excess items by default", () => {
-      expect(run(tuple([string, boolean]), ["a", true, 3, {}])).toStrictEqual([
-        "a",
-        true,
-      ]);
-      expect(
-        run(tuple([string, boolean], { exact: "allow extra" }), [
-          "a",
-          true,
-          3,
-          {},
-        ])
-      ).toStrictEqual(["a", true]);
-    });
-
-    test("throw on excess items", () => {
-      expect(
-        run(tuple([string, boolean], { exact: "throw" }), ["a", true, 3, {}])
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected only these fields: ["0", "1"]
-        Found extra fields: ["2", "3"]
-      `);
-    });
-
-    test("push error on excess items", () => {
-      expect(
-        runWithErrorsArray(tuple([string, boolean], { exact: "push" }), [
-          "a",
-          true,
-          3,
-          {},
-        ])
-      ).toMatchInlineSnapshot(`
-        Object {
-          "decoded": Array [
-            "a",
-            true,
-          ],
-          "errors": Array [
-            At root:
-        Expected only these fields: ["0", "1"]
-        Found extra fields: ["2", "3"],
-          ],
-        }
-      `);
-    });
+  test("allows only arrays", () => {
+    expect(run(tuple([number]), { length: 0 })).toMatchInlineSnapshot(`
+      At root:
+      Expected an array
+      Got: {"length": 0}
+    `);
+    expect(run(tuple([number]), new Int32Array(2))).toMatchInlineSnapshot(`
+      At root:
+      Expected an array
+      Got: Int32Array
+    `);
   });
 });
 
@@ -1264,6 +964,12 @@ describe("fieldsUnion", () => {
       Expected one of these tags: ["Circle", "Rectangle"]
       Got: "Square"
     `);
+
+    expect(run(fieldsUnion("0", { a: () => 0 }), ["a"])).toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: ["a"]
+      `);
   });
 
   test("Edge case keys", () => {
@@ -1314,95 +1020,7 @@ describe("fieldsUnion", () => {
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
     expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
   });
-
-  describe("allow", () => {
-    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
-    fieldsUnion("tag", { a: () => 0 }, { allow: "nope" });
-
-    test("allows only objects by default", () => {
-      expect(run(fieldsUnion("tag", { a: () => 0 }), { tag: "a" })).toBe(0);
-      expect(
-        run(fieldsUnion("tag", { a: () => 0 }, { allow: "object" }), {
-          tag: "a",
-        })
-      ).toBe(0);
-      expect(run(fieldsUnion("0", { a: () => 0 }), ["a"]))
-        .toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: ["a"]
-      `);
-    });
-
-    test("allow only arrays", () => {
-      expect(
-        run(fieldsUnion("0", { a: () => 0 }, { allow: "array" }), ["a"])
-      ).toBe(0);
-      expect(
-        run(fieldsUnion("tag", { a: () => 0 }, { allow: "array" }), {
-          tag: "a",
-        })
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: {"tag": "a"}
-      `);
-    });
-
-    test("allow both", () => {
-      expect(
-        run(fieldsUnion("0", { a: () => 0 }, { allow: "object/array" }), ["a"])
-      ).toBe(0);
-      expect(
-        run(fieldsUnion("tag", { a: () => 0 }, { allow: "object/array" }), {
-          tag: "a",
-        })
-      ).toBe(0);
-    });
-  });
 });
-
-// test("deep", () => {
-//   const decoder = deep(
-//     ["store", "products", 1, "accessories", 0, "price"],
-//     number
-//   );
-
-//   expect(deep([], boolean)(true)).toMatchInlineSnapshot(`true`);
-//   expect(
-//     decoder({
-//       store: { products: [{}, { accessories: [{ price: 123 }] }] },
-//     })
-//   ).toMatchInlineSnapshot(`123`);
-
-//   expect(() => decoder(null)).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: null"
-//   `);
-//   expect(() => decoder([])).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: []"
-//   `);
-//   expect(() => decoder({})).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: undefined"
-//   `);
-//   expect(() => decoder({ store: {} })).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an array
-//     Got: undefined"
-//   `);
-//   expect(() => decoder({ store: { products: [{}] } }))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected an object
-//     Got: undefined"
-//   `);
-//   expect(() =>
-//     decoder({ store: { products: [{}, { accessories: [{ price: null }] }] } })
-//   ).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: null"
-//   `);
-// });
 
 // test("optional", () => {
 //   expect(optional(number)(undefined)).toMatchInlineSnapshot(`undefined`);
