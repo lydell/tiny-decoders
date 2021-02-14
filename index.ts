@@ -82,6 +82,13 @@ export function stringUnion<T extends Record<string, null>>(
   };
 }
 
+function unknownArray(value: unknown): Array<unknown> {
+  if (!Array.isArray(value)) {
+    throw new DecoderError({ tag: "array", got: value });
+  }
+  return value;
+}
+
 function unknownRecord(value: unknown): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new DecoderError({ tag: "object", got: value });
@@ -97,14 +104,12 @@ export function array<T, U = never>(
     value: unknown,
     errors?: Array<DecoderError>
   ): Array<T | U> {
-    if (!Array.isArray(value)) {
-      throw new DecoderError({ tag: "array", got: value });
-    }
+    const arr = unknownArray(value);
     const result = [];
-    for (let index = 0; index < value.length; index++) {
+    for (let index = 0; index < arr.length; index++) {
       try {
         const localErrors: Array<DecoderError> = [];
-        result.push(decoder(value[index], localErrors));
+        result.push(decoder(arr[index], localErrors));
         if (errors != null) {
           errors.push(
             ...localErrors.map((error) => DecoderError.at(error, index))
@@ -177,13 +182,22 @@ export function fields<T>(
     object: Record<string, unknown>,
     errors?: Array<DecoderError>
   ) => T,
-  { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
+  {
+    exact = "allow extra",
+    allow = "object",
+  }: {
+    exact?: "allow extra" | "push" | "throw";
+    allow?: "array" | "object";
+  } = {}
 ): Decoder<T> {
   return function fieldsDecoder(
     value: unknown,
     errors?: Array<DecoderError>
   ): T {
-    const object = unknownRecord(value);
+    const object: Record<string, unknown> =
+      allow === "array"
+        ? ((unknownArray(value) as unknown) as Record<string, unknown>)
+        : unknownRecord(value);
     const knownFields = Object.create(null) as Record<string, null>;
 
     function field<U, V = never>(
@@ -295,22 +309,20 @@ export function tuple<T extends ReadonlyArray<unknown>>(
     value: unknown,
     errors?: Array<DecoderError>
   ): [...T] {
-    if (!Array.isArray(value)) {
-      throw new DecoderError({ tag: "array", got: value });
-    }
-    if (value.length !== mapping.length) {
+    const arr = unknownArray(value);
+    if (arr.length !== mapping.length) {
       throw new DecoderError({
         tag: "tuple size",
         expected: mapping.length,
-        got: value.length,
+        got: arr.length,
       });
     }
     const result = [];
-    for (let index = 0; index < value.length; index++) {
+    for (let index = 0; index < arr.length; index++) {
       try {
         const decoder = mapping[index];
         const localErrors: Array<DecoderError> = [];
-        result.push(decoder(value[index], localErrors));
+        result.push(decoder(arr[index], localErrors));
         if (errors != null) {
           errors.push(
             ...localErrors.map((error) => DecoderError.at(error, index))

@@ -651,6 +651,41 @@ describe("fields", () => {
     });
   });
 
+  describe("allow", () => {
+    test("object", () => {
+      const decoder = fields((field) => field("length", number), {
+        allow: "object",
+      });
+      expect(decoder({ length: 0 })).toBe(0);
+      expect(run(decoder, [])).toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: []
+      `);
+    });
+
+    test("array", () => {
+      const decoder = fields(
+        (field) => [field("length", number), field("0", boolean)],
+        { allow: "array" }
+      );
+      expect(decoder([true])).toStrictEqual([1, true]);
+      expect(run(decoder, { length: 0 })).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: {"length": 0}
+      `);
+      expect(run(decoder, [])).toMatchInlineSnapshot(`
+        At root["0"]:
+        Expected a boolean
+        Got: undefined
+      `);
+
+      // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'string'.
+      fields((field) => field(0, string));
+    });
+  });
+
   test("obj and errors", () => {
     const objInput = {};
     const errorsInput: Array<DecoderError> = [];
