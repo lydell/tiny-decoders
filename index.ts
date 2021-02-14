@@ -733,7 +733,11 @@ export function repr(
       for (let index = 0; index <= end; index++) {
         const item =
           index in arr
-            ? repr(arr[index], { recurse: false, maxLength: recurseMaxLength })
+            ? repr(arr[index], {
+                recurse: false,
+                maxLength: recurseMaxLength,
+                sensitive,
+              })
             : "<empty>";
         items.push(item);
       }
@@ -767,6 +771,7 @@ export function repr(
               {
                 recurse: false,
                 maxLength: recurseMaxLength,
+                sensitive,
               }
             )}`
         )
