@@ -12,7 +12,7 @@ import {
   fieldsUnion,
   // lazy,
   map,
-  // multi,
+  multi,
   // nullable,
   number,
   optional,
@@ -1019,6 +1019,98 @@ describe("fieldsUnion", () => {
     const goodDecoder = fieldsUnion("tag", { "1": innerDecoder });
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
     expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
+  });
+});
+
+describe("multi", () => {
+  test("Basic", () => {
+    type Id = ReturnType<typeof idDecoder>;
+    const idDecoder = multi({
+      string: (id) => ({ tag: "Id" as const, id }),
+      number: (id) => ({ tag: "LegacyId" as const, id }),
+    });
+
+    expectType<
+      TypeEqual<Id, { tag: "Id"; id: string } | { tag: "LegacyId"; id: number }>
+    >(true);
+    expectType<Id>(idDecoder("123"));
+
+    expect(idDecoder("123")).toStrictEqual({
+      tag: "Id",
+      id: "123",
+    });
+
+    expect(idDecoder(123)).toStrictEqual({
+      tag: "LegacyId",
+      id: 123,
+    });
+
+    expect(run(idDecoder, true)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: ["string", "number"]
+      Got: true
+    `);
+  });
+
+  test("Basic – variation", () => {
+    type Id = ReturnType<typeof idDecoder>;
+    const idDecoder = multi({
+      string: (id) => id,
+      number: String,
+    });
+
+    expectType<TypeEqual<Id, string>>(true);
+    expectType<Id>(idDecoder("123"));
+
+    expect(idDecoder("123")).toBe("123");
+    expect(idDecoder(123)).toBe("123");
+
+    expect(run(idDecoder, true)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: ["string", "number"]
+      Got: true
+    `);
+  });
+
+  test("Empty object", () => {
+    const decoder = multi({});
+
+    expectType<Decoder<never>>(decoder);
+
+    expect(run(decoder, undefined)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: []
+      Got: undefined
+    `);
+  });
+
+  test("all types", () => {
+    const decoder = multi({
+      undefined: (x) => x,
+      null: (x) => x,
+      boolean: (x) => x,
+      number: (x) => x,
+      string: (x) => x,
+      array: (x) => x,
+      object: (x) => x,
+    });
+
+    const values = [
+      undefined,
+      null,
+      true,
+      false,
+      0,
+      "a",
+      [1, 2],
+      { a: 1 },
+      new Int32Array(2),
+      /a/g,
+    ];
+
+    for (const value of values) {
+      expect(decoder(value)).toStrictEqual(value);
+    }
   });
 });
 
