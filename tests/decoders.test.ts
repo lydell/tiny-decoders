@@ -1456,6 +1456,9 @@ test("map", () => {
 });
 
 test("lazy", () => {
+  // @ts-expect-error Argument of type '(value: unknown) => string' is not assignable to parameter of type '() => Decoder<unknown, unknown>'.
+  lazy(string);
+
   expect(
     run(
       lazy(() => string),
