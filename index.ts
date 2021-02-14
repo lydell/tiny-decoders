@@ -65,7 +65,7 @@ export function stringUnion<T extends Record<string, null>>(
       : T
     : {
         [P in keyof T]: P extends number
-          ? "stringUnion keys must be strings, not numbers!"
+          ? "stringUnion keys must be strings, not numbers"
           : T[P];
       }
 ): Decoder<keyof T> {
@@ -346,7 +346,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
       : T
     : {
         [P in keyof T]: P extends number
-          ? "fieldsUnion keys must be strings, not numbers!"
+          ? "fieldsUnion keys must be strings, not numbers"
           : T[P];
       }
 ): Decoder<

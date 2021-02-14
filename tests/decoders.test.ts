@@ -231,10 +231,10 @@ describe("stringUnion", () => {
   });
 
   test("Keys must be strings", () => {
-    // @ts-expect-error Type 'null' is not assignable to type '"stringUnion keys must be strings, not numbers!"'.
+    // @ts-expect-error Type 'null' is not assignable to type '"stringUnion keys must be strings, not numbers"'.
     stringUnion({ 1: null });
     // @ts-expect-error Type 'string' is not assignable to type 'null'.
-    stringUnion({ 1: "stringUnion keys must be strings, not numbers!" });
+    stringUnion({ 1: "stringUnion keys must be strings, not numbers" });
     const goodDecoder = stringUnion({ "1": null });
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, "1">>(true);
     expect(goodDecoder("1")).toBe("1");
@@ -1046,10 +1046,10 @@ describe("fieldsUnion", () => {
 
   test("Keys must be strings", () => {
     const innerDecoder = autoFields({ tag: constant("1") });
-    // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers!"'.
+    // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
     fieldsUnion("tag", { 1: innerDecoder });
     // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
-    fieldsUnion("tag", { 1: "fieldsUnion keys must be strings, not numbers!" });
+    fieldsUnion("tag", { 1: "fieldsUnion keys must be strings, not numbers" });
     const goodDecoder = fieldsUnion("tag", { "1": innerDecoder });
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
     expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
