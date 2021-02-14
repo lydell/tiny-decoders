@@ -433,6 +433,13 @@ export function multi<
   };
 }
 
+export function optional<T>(decoder: Decoder<T>): Decoder<T | undefined>;
+
+export function optional<T, U>(
+  decoder: Decoder<T>,
+  defaultValue: U
+): Decoder<T | U>;
+
 export function optional<T, U = undefined>(
   decoder: Decoder<T>,
   defaultValue?: U
@@ -452,11 +459,19 @@ export function optional<T, U = undefined>(
   };
 }
 
-export function nullable<T, U = undefined>(
+export function nullable<T>(decoder: Decoder<T>): Decoder<T | null>;
+
+export function nullable<T, U>(
   decoder: Decoder<T>,
-  defaultValue?: U
+  defaultValue: U
+): Decoder<T | U>;
+
+export function nullable<T, U = null>(
+  decoder: Decoder<T>,
+  ...rest: Array<unknown>
 ): Decoder<T | U> {
-  return function optionalDecoder(
+  const defaultValue = rest.length === 0 ? null : rest[0];
+  return function nullableDecoder(
     value: unknown,
     errors?: Array<DecoderError>
   ): T | U {

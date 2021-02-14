@@ -13,7 +13,7 @@ import {
   // lazy,
   map,
   multi,
-  // nullable,
+  nullable,
   number,
   optional,
   record,
@@ -21,6 +21,7 @@ import {
   string,
   stringUnion,
   tuple,
+  WithUndefinedAsOptional,
 } from "../";
 
 function run<T>(decoder: Decoder<T>, value: unknown): T | string {
@@ -1148,30 +1149,289 @@ describe("multi", () => {
   });
 });
 
-// test("optional", () => {
-//   expect(optional(number)(undefined)).toMatchInlineSnapshot(`undefined`);
-//   // expect(optional(number)(null)).toMatchInlineSnapshot(`undefined`);
-//   expect(optional(number)(0)).toMatchInlineSnapshot(`0`);
-//   expect(
-//     fields((field) => field("missing", optional(string)))({})
-//   ).toMatchInlineSnapshot(`undefined`);
-//   expect(
-//     fields((field) => field("present", optional(string)))({ present: "string" })
-//   ).toMatchInlineSnapshot(`"string"`);
-//   expect(optional(number, 5)(undefined)).toMatchInlineSnapshot(`5`);
-//   expect(optional(number, "5")(undefined)).toMatchInlineSnapshot(`"5"`);
-//   expect(optional(number, null)(undefined)).toMatchInlineSnapshot(`null`);
+describe("optional", () => {
+  test("optional string", () => {
+    const decoder = optional(string);
 
-//   expect(() => optional(number)("string")).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: string"
-//   `);
-//   expect(() => optional(fields((field) => field("missing", string)))({}))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a string
-//     Got: undefined"
-//   `);
-// });
+    expectType<TypeEqual<ReturnType<typeof decoder>, string | undefined>>(true);
+
+    expect(decoder(undefined)).toBeUndefined();
+    expect(decoder("a")).toBe("a");
+
+    expect(run(decoder, null)).toMatchInlineSnapshot(`
+      At root?:
+      Expected a string
+      Got: null
+    `);
+  });
+
+  test("with default", () => {
+    const decoder = optional(string, "def");
+
+    expectType<TypeEqual<ReturnType<typeof decoder>, string>>(true);
+
+    expect(decoder(undefined)).toBe("def");
+    expect(decoder("a")).toBe("a");
+  });
+
+  test("with other type default", () => {
+    const decoder = optional(string, 0);
+
+    expectType<TypeEqual<ReturnType<typeof decoder>, number | string>>(true);
+
+    expect(decoder(undefined)).toBe(0);
+    expect(decoder("a")).toBe("a");
+  });
+
+  test("optional field", () => {
+    type Person = ReturnType<typeof personDecoder>;
+    const personDecoder = fields((field) => ({
+      name: field("name", string),
+      age: field("age", optional(number)),
+    }));
+
+    expectType<TypeEqual<Person, { name: string; age: number | undefined }>>(
+      true
+    );
+
+    expect(personDecoder({ name: "John" })).toStrictEqual({
+      name: "John",
+      age: undefined,
+    });
+
+    expect(personDecoder({ name: "John", age: undefined })).toStrictEqual({
+      name: "John",
+      age: undefined,
+    });
+
+    expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
+      name: "John",
+      age: 45,
+    });
+
+    expect(run(personDecoder, { name: "John", age: "old" }))
+      .toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: "old"
+    `);
+
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | undefined; }'.
+    const person: Person = { name: "John" };
+    void person;
+
+    type Person2 = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
+    expectType<TypeEqual<Person2, WithUndefinedAsOptional<Person>>>(true);
+    expectType<TypeEqual<Person2, { name: string; age?: number }>>(true);
+
+    const person2: Person2 = { name: "John" };
+    void person2;
+  });
+
+  test("optional autoField", () => {
+    type Person = ReturnType<typeof personDecoder>;
+    const personDecoder = autoFields({
+      name: string,
+      age: optional(number),
+    });
+
+    expectType<TypeEqual<Person, { name: string; age: number | undefined }>>(
+      true
+    );
+
+    expect(personDecoder({ name: "John" })).toStrictEqual({
+      name: "John",
+      age: undefined,
+    });
+
+    expect(personDecoder({ name: "John", age: undefined })).toStrictEqual({
+      name: "John",
+      age: undefined,
+    });
+
+    expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
+      name: "John",
+      age: 45,
+    });
+
+    expect(run(personDecoder, { name: "John", age: "old" }))
+      .toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: "old"
+    `);
+
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | undefined; }'.
+    const person: Person = { name: "John" };
+    void person;
+
+    type Person2 = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
+    expectType<TypeEqual<Person2, WithUndefinedAsOptional<Person>>>(true);
+    expectType<TypeEqual<Person2, { name: string; age?: number }>>(true);
+
+    const person2: Person2 = { name: "John" };
+    void person2;
+  });
+});
+
+describe("nullable", () => {
+  test("nullable string", () => {
+    const decoder = nullable(string);
+
+    expectType<TypeEqual<ReturnType<typeof decoder>, string | null>>(true);
+
+    expect(decoder(null)).toBeNull();
+    expect(decoder("a")).toBe("a");
+
+    expect(run(decoder, undefined)).toMatchInlineSnapshot(`
+      At root?:
+      Expected a string
+      Got: undefined
+    `);
+  });
+
+  test("with default", () => {
+    const decoder = nullable(string, "def");
+
+    expectType<TypeEqual<ReturnType<typeof decoder>, string>>(true);
+
+    expect(decoder(null)).toBe("def");
+    expect(decoder("a")).toBe("a");
+  });
+
+  test("with other type default", () => {
+    const decoder = nullable(string, 0);
+
+    expectType<TypeEqual<ReturnType<typeof decoder>, number | string>>(true);
+
+    expect(decoder(null)).toBe(0);
+    expect(decoder("a")).toBe("a");
+  });
+
+  test("with undefined instead of null", () => {
+    const decoder = nullable(string, undefined);
+
+    expectType<TypeEqual<ReturnType<typeof decoder>, string | undefined>>(true);
+
+    expect(decoder(null)).toBeUndefined();
+    expect(decoder("a")).toBe("a");
+  });
+
+  test("nullable field", () => {
+    type Person = ReturnType<typeof personDecoder>;
+    const personDecoder = fields((field) => ({
+      name: field("name", string),
+      age: field("age", nullable(number)),
+    }));
+
+    expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
+
+    expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: undefined
+    `);
+
+    expect(run(personDecoder, { name: "John", age: undefined }))
+      .toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: undefined
+    `);
+
+    expect(personDecoder({ name: "John", age: null })).toStrictEqual({
+      name: "John",
+      age: null,
+    });
+
+    expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
+      name: "John",
+      age: 45,
+    });
+
+    expect(run(personDecoder, { name: "John", age: "old" }))
+      .toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: "old"
+    `);
+
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
+    const person: Person = { name: "John" };
+    void person;
+
+    type Person2 = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
+    expectType<TypeEqual<Person2, WithUndefinedAsOptional<Person>>>(true);
+    expectType<TypeEqual<Person2, Person>>(true);
+
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
+    const person2: Person2 = { name: "John" };
+    void person2;
+  });
+
+  test("nullable autoField", () => {
+    type Person = ReturnType<typeof personDecoder>;
+    const personDecoder = autoFields({
+      name: string,
+      age: nullable(number),
+    });
+
+    expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
+
+    expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: undefined
+    `);
+
+    expect(run(personDecoder, { name: "John", age: undefined }))
+      .toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: undefined
+    `);
+
+    expect(personDecoder({ name: "John", age: null })).toStrictEqual({
+      name: "John",
+      age: null,
+    });
+
+    expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
+      name: "John",
+      age: 45,
+    });
+
+    expect(run(personDecoder, { name: "John", age: "old" }))
+      .toMatchInlineSnapshot(`
+      At root["age"]?:
+      Expected a number
+      Got: "old"
+    `);
+
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
+    const person: Person = { name: "John" };
+    void person;
+
+    type Person2 = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
+    expectType<TypeEqual<Person2, WithUndefinedAsOptional<Person>>>(true);
+    expectType<TypeEqual<Person2, Person>>(true);
+
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
+    const person2: Person2 = { name: "John" };
+    void person2;
+
+    type Person3 = WithUndefinedAsOptional<ReturnType<typeof personDecoder3>>;
+    const personDecoder3 = autoFields({
+      name: string,
+      age: nullable(number, undefined),
+    });
+
+    expectType<TypeEqual<Person3, { name: string; age?: number }>>(true);
+
+    const person3: Person3 = { name: "John" };
+    void person3;
+  });
+});
 
 // test("map", () => {
 //   expect(map(number, Math.round)(4.9)).toMatchInlineSnapshot(`5`);
