@@ -1005,6 +1005,14 @@ describe("autoFields", () => {
       `);
     });
   });
+
+  test("__proto__ is not allowed", () => {
+    // @ts-expect-error Type '(value: unknown) => string' is not assignable to type 'never'.
+    const decoder = autoFields({ a: number, __proto__: string, b: number });
+    expect(
+      run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`))
+    ).toStrictEqual({ a: 1, b: 3 });
+  });
 });
 
 describe("tuple", () => {
