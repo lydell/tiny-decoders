@@ -810,6 +810,14 @@ describe("autoFields", () => {
     expect(
       run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`))
     ).toStrictEqual({ a: 1, b: 3 });
+
+    const desc = Object.create(null) as { __proto__: Decoder<string> };
+    desc.__proto__ = string;
+    // @ts-expect-error Argument of type '{ __proto__: Decoder<string, unknown>; }' is not assignable to parameter of type '{ __proto__: never; }'.
+    const decoder2 = autoFields(desc)
+    expect(
+      run(decoder2, JSON.parse(`{"__proto__": "a"}`))
+    ).toStrictEqual({});
   });
 
   test("empty object", () => {
