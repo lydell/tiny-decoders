@@ -363,9 +363,15 @@ type Values<T> = T[keyof T] extends infer O ? { [K in keyof O]: O[K] } : never;
 
 export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   key: number | string,
-  mapping: keyof T extends never
-    ? "fieldsUnion must have at least one member"
-    : T,
+  mapping: keyof T extends string
+    ? keyof T extends never
+      ? "fieldsUnion must have at least one member"
+      : T
+    : {
+        [P in keyof T]: P extends number
+          ? "fieldsUnion keys must be strings, not numbers!"
+          : T[P];
+      },
   {
     allow = "object",
   }: {

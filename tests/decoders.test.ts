@@ -1250,6 +1250,17 @@ describe("fieldsUnion", () => {
       Got: "test"
     `);
   });
+
+  test("Keys must be strings", () => {
+    const innerDecoder = autoFields({ tag: constant("1") });
+    // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers!"'.
+    fieldsUnion("tag", { 1: innerDecoder });
+    // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
+    fieldsUnion("tag", { 1: "fieldsUnion keys must be strings, not numbers!" });
+    const goodDecoder = fieldsUnion("tag", { "1": innerDecoder });
+    expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
+    expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
+  });
 });
 
 // test("deep", () => {
