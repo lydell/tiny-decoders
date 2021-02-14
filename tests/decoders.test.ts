@@ -1314,6 +1314,52 @@ describe("fieldsUnion", () => {
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
     expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
   });
+
+  describe("allow", () => {
+    // @ts-expect-error Type '"nope"' is not assignable to type '"object" | "array" | "object/array" | undefined'.
+    fieldsUnion("tag", { a: () => 0 }, { allow: "nope" });
+
+    test("allows only objects by default", () => {
+      expect(run(fieldsUnion("tag", { a: () => 0 }), { tag: "a" })).toBe(0);
+      expect(
+        run(fieldsUnion("tag", { a: () => 0 }, { allow: "object" }), {
+          tag: "a",
+        })
+      ).toBe(0);
+      expect(run(fieldsUnion("0", { a: () => 0 }), ["a"]))
+        .toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: ["a"]
+      `);
+    });
+
+    test("allow only arrays", () => {
+      expect(
+        run(fieldsUnion("0", { a: () => 0 }, { allow: "array" }), ["a"])
+      ).toBe(0);
+      expect(
+        run(fieldsUnion("tag", { a: () => 0 }, { allow: "array" }), {
+          tag: "a",
+        })
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected an array
+        Got: {"tag": "a"}
+      `);
+    });
+
+    test("allow both", () => {
+      expect(
+        run(fieldsUnion("0", { a: () => 0 }, { allow: "object/array" }), ["a"])
+      ).toBe(0);
+      expect(
+        run(fieldsUnion("tag", { a: () => 0 }, { allow: "object/array" }), {
+          tag: "a",
+        })
+      ).toBe(0);
+    });
+  });
 });
 
 // test("deep", () => {
