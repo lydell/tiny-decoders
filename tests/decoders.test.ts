@@ -1,6 +1,5 @@
 import { expectType, TypeEqual } from "ts-expect";
 
-// TODO: Test all of them!
 import {
   array,
   autoFields,
@@ -10,7 +9,7 @@ import {
   DecoderError,
   fields,
   fieldsUnion,
-  // lazy,
+  lazy,
   map,
   multi,
   nullable,
@@ -1433,96 +1432,68 @@ describe("nullable", () => {
   });
 });
 
-// test("map", () => {
-//   expect(map(number, Math.round)(4.9)).toMatchInlineSnapshot(`5`);
-//   expect(map(array(number), (arr) => new Set(arr))([1, 2, 1]))
-//     .toMatchInlineSnapshot(`
-//       Set {
-//         1,
-//         2,
-//       }
-//     `);
+test("map", () => {
+  expect(run(map(number, Math.round), 4.9)).toBe(5);
 
-//   expect(() => map(number, string)(0)).toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a string
-//     Got: number"
-//   `);
-//   expect(() => map(number, string)("string"))
-//     .toThrowErrorMatchingInlineSnapshot(`
-//     "Expected a number
-//     Got: string"
-//   `);
-// });
+  expect(
+    run(
+      map(array(number), (arr) => new Set(arr)),
+      [1, 2, 1]
+    )
+  ).toStrictEqual(new Set([1, 2]));
 
-// test("multi", () => {
-//   expect(multi({ string, number })("string")).toMatchInlineSnapshot(`"string"`);
-//   expect(multi({ string, number })(0)).toMatchInlineSnapshot(`0`);
-//   expect(multi({ string, number, boolean })(true)).toMatchInlineSnapshot(
-//     `true`
-//   );
-//   expect(multi({ string, number, boolean })(false)).toMatchInlineSnapshot(
-//     `false`
-//   );
+  expect(run(map(number, string), 0)).toMatchInlineSnapshot(`
+    At root:
+    Expected a string
+    Got: 0
+  `);
 
-//   expect(thrownError(() => multi({ string, number })(true)))
-//     .toMatchInlineSnapshot(`
-//     "Expected one of these types: [\\"string\\", \\"number\\"]
-//     Got: boolean"
-//   `);
-//   expect(thrownError(() => multi({ string, number, boolean })(null)))
-//     .toMatchInlineSnapshot(`
-//     "Expected one of these types: [\\"string\\", \\"number\\", \\"boolean\\"]
-//     Got: null"
-//   `);
-//   expect(thrownError(() => multi({ string, number, boolean })(null)))
-//     .toMatchInlineSnapshot(`
-//     "Expected one of these types: [\\"string\\", \\"number\\", \\"boolean\\"]
-//     Got: null"
-//   `);
-//   expect(
-//     thrownError(() =>
-//       multi({ object: autoFields({ a: number }), string })({ a: true })
-//     )
-//   ).toMatchInlineSnapshot(`
-//     "Expected a number
-//     Got: boolean"
-//   `);
-// });
+  expect(run(map(number, string), "string")).toMatchInlineSnapshot(`
+    At root:
+    Expected a number
+    Got: "string"
+  `);
+});
 
-// test("lazy", () => {
-//   expect(lazy(() => string)("string")).toMatchInlineSnapshot(`"string"`);
+test("lazy", () => {
+  expect(
+    run(
+      lazy(() => string),
+      "string"
+    )
+  ).toBe("string");
 
-//   type NestedArray = Array<NestedArray | number>;
-//   const decodeNestedNumber: Decoder<NestedArray> = array(
-//     multi({
-//       number,
-//       array: lazy(() => decodeNestedNumber),
-//     })
-//   );
-//   expect(decodeNestedNumber([[[[[[[1337]]]]]]])).toMatchInlineSnapshot(`
-//     Array [
-//       Array [
-//         Array [
-//           Array [
-//             Array [
-//               Array [
-//                 Array [
-//                   1337,
-//                 ],
-//               ],
-//             ],
-//           ],
-//         ],
-//       ],
-//     ]
-//   `);
+  type NestedArray = Array<NestedArray | number>;
+  const nestedNumberDecoder: Decoder<NestedArray> = array(
+    multi({
+      number: (x) => x,
+      array: lazy(() => nestedNumberDecoder),
+    })
+  );
+  expect(nestedNumberDecoder([[[[[[[1337]]]]]]])).toMatchInlineSnapshot(`
+    Array [
+      Array [
+        Array [
+          Array [
+            Array [
+              Array [
+                Array [
+                  1337,
+                ],
+              ],
+            ],
+          ],
+        ],
+      ],
+    ]
+  `);
 
-//   expect(thrownError(() => decodeNestedNumber([[[["nope"]]]])))
-//     .toMatchInlineSnapshot(`
-//     "Expected one of these types: [\\"number\\", \\"array\\"]
-//     Got: string"
-//   `);
-// });
+  expect(run(nestedNumberDecoder, [[[["nope"]]]])).toMatchInlineSnapshot(`
+    At root[0][0][0][0]:
+    Expected one of these types: ["number", "array"]
+    Got: "nope"
+  `);
+});
 
 // test("all decoders pass down errors", () => {
 //   const subDecoder: Decoder<boolean | null> = fields((field) =>
