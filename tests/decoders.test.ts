@@ -1266,6 +1266,31 @@ describe("fieldsUnion", () => {
     `);
   });
 
+  test("Edge case keys", () => {
+    const edgeCaseDecoder = fieldsUnion("tag", {
+      constructor: (x) => x,
+      // Specifying `__proto__` is safe here.
+      __proto__: (x) => x,
+    });
+    expect(edgeCaseDecoder({ tag: "constructor" })).toStrictEqual({
+      tag: "constructor",
+    });
+    // But `__proto__` won’t work, because it’s not an “own” property for some reason.
+    // I haven’t been able to forbid `__proto__` using TypeScript.
+    // Notice how "__proto__" isn’t even in the expected keys.
+    expect(run(edgeCaseDecoder, { tag: "__proto__" })).toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: ["constructor"]
+      Got: "__proto__"
+    `);
+    expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
+      .toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: ["constructor"]
+      Got: "hasOwnProperty"
+    `);
+  });
+
   test("Empty object is not allowed", () => {
     // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"fieldsUnion must have at least one member"'.
     const emptyDecoder = fieldsUnion("tag", {});
