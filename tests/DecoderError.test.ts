@@ -3,6 +3,7 @@ import { expectType, TypeEqual } from "ts-expect";
 import {
   Decoder,
   DecoderError,
+  DecoderErrorVariant,
   fields,
   nullable,
   optional,
@@ -34,6 +35,8 @@ function thrownError<T>(decoder: Decoder<T>, value: unknown): DecoderError {
 }
 
 describe("constructor", () => {
+  expectType<TypeEqual<DecoderError["variant"], DecoderErrorVariant>>(true);
+
   test("custom error", () => {
     const error = new DecoderError({
       message: "Expected a valid regex",

@@ -708,6 +708,9 @@ describe("fields", () => {
 });
 
 describe("autoFields", () => {
+  // @ts-expect-error Argument of type 'readonly [(value: unknown) => string]' is not assignable to parameter of type '{ [x: string]: Decoder<unknown, unknown>; }'.
+  autoFields([string] as const);
+
   test("basic", () => {
     type Person = ReturnType<typeof personDecoder>;
     const personDecoder = autoFields({
