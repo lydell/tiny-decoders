@@ -247,7 +247,7 @@ Here’s a summary of all decoders:
 ## DecoderError
 
 ```ts
-export class DecoderError extends TypeError {
+class DecoderError extends TypeError {
   path: Array<Key>;
 
   variant: DecoderErrorVariant;
