@@ -2,12 +2,12 @@ import { expectType, TypeEqual } from "ts-expect";
 
 import {
   array,
-  autoFields,
   boolean,
   constant,
   Decoder,
   DecoderError,
   fields,
+  fieldsAuto,
   fieldsUnion,
   lazy,
   map,
@@ -383,7 +383,7 @@ describe("record", () => {
       `"Invalid regular expression: /\\\\d{4}:\\\\d{2/: Incomplete quantifier"`
     );
 
-    expect(run(autoFields({ regexes: decoder }), { regexes: bad }))
+    expect(run(fieldsAuto({ regexes: decoder }), { regexes: bad }))
       .toMatchInlineSnapshot(`
       At root["regexes"]:
       Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier
@@ -707,13 +707,13 @@ describe("fields", () => {
   });
 });
 
-describe("autoFields", () => {
+describe("fieldsAuto", () => {
   // @ts-expect-error Argument of type 'readonly [(value: unknown) => string]' is not assignable to parameter of type '{ [x: string]: Decoder<unknown, unknown>; }'.
-  autoFields([string] as const);
+  fieldsAuto([string] as const);
 
   test("basic", () => {
     type Person = ReturnType<typeof personDecoder>;
-    const personDecoder = autoFields({
+    const personDecoder = fieldsAuto({
       id: number,
       firstName: string,
     });
@@ -740,7 +740,7 @@ describe("autoFields", () => {
       Got: undefined
     `);
 
-    expect(run(autoFields({ 0: number }), [1])).toMatchInlineSnapshot(`
+    expect(run(fieldsAuto({ 0: number }), [1])).toMatchInlineSnapshot(`
         At root:
         Expected an object
         Got: [1]
@@ -750,7 +750,7 @@ describe("autoFields", () => {
   describe("exact", () => {
     test("allows excess properties by default", () => {
       expect(
-        run(autoFields({ one: string, two: boolean }), {
+        run(fieldsAuto({ one: string, two: boolean }), {
           one: "a",
           two: true,
           three: 3,
@@ -759,7 +759,7 @@ describe("autoFields", () => {
       ).toStrictEqual({ one: "a", two: true });
       expect(
         run(
-          autoFields({ one: string, two: boolean }, { exact: "allow extra" }),
+          fieldsAuto({ one: string, two: boolean }, { exact: "allow extra" }),
           { one: "a", two: true, three: 3, four: {} }
         )
       ).toStrictEqual({ one: "a", two: true });
@@ -767,7 +767,7 @@ describe("autoFields", () => {
 
     test("throw on excess properties", () => {
       expect(
-        run(autoFields({ one: string, two: boolean }, { exact: "throw" }), {
+        run(fieldsAuto({ one: string, two: boolean }, { exact: "throw" }), {
           one: "a",
           two: true,
           three: 3,
@@ -783,7 +783,7 @@ describe("autoFields", () => {
     test("push error on excess properties", () => {
       expect(
         runWithErrorsArray(
-          autoFields({ one: string, two: boolean }, { exact: "push" }),
+          fieldsAuto({ one: string, two: boolean }, { exact: "push" }),
           {
             one: "a",
             two: true,
@@ -809,7 +809,7 @@ describe("autoFields", () => {
 
   test("__proto__ is not allowed", () => {
     // @ts-expect-error Type '(value: unknown) => string' is not assignable to type 'never'.
-    const decoder = autoFields({ a: number, __proto__: string, b: number });
+    const decoder = fieldsAuto({ a: number, __proto__: string, b: number });
     expect(
       run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`))
     ).toStrictEqual({ a: 1, b: 3 });
@@ -817,18 +817,118 @@ describe("autoFields", () => {
     const desc = Object.create(null) as { __proto__: Decoder<string> };
     desc.__proto__ = string;
     // @ts-expect-error Argument of type '{ __proto__: Decoder<string, unknown>; }' is not assignable to parameter of type '{ __proto__: never; }'.
-    const decoder2 = autoFields(desc);
+    const decoder2 = fieldsAuto(desc);
     expect(run(decoder2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
   });
 
   test("empty object", () => {
-    const decoder = autoFields({}, { exact: "throw" });
+    const decoder = fieldsAuto({}, { exact: "throw" });
     expect(decoder({})).toStrictEqual({});
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
       Found extra fields: ["a"]
     `);
+  });
+});
+
+describe("fieldsUnion", () => {
+  test("basic", () => {
+    type Shape = ReturnType<typeof shapeDecoder>;
+    const shapeDecoder = fieldsUnion("tag", {
+      Circle: fieldsAuto({
+        tag: constant("Circle"),
+        radius: number,
+      }),
+      Rectangle: fields((field) => ({
+        tag: "Rectangle" as const,
+        width: field("width", number),
+        height: field("height", number),
+      })),
+    });
+
+    expectType<
+      TypeEqual<
+        Shape,
+        | { tag: "Circle"; radius: number }
+        | { tag: "Rectangle"; width: number; height: number }
+      >
+    >(true);
+    expectType<Shape>(shapeDecoder({ tag: "Circle", radius: 5 }));
+
+    expect(shapeDecoder({ tag: "Circle", radius: 5 })).toStrictEqual({
+      tag: "Circle",
+      radius: 5,
+    });
+
+    expect(run(shapeDecoder, { tag: "Rectangle", radius: 5 }))
+      .toMatchInlineSnapshot(`
+      At root["width"]:
+      Expected a number
+      Got: undefined
+    `);
+
+    expect(run(shapeDecoder, { tag: "Square", size: 5 }))
+      .toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: "Circle", "Rectangle"
+      Got: "Square"
+    `);
+
+    expect(run(fieldsUnion("0", { a: () => 0 }), ["a"])).toMatchInlineSnapshot(`
+        At root:
+        Expected an object
+        Got: ["a"]
+      `);
+  });
+
+  test("edge case keys", () => {
+    const edgeCaseDecoder = fieldsUnion("tag", {
+      constructor: (x) => x,
+      // Specifying `__proto__` is safe here.
+      __proto__: (x) => x,
+    });
+    expect(edgeCaseDecoder({ tag: "constructor" })).toStrictEqual({
+      tag: "constructor",
+    });
+    // But `__proto__` won’t work, because it’s not an “own” property for some reason.
+    // I haven’t been able to forbid `__proto__` using TypeScript.
+    // Notice how "__proto__" isn’t even in the expected keys.
+    expect(run(edgeCaseDecoder, { tag: "__proto__" })).toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: "constructor"
+      Got: "__proto__"
+    `);
+    expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
+      .toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: "constructor"
+      Got: "hasOwnProperty"
+    `);
+  });
+
+  test("empty object is not allowed", () => {
+    // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"fieldsUnion must have at least one member"'.
+    const emptyDecoder = fieldsUnion("tag", {});
+    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'Record<string, Decoder<unknown, unknown>>'.
+    fieldsUnion("tag", "fieldsUnion must have at least one member");
+    expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
+    expect(run(emptyDecoder, { tag: "test" })).toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags: (none)
+      Got: "test"
+    `);
+  });
+
+  test("keys must be strings", () => {
+    const innerDecoder = fieldsAuto({ tag: constant("1") });
+    // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
+    fieldsUnion("tag", { 1: innerDecoder });
+    // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
+    fieldsUnion("tag", { 1: "fieldsUnion keys must be strings, not numbers" });
+    const goodDecoder = fieldsUnion("tag", { "1": innerDecoder });
+    expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
+    expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
   });
 });
 
@@ -962,106 +1062,6 @@ describe("tuple", () => {
       Expected an array
       Got: Int32Array
     `);
-  });
-});
-
-describe("fieldsUnion", () => {
-  test("basic", () => {
-    type Shape = ReturnType<typeof shapeDecoder>;
-    const shapeDecoder = fieldsUnion("tag", {
-      Circle: autoFields({
-        tag: constant("Circle"),
-        radius: number,
-      }),
-      Rectangle: fields((field) => ({
-        tag: "Rectangle" as const,
-        width: field("width", number),
-        height: field("height", number),
-      })),
-    });
-
-    expectType<
-      TypeEqual<
-        Shape,
-        | { tag: "Circle"; radius: number }
-        | { tag: "Rectangle"; width: number; height: number }
-      >
-    >(true);
-    expectType<Shape>(shapeDecoder({ tag: "Circle", radius: 5 }));
-
-    expect(shapeDecoder({ tag: "Circle", radius: 5 })).toStrictEqual({
-      tag: "Circle",
-      radius: 5,
-    });
-
-    expect(run(shapeDecoder, { tag: "Rectangle", radius: 5 }))
-      .toMatchInlineSnapshot(`
-      At root["width"]:
-      Expected a number
-      Got: undefined
-    `);
-
-    expect(run(shapeDecoder, { tag: "Square", size: 5 }))
-      .toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags: "Circle", "Rectangle"
-      Got: "Square"
-    `);
-
-    expect(run(fieldsUnion("0", { a: () => 0 }), ["a"])).toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: ["a"]
-      `);
-  });
-
-  test("edge case keys", () => {
-    const edgeCaseDecoder = fieldsUnion("tag", {
-      constructor: (x) => x,
-      // Specifying `__proto__` is safe here.
-      __proto__: (x) => x,
-    });
-    expect(edgeCaseDecoder({ tag: "constructor" })).toStrictEqual({
-      tag: "constructor",
-    });
-    // But `__proto__` won’t work, because it’s not an “own” property for some reason.
-    // I haven’t been able to forbid `__proto__` using TypeScript.
-    // Notice how "__proto__" isn’t even in the expected keys.
-    expect(run(edgeCaseDecoder, { tag: "__proto__" })).toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags: "constructor"
-      Got: "__proto__"
-    `);
-    expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
-      .toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags: "constructor"
-      Got: "hasOwnProperty"
-    `);
-  });
-
-  test("empty object is not allowed", () => {
-    // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"fieldsUnion must have at least one member"'.
-    const emptyDecoder = fieldsUnion("tag", {});
-    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'Record<string, Decoder<unknown, unknown>>'.
-    fieldsUnion("tag", "fieldsUnion must have at least one member");
-    expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
-    expect(run(emptyDecoder, { tag: "test" })).toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags: (none)
-      Got: "test"
-    `);
-  });
-
-  test("keys must be strings", () => {
-    const innerDecoder = autoFields({ tag: constant("1") });
-    // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
-    fieldsUnion("tag", { 1: innerDecoder });
-    // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
-    fieldsUnion("tag", { 1: "fieldsUnion keys must be strings, not numbers" });
-    const goodDecoder = fieldsUnion("tag", { "1": innerDecoder });
-    expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
-    expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
   });
 });
 
@@ -1278,7 +1278,7 @@ describe("optional", () => {
 
   test("optional autoField", () => {
     type Person = ReturnType<typeof personDecoder>;
-    const personDecoder = autoFields({
+    const personDecoder = fieldsAuto({
       name: string,
       age: optional(number),
     });
@@ -1439,7 +1439,7 @@ describe("nullable", () => {
 
   test("nullable autoField", () => {
     type Person = ReturnType<typeof personDecoder>;
-    const personDecoder = autoFields({
+    const personDecoder = fieldsAuto({
       name: string,
       age: nullable(number),
     });
@@ -1489,7 +1489,7 @@ describe("nullable", () => {
     void person2;
 
     type Person3 = WithUndefinedAsOptional<ReturnType<typeof personDecoder3>>;
-    const personDecoder3 = autoFields({
+    const personDecoder3 = fieldsAuto({
       name: string,
       age: nullable(number, undefined),
     });
@@ -1618,7 +1618,10 @@ test("all decoders pass down errors", () => {
         mode: { default: undefined },
       }
     ),
-    autoFields: field("autoFields", autoFields({ field: subDecoder }), {
+    fieldsAuto: field("fieldsAuto", fieldsAuto({ field: subDecoder }), {
+      mode: { default: undefined },
+    }),
+    fieldsUnion: field("fieldsUnion", fieldsUnion("tag", { a: subDecoder }), {
       mode: { default: undefined },
     }),
     tuple1: field("tuple1", tuple([subDecoder]), {
@@ -1628,9 +1631,6 @@ test("all decoders pass down errors", () => {
       mode: { default: undefined },
     }),
     tuple3: field("tuple3", tuple([boolean, boolean, subDecoder]), {
-      mode: { default: undefined },
-    }),
-    fieldsUnion: field("fieldsUnion", fieldsUnion("tag", { a: subDecoder }), {
       mode: { default: undefined },
     }),
     multi1: field("multi1", multi({ boolean, object: subDecoder }), {
@@ -1674,11 +1674,11 @@ test("all decoders pass down errors", () => {
     record: { key: subData },
     fields: { field: subData },
     arrayFields: [subData],
-    autoFields: { field: subData },
+    fieldsAuto: { field: subData },
+    fieldsUnion: { tag: "a", test: 0 },
     tuple1: [subData],
     tuple2: [subData, true],
     tuple3: [true, true, subData],
-    fieldsUnion: { tag: "a", test: 0 },
     multi1: subData,
     multi2: subData,
     optional: subData,
@@ -1695,12 +1695,12 @@ test("all decoders pass down errors", () => {
           null,
         ],
         "arrayFields": null,
-        "autoFields": Object {
-          "field": null,
-        },
         "boolean": undefined,
         "constant": undefined,
         "fields": null,
+        "fieldsAuto": Object {
+          "field": null,
+        },
         "fieldsUnion": null,
         "lazy": null,
         "map1": null,
@@ -1756,7 +1756,10 @@ test("all decoders pass down errors", () => {
         At root["arrayFields"]["0"]["test"]:
     Expected a boolean
     Got: 0,
-        At root["autoFields"]["field"]["test"]:
+        At root["fieldsAuto"]["field"]["test"]:
+    Expected a boolean
+    Got: 0,
+        At root["fieldsUnion"]["test"]:
     Expected a boolean
     Got: 0,
         At root["tuple1"][0]["test"]:
@@ -1766,9 +1769,6 @@ test("all decoders pass down errors", () => {
     Expected a boolean
     Got: 0,
         At root["tuple3"][2]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["fieldsUnion"]["test"]:
     Expected a boolean
     Got: 0,
         At root["multi1"]["test"]:

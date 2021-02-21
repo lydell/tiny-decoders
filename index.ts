@@ -250,11 +250,11 @@ export function fields<T>(
   };
 }
 
-export function autoFields<T extends Record<string, unknown>>(
+export function fieldsAuto<T extends Record<string, unknown>>(
   mapping: { [P in keyof T]: P extends "__proto__" ? never : Decoder<T[P]> },
   { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
 ): Decoder<T> {
-  return function autoFieldsDecoder(
+  return function fieldsAutoDecoder(
     value: unknown,
     errors?: Array<DecoderError>
   ): T {
@@ -302,40 +302,6 @@ export function autoFields<T extends Record<string, unknown>>(
   };
 }
 
-export function tuple<T extends ReadonlyArray<unknown>>(
-  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
-): Decoder<[...T]> {
-  return function tupleDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): [...T] {
-    const arr = unknownArray(value);
-    if (arr.length !== mapping.length) {
-      throw new DecoderError({
-        tag: "tuple size",
-        expected: mapping.length,
-        got: arr.length,
-      });
-    }
-    const result = [];
-    for (let index = 0; index < arr.length; index++) {
-      try {
-        const decoder = mapping[index];
-        const localErrors: Array<DecoderError> = [];
-        result.push(decoder(arr[index], localErrors));
-        if (errors != null) {
-          errors.push(
-            ...localErrors.map((error) => DecoderError.at(error, index))
-          );
-        }
-      } catch (error) {
-        throw DecoderError.at(error, index);
-      }
-    }
-    return result as [...T];
-  };
-}
-
 type Values<T> = T[keyof T];
 
 export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
@@ -375,6 +341,39 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   });
 }
 
+export function tuple<T extends ReadonlyArray<unknown>>(
+  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
+): Decoder<[...T]> {
+  return function tupleDecoder(
+    value: unknown,
+    errors?: Array<DecoderError>
+  ): [...T] {
+    const arr = unknownArray(value);
+    if (arr.length !== mapping.length) {
+      throw new DecoderError({
+        tag: "tuple size",
+        expected: mapping.length,
+        got: arr.length,
+      });
+    }
+    const result = [];
+    for (let index = 0; index < arr.length; index++) {
+      try {
+        const decoder = mapping[index];
+        const localErrors: Array<DecoderError> = [];
+        result.push(decoder(arr[index], localErrors));
+        if (errors != null) {
+          errors.push(
+            ...localErrors.map((error) => DecoderError.at(error, index))
+          );
+        }
+      } catch (error) {
+        throw DecoderError.at(error, index);
+      }
+    }
+    return result as [...T];
+  };
+}
 export function multi<
   T1 = never,
   T2 = never,
@@ -486,9 +485,12 @@ export function nullable<T, U = null>(
   };
 }
 
-export function map<T, U>(decoder: Decoder<T>, f: Decoder<U, T>): Decoder<U> {
+export function map<T, U>(
+  decoder: Decoder<T>,
+  mapper: Decoder<U, T>
+): Decoder<U> {
   return function mapDecoder(value: unknown, errors?: Array<DecoderError>): U {
-    return f(decoder(value, errors), errors);
+    return mapper(decoder(value, errors), errors);
   };
 }
 
