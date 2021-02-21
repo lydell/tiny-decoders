@@ -21,7 +21,7 @@ import {
   stringUnion,
   tuple,
   WithUndefinedAsOptional,
-} from "../";
+} from "..";
 
 function run<T>(decoder: Decoder<T>, value: unknown): T | string {
   try {

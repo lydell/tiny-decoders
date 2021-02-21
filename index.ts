@@ -481,7 +481,7 @@ export function nullable<T, U = null>(
     try {
       return decoder(value, errors);
     } catch (error) {
-      throw DecoderError.at(error, undefined);
+      throw DecoderError.at(error, null);
     }
   };
 }
@@ -612,11 +612,12 @@ export class DecoderError extends TypeError {
 
   variant: DecoderErrorVariant;
 
-  constructor(
-    params:
-      | { message: string; value: unknown; key?: number | string }
-      | (DecoderErrorVariant & { key?: number | string })
-  ) {
+  constructor({
+    key,
+    ...params
+  }:
+    | { message: string; value: unknown; key?: number | string }
+    | (DecoderErrorVariant & { key?: number | string })) {
     const variant: DecoderErrorVariant =
       "tag" in params
         ? params
@@ -629,7 +630,7 @@ export class DecoderError extends TypeError {
         { sensitive: true }
       )
     );
-    this.path = params.key === undefined ? [] : [params.key];
+    this.path = key === undefined ? [] : [key];
     this.variant = variant;
   }
 

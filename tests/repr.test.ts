@@ -1,5 +1,7 @@
 // @flow strict
 
+import { expectType, TypeEqual } from "ts-expect";
+
 import { repr, ReprOptions } from "../";
 
 expect.addSnapshotSerializer({
@@ -21,6 +23,10 @@ class Point {
 function functionWithSomewhatLongName(): void {
   // Dummy function.
 }
+
+expectType<TypeEqual<Parameters<typeof repr>[1], ReprOptions | undefined>>(
+  true
+);
 
 test("undefined", () => {
   expect(repr(undefined)).toMatchInlineSnapshot(`undefined`);
