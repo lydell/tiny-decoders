@@ -427,7 +427,7 @@ export function multi<
     }
     throw new DecoderError({
       tag: "unknown multi type",
-      knownTypes: Object.keys(mapping),
+      knownTypes: Object.keys(mapping) as Array<"undefined">, // Type checking hack.
       got: value,
     });
   };
@@ -526,7 +526,15 @@ export type DecoderErrorVariant =
     }
   | {
       tag: "unknown multi type";
-      knownTypes: Array<string>;
+      knownTypes: Array<
+        | "array"
+        | "boolean"
+        | "null"
+        | "number"
+        | "object"
+        | "string"
+        | "undefined"
+      >;
       got: unknown;
     }
   | {
@@ -540,21 +548,17 @@ export type DecoderErrorVariant =
   | { tag: "object"; got: unknown }
   | { tag: "string"; got: unknown };
 
-export function formatDecoderErrorVariant(
+function formatDecoderErrorVariant(
   variant: DecoderErrorVariant,
-  {
-    formatExpected = (value) =>
-      repr(value, {
-        maxArrayChildren: 20,
-        recurseMaxLength: 50,
-        sensitive: false,
-      }),
-    formatGot = repr,
-  }: {
-    formatExpected?: (value: unknown) => string;
-    formatGot?: (value: unknown) => string;
-  } = {}
+  options?: ReprOptions
 ): string {
+  const formatGot = (value: unknown): string => repr(value, options);
+
+  const stringList = (strings: Array<string>): string =>
+    strings.length === 0
+      ? "(none)"
+      : strings.map((s) => JSON.stringify(s)).join(", ");
+
   const got = (message: string, value: unknown): string =>
     value === DecoderError.MISSING_VALUE
       ? message
@@ -571,28 +575,27 @@ export function formatDecoderErrorVariant(
       return got(`Expected an ${variant.tag}`, variant.got);
 
     case "constant":
-      return got(
-        `Expected the value ${formatExpected(variant.expected)}`,
-        variant.got
-      );
+      return got(`Expected the value ${repr(variant.expected)}`, variant.got);
 
     case "unknown multi type":
-      return `Expected one of these types: ${formatExpected(
-        variant.knownTypes
-      )}\nGot: ${formatGot(variant.got)}`;
+      return `Expected one of these types: ${
+        variant.knownTypes.length === 0
+          ? "never"
+          : variant.knownTypes.join(", ")
+      }\nGot: ${formatGot(variant.got)}`;
 
     case "unknown fieldsUnion tag":
-      return `Expected one of these tags: ${formatExpected(
+      return `Expected one of these tags: ${stringList(
         variant.knownTags
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "unknown stringUnion variant":
-      return `Expected one of these variants: ${formatExpected(
+      return `Expected one of these variants: ${stringList(
         variant.knownVariants
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "exact fields":
-      return `Expected only these fields: ${formatExpected(
+      return `Expected only these fields: ${stringList(
         variant.knownFields
       )}\nFound extra fields: ${formatGot(variant.got)}`;
 
@@ -619,11 +622,12 @@ export class DecoderError extends TypeError {
         ? params
         : { tag: "custom", message: params.message, got: params.value };
     super(
-      formatDecoderErrorVariant(variant, {
+      formatDecoderErrorVariant(
+        variant,
         // Default to sensitive so accidental uncaught errors don’t leak
         // anything. Explicit `.format()` defaults to non-sensitive.
-        formatGot: (value) => repr(value, { sensitive: true }),
-      })
+        { sensitive: true }
+      )
     );
     this.path = params.key === undefined ? [] : [params.key];
     this.variant = variant;
@@ -647,11 +651,7 @@ export class DecoderError extends TypeError {
     });
   }
 
-  format(
-    formatVariant:
-      | ReprOptions
-      | ((variant: DecoderErrorVariant) => string) = formatDecoderErrorVariant
-  ): string {
+  format(options?: ReprOptions): string {
     const path = this.path
       .filter(
         (part, index) =>
@@ -663,12 +663,7 @@ export class DecoderError extends TypeError {
       )
       .map((part) => (part == null ? "?" : `[${JSON.stringify(part)}]`))
       .join("");
-    const variant =
-      typeof formatVariant === "function"
-        ? formatVariant(this.variant)
-        : formatDecoderErrorVariant(this.variant, {
-            formatGot: (value) => repr(value, formatVariant),
-          });
+    const variant = formatDecoderErrorVariant(this.variant, options);
     return `At root${path}:\n${variant}`;
   }
 }

@@ -190,7 +190,7 @@ describe("stringUnion", () => {
 
     expect(run(colorDecoder, "Red")).toMatchInlineSnapshot(`
       At root:
-      Expected one of these variants: ["red", "green", "blue"]
+      Expected one of these variants: "red", "green", "blue"
       Got: "Red"
     `);
   });
@@ -207,12 +207,12 @@ describe("stringUnion", () => {
     // Notice how "__proto__" isn’t even in the expected keys.
     expect(run(edgeCaseDecoder, "__proto__")).toMatchInlineSnapshot(`
       At root:
-      Expected one of these variants: ["constructor"]
+      Expected one of these variants: "constructor"
       Got: "__proto__"
     `);
     expect(run(edgeCaseDecoder, "hasOwnProperty")).toMatchInlineSnapshot(`
       At root:
-      Expected one of these variants: ["constructor"]
+      Expected one of these variants: "constructor"
       Got: "hasOwnProperty"
     `);
   });
@@ -225,7 +225,7 @@ describe("stringUnion", () => {
     expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
     expect(run(emptyDecoder, "test")).toMatchInlineSnapshot(`
       At root:
-      Expected one of these variants: []
+      Expected one of these variants: (none)
       Got: "test"
     `);
   });
@@ -260,7 +260,7 @@ describe("array", () => {
 
     expect(run(bitsDecoder, ["0", "2"])).toMatchInlineSnapshot(`
       At root[1]:
-      Expected one of these variants: ["0", "1"]
+      Expected one of these variants: "0", "1"
       Got: "2"
     `);
 
@@ -349,7 +349,7 @@ describe("record", () => {
 
     expect(run(registersDecoder, { a: "0", b: "2" })).toMatchInlineSnapshot(`
       At root["b"]:
-      Expected one of these variants: ["0", "1"]
+      Expected one of these variants: "0", "1"
       Got: "2"
     `);
 
@@ -577,7 +577,7 @@ describe("fields", () => {
         )
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: ["one", "two"]
+        Expected only these fields: "one", "two"
         Found extra fields: ["three", "four"]
       `);
     });
@@ -598,7 +598,7 @@ describe("fields", () => {
           ],
           "errors": Array [
             At root:
-        Expected only these fields: ["one", "two"]
+        Expected only these fields: "one", "two"
         Found extra fields: ["three", "four"],
           ],
         }
@@ -631,7 +631,7 @@ describe("fields", () => {
         })
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: ["isAdmin", "name", "access"]
+        Expected only these fields: "isAdmin", "name", "access"
         Found extra fields: ["age"]
       `);
 
@@ -644,7 +644,7 @@ describe("fields", () => {
         })
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: ["isAdmin", "name"]
+        Expected only these fields: "isAdmin", "name"
         Found extra fields: ["access", "age"]
       `);
     });
@@ -701,7 +701,7 @@ describe("fields", () => {
     expect(decoder({})).toBe(1);
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
-      Expected only these fields: []
+      Expected only these fields: (none)
       Found extra fields: ["a"]
     `);
   });
@@ -772,7 +772,7 @@ describe("autoFields", () => {
         })
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: ["one", "two"]
+        Expected only these fields: "one", "two"
         Found extra fields: ["three", "four"]
       `);
     });
@@ -796,7 +796,7 @@ describe("autoFields", () => {
           },
           "errors": Array [
             At root:
-        Expected only these fields: ["one", "two"]
+        Expected only these fields: "one", "two"
         Found extra fields: ["three", "four"],
           ],
         }
@@ -814,10 +814,8 @@ describe("autoFields", () => {
     const desc = Object.create(null) as { __proto__: Decoder<string> };
     desc.__proto__ = string;
     // @ts-expect-error Argument of type '{ __proto__: Decoder<string, unknown>; }' is not assignable to parameter of type '{ __proto__: never; }'.
-    const decoder2 = autoFields(desc)
-    expect(
-      run(decoder2, JSON.parse(`{"__proto__": "a"}`))
-    ).toStrictEqual({});
+    const decoder2 = autoFields(desc);
+    expect(run(decoder2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
   });
 
   test("empty object", () => {
@@ -825,7 +823,7 @@ describe("autoFields", () => {
     expect(decoder({})).toStrictEqual({});
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
-      Expected only these fields: []
+      Expected only these fields: (none)
       Found extra fields: ["a"]
     `);
   });
@@ -1003,7 +1001,7 @@ describe("fieldsUnion", () => {
     expect(run(shapeDecoder, { tag: "Square", size: 5 }))
       .toMatchInlineSnapshot(`
       At root["tag"]:
-      Expected one of these tags: ["Circle", "Rectangle"]
+      Expected one of these tags: "Circle", "Rectangle"
       Got: "Square"
     `);
 
@@ -1028,13 +1026,13 @@ describe("fieldsUnion", () => {
     // Notice how "__proto__" isn’t even in the expected keys.
     expect(run(edgeCaseDecoder, { tag: "__proto__" })).toMatchInlineSnapshot(`
       At root["tag"]:
-      Expected one of these tags: ["constructor"]
+      Expected one of these tags: "constructor"
       Got: "__proto__"
     `);
     expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
       .toMatchInlineSnapshot(`
       At root["tag"]:
-      Expected one of these tags: ["constructor"]
+      Expected one of these tags: "constructor"
       Got: "hasOwnProperty"
     `);
   });
@@ -1047,7 +1045,7 @@ describe("fieldsUnion", () => {
     expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
     expect(run(emptyDecoder, { tag: "test" })).toMatchInlineSnapshot(`
       At root["tag"]:
-      Expected one of these tags: []
+      Expected one of these tags: (none)
       Got: "test"
     `);
   });
@@ -1089,7 +1087,7 @@ describe("multi", () => {
 
     expect(run(idDecoder, true)).toMatchInlineSnapshot(`
       At root:
-      Expected one of these types: ["string", "number"]
+      Expected one of these types: string, number
       Got: true
     `);
   });
@@ -1109,7 +1107,7 @@ describe("multi", () => {
 
     expect(run(idDecoder, true)).toMatchInlineSnapshot(`
       At root:
-      Expected one of these types: ["string", "number"]
+      Expected one of these types: string, number
       Got: true
     `);
   });
@@ -1121,7 +1119,7 @@ describe("multi", () => {
 
     expect(run(decoder, undefined)).toMatchInlineSnapshot(`
       At root:
-      Expected one of these types: []
+      Expected one of these types: never
       Got: undefined
     `);
   });
@@ -1501,7 +1499,7 @@ test("lazy", () => {
 
   expect(run(nestedNumberDecoder, [[[["nope"]]]])).toMatchInlineSnapshot(`
     At root[0][0][0][0]:
-    Expected one of these types: ["number", "array"]
+    Expected one of these types: number, array
     Got: "nope"
   `);
 });
