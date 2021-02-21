@@ -171,18 +171,6 @@ describe("static at", () => {
       text,5
     `);
   });
-
-  test("undefined and null keys are ignored for non-DecoderError", () => {
-    const error = new Error("test");
-    const error2 = DecoderError.at(error, undefined);
-    const error3 = DecoderError.at(error, null);
-    expect(error2.path).toStrictEqual([]);
-    expect(error3.path).toStrictEqual([]);
-    DecoderError.at(error2, undefined);
-    DecoderError.at(error3, null);
-    expect(error2.path).toStrictEqual([undefined]);
-    expect(error3.path).toStrictEqual([null]);
-  });
 });
 
 describe("format", () => {

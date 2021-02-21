@@ -1320,6 +1320,26 @@ describe("optional", () => {
     const person2: Person2 = { name: "John" };
     void person2;
   });
+
+  test("optional custom decoder", () => {
+    function decoder(): never {
+      throw new Error("Fail");
+    }
+    function decoder2(): never {
+      throw new DecoderError({ message: "Fail", value: 1 });
+    }
+
+    expect(run(optional(decoder), 1)).toMatchInlineSnapshot(`
+      At root?:
+      Fail
+    `);
+
+    expect(run(optional(decoder2), 1)).toMatchInlineSnapshot(`
+      At root?:
+      Fail
+      Got: 1
+    `);
+  });
 });
 
 describe("nullable", () => {
@@ -1478,6 +1498,26 @@ describe("nullable", () => {
 
     const person3: Person3 = { name: "John" };
     void person3;
+  });
+
+  test("nullable custom decoder", () => {
+    function decoder(): never {
+      throw new Error("Fail");
+    }
+    function decoder2(): never {
+      throw new DecoderError({ message: "Fail", value: 1 });
+    }
+
+    expect(run(nullable(decoder), 1)).toMatchInlineSnapshot(`
+      At root?:
+      Fail
+    `);
+
+    expect(run(nullable(decoder2), 1)).toMatchInlineSnapshot(`
+      At root?:
+      Fail
+      Got: 1
+    `);
   });
 });
 

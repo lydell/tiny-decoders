@@ -607,21 +607,23 @@ function formatDecoderErrorVariant(
   }
 }
 
+type Key = number | string | null | undefined;
+
 export class DecoderError extends TypeError {
-  path: Array<number | string | null | undefined>;
+  path: Array<Key>;
 
   variant: DecoderErrorVariant;
 
-  constructor({
-    key,
-    ...params
-  }:
-    | { message: string; value: unknown; key?: number | string }
-    | (DecoderErrorVariant & { key?: number | string })) {
+  constructor(
+    params:
+      | { message: string; value: unknown; key?: Key }
+      | (DecoderErrorVariant & { key?: Key })
+  ) {
+    const { key, ...rest } = params;
     const variant: DecoderErrorVariant =
-      "tag" in params
-        ? params
-        : { tag: "custom", message: params.message, got: params.value };
+      "tag" in rest
+        ? rest
+        : { tag: "custom", message: rest.message, got: rest.value };
     super(
       formatDecoderErrorVariant(
         variant,
@@ -630,16 +632,13 @@ export class DecoderError extends TypeError {
         { sensitive: true }
       )
     );
-    this.path = key === undefined ? [] : [key];
+    this.path = "key" in params ? [key] : [];
     this.variant = variant;
   }
 
   static MISSING_VALUE = {};
 
-  static at(
-    error: unknown,
-    key: number | string | null | undefined
-  ): DecoderError {
+  static at(error: unknown, key: Key): DecoderError {
     if (error instanceof DecoderError) {
       error.path.unshift(key);
       return error;
@@ -648,7 +647,7 @@ export class DecoderError extends TypeError {
       tag: "custom",
       message: error instanceof Error ? error.message : String(error),
       got: DecoderError.MISSING_VALUE,
-      key: key === null ? undefined : key,
+      key,
     });
   }
 
