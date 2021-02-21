@@ -951,7 +951,7 @@ describe("tuple", () => {
     `);
   });
 
-  test("allows only arrays", () => {
+  test("allow only arrays", () => {
     expect(run(tuple([number]), { length: 0 })).toMatchInlineSnapshot(`
       At root:
       Expected an array
