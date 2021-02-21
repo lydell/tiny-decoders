@@ -163,7 +163,7 @@ test("constant", () => {
 });
 
 describe("stringUnion", () => {
-  test("Basic", () => {
+  test("basic", () => {
     type Color = ReturnType<typeof colorDecoder>;
     const colorDecoder = stringUnion({
       red: null,
@@ -195,7 +195,7 @@ describe("stringUnion", () => {
     `);
   });
 
-  test("Edge case keys", () => {
+  test("edge case keys", () => {
     const edgeCaseDecoder = stringUnion({
       constructor: null,
       // Specifying `__proto__` is safe here.
@@ -217,7 +217,7 @@ describe("stringUnion", () => {
     `);
   });
 
-  test("Empty object is not allowed", () => {
+  test("empty object is not allowed", () => {
     // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"stringUnion must have at least one key"'.
     const emptyDecoder = stringUnion({});
     // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'Record<string, null>'.
@@ -230,7 +230,7 @@ describe("stringUnion", () => {
     `);
   });
 
-  test("Keys must be strings", () => {
+  test("keys must be strings", () => {
     // @ts-expect-error Type 'null' is not assignable to type '"stringUnion keys must be strings, not numbers"'.
     stringUnion({ 1: null });
     // @ts-expect-error Type 'string' is not assignable to type 'null'.
@@ -242,7 +242,7 @@ describe("stringUnion", () => {
 });
 
 describe("array", () => {
-  test("Basic", () => {
+  test("basic", () => {
     type Bits = ReturnType<typeof bitsDecoder>;
     const bitsDecoder = array(stringUnion({ "0": null, "1": null }));
 
@@ -331,7 +331,7 @@ describe("array", () => {
 });
 
 describe("record", () => {
-  test("Basic", () => {
+  test("basic", () => {
     type Registers = ReturnType<typeof registersDecoder>;
     const registersDecoder = record(stringUnion({ "0": null, "1": null }));
 
@@ -360,7 +360,7 @@ describe("record", () => {
       `);
   });
 
-  test("Keys to regex", () => {
+  test("keys to regex", () => {
     const decoder = map(record(string), (items) =>
       Object.entries(items).map(
         ([key, value]) => [RegExp(key, "u"), value] as const
@@ -465,7 +465,7 @@ describe("record", () => {
 });
 
 describe("fields", () => {
-  test("Basic", () => {
+  test("basic", () => {
     type Person = ReturnType<typeof personDecoder>;
     const personDecoder = fields((field) => ({
       id: field("id", number),
@@ -708,7 +708,7 @@ describe("fields", () => {
 });
 
 describe("autoFields", () => {
-  test("Basic", () => {
+  test("basic", () => {
     type Person = ReturnType<typeof personDecoder>;
     const personDecoder = autoFields({
       id: number,
@@ -963,7 +963,7 @@ describe("tuple", () => {
 });
 
 describe("fieldsUnion", () => {
-  test("Basic", () => {
+  test("basic", () => {
     type Shape = ReturnType<typeof shapeDecoder>;
     const shapeDecoder = fieldsUnion("tag", {
       Circle: autoFields({
@@ -1012,7 +1012,7 @@ describe("fieldsUnion", () => {
       `);
   });
 
-  test("Edge case keys", () => {
+  test("edge case keys", () => {
     const edgeCaseDecoder = fieldsUnion("tag", {
       constructor: (x) => x,
       // Specifying `__proto__` is safe here.
@@ -1037,7 +1037,7 @@ describe("fieldsUnion", () => {
     `);
   });
 
-  test("Empty object is not allowed", () => {
+  test("empty object is not allowed", () => {
     // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"fieldsUnion must have at least one member"'.
     const emptyDecoder = fieldsUnion("tag", {});
     // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'Record<string, Decoder<unknown, unknown>>'.
@@ -1050,7 +1050,7 @@ describe("fieldsUnion", () => {
     `);
   });
 
-  test("Keys must be strings", () => {
+  test("keys must be strings", () => {
     const innerDecoder = autoFields({ tag: constant("1") });
     // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
     fieldsUnion("tag", { 1: innerDecoder });
@@ -1063,7 +1063,7 @@ describe("fieldsUnion", () => {
 });
 
 describe("multi", () => {
-  test("Basic", () => {
+  test("basic", () => {
     type Id = ReturnType<typeof idDecoder>;
     const idDecoder = multi({
       string: (id) => ({ tag: "Id" as const, id }),
@@ -1092,7 +1092,7 @@ describe("multi", () => {
     `);
   });
 
-  test("Basic – variation", () => {
+  test("basic – variation", () => {
     type Id = ReturnType<typeof idDecoder>;
     const idDecoder = multi({
       string: (id) => id,
@@ -1112,7 +1112,7 @@ describe("multi", () => {
     `);
   });
 
-  test("Empty object", () => {
+  test("empty object", () => {
     const decoder = multi({});
 
     expectType<Decoder<never>>(decoder);
