@@ -1152,6 +1152,46 @@ describe("multi", () => {
       expect(decoder(value)).toStrictEqual(value);
     }
   });
+
+  test("coverage", () => {
+    const decoder = multi({ undefined: (x) => x });
+
+    expect(run(decoder, null)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: null
+    `);
+
+    expect(run(decoder, true)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: true
+    `);
+
+    expect(run(decoder, 0)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: 0
+    `);
+
+    expect(run(decoder, "")).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: ""
+    `);
+
+    expect(run(decoder, [])).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: []
+    `);
+
+    expect(run(decoder, {})).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: {}
+    `);
+  });
 });
 
 describe("optional", () => {
