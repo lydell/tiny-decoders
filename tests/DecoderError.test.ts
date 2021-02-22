@@ -123,7 +123,6 @@ describe("constructor", () => {
 
 describe("static at", () => {
   DecoderError.at(1, 1);
-  // @ts-expect-error Expected 2 arguments, but got 1.
   DecoderError.at(1);
 
   test("mutates DecoderError", () => {
@@ -178,37 +177,13 @@ describe("format", () => {
     TypeEqual<Parameters<DecoderError["format"]>[0], ReprOptions | undefined>
   >(true);
 
-  test("null and undefined produce question marks", () => {
-    const decoder = nullable(
-      fields((field) =>
-        field("key", optional(tuple([optional(nullable(string))])))
-      )
-    );
-
-    const error = thrownError(decoder, { key: [1] });
-    expect(error.format()).toMatchInlineSnapshot(`
-      At root?["key"]?[0]?:
-      Expected a string
-      Got: 1
-    `);
-    expect(error.path).toStrictEqual([
-      null,
-      "key",
-      undefined,
-      0,
-      undefined,
-      null,
-    ]);
-  });
-
   test("keys are properly stringified", () => {
     const error = new DecoderError({ tag: "string", got: 5 });
     DecoderError.at(error, `"quoted"`);
     DecoderError.at(error, 2e50);
-    DecoderError.at(error, null);
     DecoderError.at(error, `with\nwhite space\t`);
     expect(error.format()).toMatchInlineSnapshot(`
-      At root["with\\nwhite space\\t"]?[2e+50]["\\"quoted\\""]:
+      At root["with\\nwhite space\\t"][2e+50]["\\"quoted\\""]:
       Expected a string
       Got: 5
     `);

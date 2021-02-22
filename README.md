@@ -252,6 +252,10 @@ class DecoderError extends TypeError {
 
   variant: DecoderErrorVariant;
 
+  nullable: boolean;
+
+  optional: boolean;
+
   constructor(
     params:
       | { message: string; value: unknown; key?: Key }

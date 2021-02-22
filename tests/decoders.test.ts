@@ -1207,7 +1207,7 @@ describe("optional", () => {
     expect(decoder("a")).toBe("a");
 
     expect(run(decoder, null)).toMatchInlineSnapshot(`
-      At root?:
+      At root (optional):
       Expected a string
       Got: null
     `);
@@ -1259,7 +1259,7 @@ describe("optional", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (optional):
       Expected a number
       Got: "old"
     `);
@@ -1304,7 +1304,7 @@ describe("optional", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (optional):
       Expected a number
       Got: "old"
     `);
@@ -1330,13 +1330,31 @@ describe("optional", () => {
     }
 
     expect(run(optional(decoder), 1)).toMatchInlineSnapshot(`
-      At root?:
+      At root (optional):
       Fail
     `);
 
     expect(run(optional(decoder2), 1)).toMatchInlineSnapshot(`
-      At root?:
+      At root (optional):
       Fail
+      Got: 1
+    `);
+  });
+
+  test("optional higher up the chain makes no difference", () => {
+    const decoder = fieldsAuto({
+      test: optional(fieldsAuto({ inner: string })),
+    });
+
+    expect(run(decoder, { test: 1 })).toMatchInlineSnapshot(`
+      At root["test"] (optional):
+      Expected an object
+      Got: 1
+    `);
+
+    expect(run(decoder, { test: { inner: 1 } })).toMatchInlineSnapshot(`
+      At root["test"]["inner"]:
+      Expected a string
       Got: 1
     `);
   });
@@ -1352,7 +1370,7 @@ describe("nullable", () => {
     expect(decoder("a")).toBe("a");
 
     expect(run(decoder, undefined)).toMatchInlineSnapshot(`
-      At root?:
+      At root (nullable):
       Expected a string
       Got: undefined
     `);
@@ -1395,14 +1413,14 @@ describe("nullable", () => {
     expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
 
     expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (nullable):
       Expected a number
       Got: undefined
     `);
 
     expect(run(personDecoder, { name: "John", age: undefined }))
       .toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (nullable):
       Expected a number
       Got: undefined
     `);
@@ -1419,7 +1437,7 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (nullable):
       Expected a number
       Got: "old"
     `);
@@ -1447,14 +1465,14 @@ describe("nullable", () => {
     expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
 
     expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (nullable):
       Expected a number
       Got: undefined
     `);
 
     expect(run(personDecoder, { name: "John", age: undefined }))
       .toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (nullable):
       Expected a number
       Got: undefined
     `);
@@ -1471,7 +1489,7 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"]?:
+      At root["age"] (nullable):
       Expected a number
       Got: "old"
     `);
@@ -1509,13 +1527,41 @@ describe("nullable", () => {
     }
 
     expect(run(nullable(decoder), 1)).toMatchInlineSnapshot(`
-      At root?:
+      At root (nullable):
       Fail
     `);
 
     expect(run(nullable(decoder2), 1)).toMatchInlineSnapshot(`
-      At root?:
+      At root (nullable):
       Fail
+      Got: 1
+    `);
+  });
+
+  test("nullable higher up the chain makes no difference", () => {
+    const decoder = fieldsAuto({
+      test: nullable(fieldsAuto({ inner: string })),
+    });
+
+    expect(run(decoder, { test: 1 })).toMatchInlineSnapshot(`
+      At root["test"] (nullable):
+      Expected an object
+      Got: 1
+    `);
+
+    expect(run(decoder, { test: { inner: 1 } })).toMatchInlineSnapshot(`
+      At root["test"]["inner"]:
+      Expected a string
+      Got: 1
+    `);
+  });
+
+  test("optional and nullable", () => {
+    const decoder = optional(nullable(nullable(optional(string))));
+
+    expect(run(decoder, 1)).toMatchInlineSnapshot(`
+      At root (nullable) (optional):
+      Expected a string
       Got: 1
     `);
   });

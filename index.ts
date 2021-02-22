@@ -453,7 +453,11 @@ export function optional<T, U = undefined>(
     try {
       return decoder(value, errors);
     } catch (error) {
-      throw DecoderError.at(error, undefined);
+      const newError = DecoderError.at(error);
+      if (newError.path.length === 0) {
+        newError.optional = true;
+      }
+      throw newError;
     }
   };
 }
@@ -480,7 +484,11 @@ export function nullable<T, U = null>(
     try {
       return decoder(value, errors);
     } catch (error) {
-      throw DecoderError.at(error, null);
+      const newError = DecoderError.at(error);
+      if (newError.path.length === 0) {
+        newError.nullable = true;
+      }
+      throw newError;
     }
   };
 }
@@ -609,23 +617,27 @@ function formatDecoderErrorVariant(
   }
 }
 
-type Key = number | string | null | undefined;
+type Key = number | string;
 
 export class DecoderError extends TypeError {
   path: Array<Key>;
 
   variant: DecoderErrorVariant;
 
-  constructor(
-    params:
-      | { message: string; value: unknown; key?: Key }
-      | (DecoderErrorVariant & { key?: Key })
-  ) {
-    const { key, ...rest } = params;
+  nullable: boolean;
+
+  optional: boolean;
+
+  constructor({
+    key,
+    ...params
+  }:
+    | { message: string; value: unknown; key?: Key }
+    | (DecoderErrorVariant & { key?: Key })) {
     const variant: DecoderErrorVariant =
-      "tag" in rest
-        ? rest
-        : { tag: "custom", message: rest.message, got: rest.value };
+      "tag" in params
+        ? params
+        : { tag: "custom", message: params.message, got: params.value };
     super(
       formatDecoderErrorVariant(
         variant,
@@ -634,15 +646,19 @@ export class DecoderError extends TypeError {
         { sensitive: true }
       )
     );
-    this.path = "key" in params ? [key] : [];
+    this.path = key === undefined ? [] : [key];
     this.variant = variant;
+    this.nullable = false;
+    this.optional = false;
   }
 
   static MISSING_VALUE = {};
 
-  static at(error: unknown, key: Key): DecoderError {
+  static at(error: unknown, key?: Key): DecoderError {
     if (error instanceof DecoderError) {
-      error.path.unshift(key);
+      if (key !== undefined) {
+        error.path.unshift(key);
+      }
       return error;
     }
     return new DecoderError({
@@ -654,19 +670,11 @@ export class DecoderError extends TypeError {
   }
 
   format(options?: ReprOptions): string {
-    const path = this.path
-      .filter(
-        (part, index) =>
-          !(
-            part == null &&
-            index < this.path.length - 1 &&
-            this.path[index + 1] == null
-          )
-      )
-      .map((part) => (part == null ? "?" : `[${JSON.stringify(part)}]`))
-      .join("");
+    const path = this.path.map((part) => `[${JSON.stringify(part)}]`).join("");
+    const nullableString = this.nullable ? " (nullable)" : "";
+    const optionalString = this.optional ? " (optional)" : "";
     const variant = formatDecoderErrorVariant(this.variant, options);
-    return `At root${path}:\n${variant}`;
+    return `At root${path}${nullableString}${optionalString}:\n${variant}`;
   }
 }
 
