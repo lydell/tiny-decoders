@@ -205,23 +205,251 @@ Here’s a summary of all decoders:
 
 ### boolean
 
+```ts
+function boolean(value: unknown): boolean;
+```
+
+Decodes a JSON boolean into a TypeScript `boolean`.
+
 ### number
+
+```ts
+function number(value: unknown): number;
+```
+
+Decodes a JSON number into a TypeScript `number`.
 
 ### string
 
+```ts
+function string(value: unknown): string;
+```
+
+Decodes a JSON string into a TypeScript `string`.
+
 ### constant
+
+```ts
+function constant<T extends boolean | number | string | null | undefined>(
+  constantValue: T
+): Decoder<T>;
+```
+
+Decodes a specific JSON value into the same TypeScript value.
+
+Commonly used with [fieldsUnion](#fieldsunion).
+
+For example, `constant(5)` requires the value `5` and nothing else.
 
 ### stringUnion
 
+```ts
+function stringUnion<T extends Record<string, null>>(
+  mapping: T
+): Decoder<keyof T>;
+```
+
+Decodes a set of specific JSON strings into a TypeScript union of those strings.
+
+The `mapping` is an object where the keys are the strings you want and the values are always `null`. The keys must be strings (not numbers) and you must provide at least one key.
+
+Example:
+
+```ts
+type Color = "green" | "red";
+
+const colorDecoder: Decoder<Color> = stringUnion({
+  green: null,
+  red: null,
+});
+```
+
 ### array
+
+```ts
+function array<T, U = never>(
+  decoder: Decoder<T>,
+  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
+): Decoder<Array<T | U>>;
+```
+
+Decodes a JSON array into a TypeScript `Array`.
+
+The passed `decoder` is for each item of the array.
+
+For example, `array(string)` decodes an array of strings (into `Array<string>`).
+
+For the `mode` option, see [Tolerant decoding](#tolerant-decoding).
 
 ### record
 
+```ts
+function record<T, U = never>(
+  decoder: Decoder<T>,
+  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
+): Decoder<Record<string, T | U>>;
+```
+
+Decodes a JSON object into a TypeScript `Record`. (Yes, this function is named after TypeScript’s type. Other languages call this a “dict”.)
+
+The passed `decoder` is for each value of the object.
+
+For example, `record(number)` decodes an object where the keys can be anything and the values are numbers (into `Record<string, number>`).
+
+For the `mode` option, see [Tolerant decoding](#tolerant-decoding).
+
 ### fields
+
+```ts
+function fields<T>(
+  callback: (
+    field: <U, V = never>(
+      key: string,
+      decoder: Decoder<U>,
+      options?: { mode?: "throw" | { default: V } }
+    ) => U | V,
+    object: Record<string, unknown>,
+    errors?: Array<DecoderError>
+  ) => T,
+  {
+    exact = "allow extra",
+    allow = "object",
+  }: {
+    exact?: "allow extra" | "push" | "throw";
+    allow?: "array" | "object";
+  } = {}
+): Decoder<T>;
+```
+
+Decodes a JSON object (or array) into any TypeScript you’d like (`T`), usually an object/interface with known fields.
+
+This is the most general function, which you can use for lots of different data. Other functions might be more convenient though.
+
+The type annotation is a bit ovewhelming, but using `fields` isn’t super complicated. In a callback, you get a `field` function that you use to pluck out stuff from the JSON object. For example:
+
+```ts
+type User = {
+  age: number;
+  active: boolean;
+  name: string;
+  description: string | undefined;
+  legacyId: string | undefined;
+  version: 1;
+};
+
+const userDecoder = fields(
+  (field): User => ({
+    // Simple field:
+    age: field("age", number),
+    // Renaming a field:
+    active: field("is_active", boolean),
+    // Combining two fields:
+    name: `${field("first_name", string)} ${field("last_name", string)}`,
+    // Optional field:
+    description: field("description", optional(string)),
+    // Allowing a field to fail:
+    legacyId: field("extra_data", number, { default: undefined }),
+    // Hardcoded field:
+    version: 1,
+  })
+);
+
+// Plucking a single field out of an object:
+const ageDecoder: Decoder<number> = fields((field) => field("age", number));
+```
+
+`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better error messages and automatic handling of the `errors` array, if provided. The nice thing about `field` is that it does _not_ return a new decoder – but the value of that field! This means that you can do for instance `const type: string = field("type", string)` and then use `type` however you want inside your callback.
+
+`object` and `errors` are passed in case you’d need them for some edge case, such as if you need to check stuff like `"my-key" in object`.
+
+Note that if your input object and the decoded object look exactly the same and you don’t need any advanced features it’s often more convenient to use [fieldsAuto](#fieldsauto).
+
+Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see the [tuples example](https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.ts).
+
+The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
+
+- `"allow extra"` (default) allows extra properties on the object (or extra indexes on an array).
+- `"push"` pushes a `DecoderError` for extra properties to the `errors` array, if present.
+- `"throw"` throws a `DecoderError` for extra properties.
+
+The `allow` option defaults to only allowing JSON objects. Set it to `"array"` if you are decoding an array.
+
+For the `mode` option, see [Tolerant decoding](#tolerant-decoding).
+
+More examples:
+
+- [Extra fields](https://github.com/lydell/tiny-decoders/blob/master/examples/extra-fields.test.ts).
+- [Renaming fields](https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-fields.test.ts).
+- [Tuples](https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.ts).
 
 ### fieldsAuto
 
+```ts
+function fieldsAuto<T extends Record<string, unknown>>(
+  mapping: { [P in keyof T]: Decoder<T[P]> },
+  { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
+): Decoder<T> {
+```
+
+Decodes a JSON object with certain fields into a TypeScript object type/interface with known fields.
+
+This is for situations where the JSON keys and your TypeScript type keys have the same names, and you don’t need any advanced features from [fields](#fields), like renaming fields.
+
+Example:
+
+```ts
+type User = {
+  name: string;
+  age: number;
+  active: boolean;
+};
+
+const userDecoder = autoFields<User>({
+  name: string,
+  age: number,
+  active: boolean,
+});
+```
+
+The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
+
+- `"allow extra"` (default) allows extra properties on the object.
+- `"push"` pushes a `DecoderError` for extra properties to the `errors` array, if present.
+- `"throw"` throws a `DecoderError` for extra properties.
+
+More examples:
+
+- [Extra fields](https://github.com/lydell/tiny-decoders/blob/master/examples/extra-fields.test.ts).
+- [Renaming fields](https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-fields.test.ts).
+
 ### fieldsUnion
+
+```ts
+type Values<T> = T[keyof T];
+
+export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
+  key: string,
+  mapping: T
+): Decoder<
+  Values<{ [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }>
+>;
+```
+
+Decodes JSON objects with a common string field (that tells them apart) and a TypeScript union type.
+
+The `key` is the name of the common string field.
+
+The `mapping` is an object where the keys are the strings of the `key` field and the values are decoders for the keys. The keys must be strings (not numbers) and you must provide at least one key.
+
+You _can_ use [fields](#fields) to accomplish the same thing, but it’s easier with `fieldsUnion`. You also get better error messages and type inference with `fieldsUnion`.
+
+TODO example
+
+TODO link to type annotations?
+
+TODO link to tag-vs-type example (extract from tests?)
+
+TODO remove constant?
 
 ### tuple
 
@@ -260,6 +488,8 @@ class DecoderError extends TypeError {
   format(options?: ReprOptions): string;
 }
 ```
+
+TODO text
 
 ## repr
 
@@ -328,3 +558,7 @@ Functions that support tolerant decoding take a `mode` option which can have the
 - `{ default: U }`: The passed default value is used for items that fail. A decoded array will always have the same length as the input array, and a decoded object will always have the same keys as the input object. Errors are pushed to the `errors` array, if present.
 
 See the [tolerant decoding example](https://github.com/lydell/tiny-decoders/blob/master/examples/tolerant-decoding.test.ts) for more information.
+
+## Type annotations and type inference
+
+TODO

@@ -863,23 +863,23 @@ describe("fieldsUnion", () => {
 
     expect(run(shapeDecoder, { tag: "Rectangle", radius: 5 }))
       .toMatchInlineSnapshot(`
-      At root["width"]:
-      Expected a number
-      Got: undefined
-    `);
+        At root["width"]:
+        Expected a number
+        Got: undefined
+      `);
 
     expect(run(shapeDecoder, { tag: "Square", size: 5 }))
       .toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags: "Circle", "Rectangle"
-      Got: "Square"
-    `);
+        At root["tag"]:
+        Expected one of these tags: "Circle", "Rectangle"
+        Got: "Square"
+      `);
 
     expect(run(fieldsUnion("0", { a: () => 0 }), ["a"])).toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: ["a"]
-      `);
+      At root:
+      Expected an object
+      Got: ["a"]
+    `);
   });
 
   test("edge case keys", () => {
