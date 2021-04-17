@@ -874,32 +874,6 @@ describe("fieldsUnion", () => {
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
     expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
   });
-
-  test("can use different tags in JSON and in TypeScript", () => {
-    const decoder = fieldsUnion("type", {
-      circle: fieldsAuto({
-        tag: () => "Circle" as const,
-        radius: number,
-      }),
-      square: fieldsAuto({
-        tag: () => "Square" as const,
-        size: number,
-      }),
-    });
-
-    type InferredType = ReturnType<typeof decoder>;
-    type ExpectedType =
-      | { tag: "Circle"; radius: number }
-      | { tag: "Square"; size: number };
-    expectType<TypeEqual<InferredType, ExpectedType>>(true);
-
-    expect(decoder({ type: "circle", radius: 5 })).toMatchInlineSnapshot(`
-      Object {
-        "radius": 5,
-        "tag": "Circle",
-      }
-    `);
-  });
 });
 
 describe("tuple", () => {

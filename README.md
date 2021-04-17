@@ -405,15 +405,29 @@ Decodes JSON objects with a common string field (that tells them apart) and a Ty
 
 The `key` is the name of the common string field.
 
-The `mapping` is an object where the keys are the strings of the `key` field and the values are decoders for the keys. The keys must be strings (not numbers) and you must provide at least one key.
+The `mapping` is an object where the keys are the strings of the `key` field and the values are decoders. The decoders are usually `fields` or `fieldsAuto`. The keys must be strings (not numbers) and you must provide at least one key.
 
 You _can_ use [fields](#fields) to accomplish the same thing, but it’s easier with `fieldsUnion`. You also get better error messages and type inference with `fieldsUnion`.
 
-TODO example
+```ts
+type Shape =
+  | { tag: "Circle"; radius: number }
+  | { tag: "Rectangle"; width: number; height: number };
 
-TODO link to type annotations?
+const shapeDecoder = fieldsUnion<Shape>("tag", {
+  Circle: fieldsAuto({
+    tag: () => "Circle" as const,
+    radius: number,
+  }),
+  Rectangle: fields((field) => ({
+    tag: "Rectangle" as const,
+    width: field("width_px", number),
+    height: field("height_px", number),
+  })),
+});
+```
 
-TODO link to tag-vs-type example (extract from tests?)
+See also the [renaming union field example](https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-union-field.test.ts).
 
 ### tuple
 
@@ -465,7 +479,16 @@ The `mapping` is an object where the keys are wanted JSON types and the values a
 
 Example:
 
-TODO
+```ts
+type Id = { tag: "Id"; id: string } | { tag: "LegacyId"; id: number };
+
+const idDecoder: Decoder<Id> = multi({
+  string: (id) => ({ tag: "Id" as const, id }),
+  number: (id) => ({ tag: "LegacyId" as const, id }),
+});
+```
+
+You can return anything from each type callback – the result of the decoder is the union of all of that.
 
 ### optional
 
@@ -475,7 +498,9 @@ function optional<T>(decoder: Decoder<T>): Decoder<T | undefined>;
 function optional<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
 ```
 
-TODO
+Returns a new decoder that also accepts `undefined`. Alternatively, supply a `defaultValue` to use in place of `undefined`.
+
+When do you get `undefined` in JSON? When you try to access a field that does not exist using JavaScript. So `optional` is useful to make fields optional in [fields](#fields) and [fieldsAuto](#fieldsauto).
 
 ### nullable
 
@@ -485,7 +510,7 @@ function nullable<T>(decoder: Decoder<T>): Decoder<T | null>;
 function nullable<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
 ```
 
-TODO
+Returns a new decoder that also accepts `null`. Alternatively, supply a `defaultValue` to use in place of `null`.
 
 ### chain
 
@@ -493,7 +518,16 @@ TODO
 function chain<T, U>(decoder: Decoder<T>, next: Decoder<U, T>): Decoder<U>;
 ```
 
-TODO
+Run a function after a decoder (if it succeeds). The function can either transform the decoded data, or be another decoder to decode the value further.
+
+Example:
+
+```ts
+const numberSetDecoder: Decoder<Set<number>> = chain(
+  array(number),
+  (arr) => new Set(arr)
+);
+```
 
 ## DecoderError
 
