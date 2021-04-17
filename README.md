@@ -682,6 +682,58 @@ Functions that support tolerant decoding take a `mode` option which can have the
 
 See the [tolerant decoding example](https://github.com/lydell/tiny-decoders/blob/master/examples/tolerant-decoding.test.ts) for more information.
 
-## Type annotations and type inference
+## Type annotations
 
-TODO
+The obvious type annotation for decoders is `Decoder<T>`. But sometimes that’s not the best choice, due to TypeScript quirks! For [fields](#fields) and [fieldsAuto](#fieldsAuto), the recommended approach is:
+
+```ts
+type Person = {
+  name: string;
+  age: number | undefined;
+};
+
+const personDecoder = fields(
+  (field): Person => ({
+    name: field("name", string),
+    age: field("age", optional(number)),
+  })
+);
+
+const personDecoderAuto = autoFields<Person>({
+  name: string,
+  age: optional(number),
+});
+```
+
+That gives the best TypeScript error messages, and the most type safety.
+
+See the [type annotations and inference example](https://github.com/lydell/tiny-decoders/blob/master/examples/type-annotations.test.ts) for more details.
+
+## Type inference
+
+Rather than first defining the type and then defining the decoder (which often feels like writing the type once again), you can _only_ define the decoder and then infer the type.
+
+```ts
+const personDecoder = fields((field) => ({
+  name: field("name", string),
+  age: field("age", optional(number)),
+}));
+
+const personDecoderAuto = autoFields({
+  name: string,
+  age: optional(number),
+});
+
+// If you want all fields to be required:
+type Person = ReturnType<typeof personDecoder>;
+// or:
+type Person = ReturnType<typeof personDecoderAuto>;
+
+// If you want fields that can be `undefined` to be optional:
+type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
+// or:
+type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoderAuto>>;
+// This changes all `key: T | undefined` to `key?: T | undefined` of an object.
+```
+
+See the [type annotations and inference example](https://github.com/lydell/tiny-decoders/blob/master/examples/type-annotations.test.ts) for more details.
