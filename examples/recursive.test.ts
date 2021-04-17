@@ -50,6 +50,7 @@ test("recursive data structure", () => {
   // @ts-expect-error 'personDecoder2_bad' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
   const personDecoder2_bad = fieldsAuto<Person>({
     name: string,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     friends: lazy(() => array(personDecoder2_bad)),
   });
 
