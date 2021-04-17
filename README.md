@@ -68,19 +68,6 @@ Here’s a summary of all decoders:
 <td>string</td>
 <td><code>string</code></td>
 </tr>
-<tr>
-<th><a href="#constant">constant</a></th>
-<td><pre>(value: T) =&gt;
-  Decoder&lt;T&gt;</pre></td>
-<td>boolean,<br>number,<br>string,<br>null,<br>missing</td>
-<td><pre>T extends
-  | boolean
-  | number
-  | string
-  | null
-  | undefined</pre></td>
-</tr>
-<tr>
 <th><a href="#stringunion">stringUnion</a></th>
 <td><pre>(mapping: {
   string1: null,
@@ -219,20 +206,6 @@ function string(value: unknown): string;
 ```
 
 Decodes a JSON string into a TypeScript `string`.
-
-### constant
-
-```ts
-function constant<T extends boolean | number | string | null | undefined>(
-  constantValue: T
-): Decoder<T>;
-```
-
-Decodes a specific JSON value into the same TypeScript value.
-
-Commonly used with [fieldsUnion](#fieldsunion).
-
-For example, `constant(5)` requires the value `5` and nothing else.
 
 ### stringUnion
 
@@ -441,8 +414,6 @@ TODO example
 TODO link to type annotations?
 
 TODO link to tag-vs-type example (extract from tests?)
-
-TODO remove constant?
 
 ### tuple
 

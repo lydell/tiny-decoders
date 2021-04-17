@@ -3,7 +3,6 @@ import { expectType, TypeEqual } from "ts-expect";
 import {
   array,
   boolean,
-  constant,
   Decoder,
   DecoderError,
   fields,
@@ -104,60 +103,6 @@ test("string", () => {
     At root:
     Expected a string
     Got: Symbol(desc)
-  `);
-});
-
-test("constant", () => {
-  const undefinedDecoder = constant(undefined);
-  expectType<TypeEqual<ReturnType<typeof undefinedDecoder>, undefined>>(true);
-  // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
-  expect(undefinedDecoder(undefined)).toBeUndefined();
-
-  const nullDecoder = constant(null);
-  expectType<TypeEqual<ReturnType<typeof nullDecoder>, null>>(true);
-  expect(nullDecoder(null)).toBeNull();
-
-  const trueDecoder = constant(true);
-  expectType<TypeEqual<ReturnType<typeof trueDecoder>, true>>(true);
-  expect(trueDecoder(true)).toBe(true);
-
-  const falseDecoder = constant(false);
-  expectType<TypeEqual<ReturnType<typeof falseDecoder>, false>>(true);
-  expect(falseDecoder(false)).toBe(false);
-
-  const zeroDecoder = constant(0);
-  expectType<TypeEqual<ReturnType<typeof zeroDecoder>, 0>>(true);
-  expect(zeroDecoder(0)).toBe(0);
-
-  const negativeDecimalDecoder = constant(-1.5);
-  expectType<TypeEqual<ReturnType<typeof negativeDecimalDecoder>, -1.5>>(true);
-  expect(negativeDecimalDecoder(-1.5)).toBe(-1.5);
-
-  const emptyStringDecoder = constant("");
-  expectType<TypeEqual<ReturnType<typeof emptyStringDecoder>, "">>(true);
-  expect(emptyStringDecoder("")).toBe("");
-
-  const stringDecoder = constant("string");
-  expectType<TypeEqual<ReturnType<typeof stringDecoder>, "string">>(true);
-  expect(stringDecoder("string")).toBe("string");
-
-  // @ts-expect-error Expected 1 arguments, but got 2.
-  constant(true, []);
-  // @ts-expect-error Arrays can’t be compared easily:
-  constant([]);
-  // @ts-expect-error Objects can’t be compared easily:
-  constant({});
-  // @ts-expect-error Accidentally passed a decoder:
-  constant(string);
-
-  // `NaN !== NaN`. Not the best error message. Maybe we should use `Object.is`
-  // in the future.
-  const nanDecoder = constant(NaN);
-  expectType<TypeEqual<ReturnType<typeof nanDecoder>, number>>(true);
-  expect(run(nanDecoder, NaN)).toMatchInlineSnapshot(`
-    At root:
-    Expected the value NaN
-    Got: NaN
   `);
 });
 
@@ -836,7 +781,7 @@ describe("fieldsUnion", () => {
     type Shape = ReturnType<typeof shapeDecoder>;
     const shapeDecoder = fieldsUnion("tag", {
       Circle: fieldsAuto({
-        tag: constant("Circle"),
+        tag: () => "Circle" as const,
         radius: number,
       }),
       Rectangle: fields((field) => ({
@@ -920,7 +865,7 @@ describe("fieldsUnion", () => {
   });
 
   test("keys must be strings", () => {
-    const innerDecoder = fieldsAuto({ tag: constant("1") });
+    const innerDecoder = fieldsAuto({ tag: stringUnion({ "1": null }) });
     // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
     fieldsUnion("tag", { 1: innerDecoder });
     // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
@@ -1624,7 +1569,6 @@ test("all decoders pass down errors", () => {
     boolean: field("boolean", boolean, { mode: { default: undefined } }),
     number: field("number", number, { mode: { default: undefined } }),
     string: field("string", string, { mode: { default: undefined } }),
-    constant: field("constant", constant(1), { mode: { default: undefined } }),
     stringUnion: field("stringUnion", stringUnion({ a: null }), {
       mode: { default: undefined },
     }),
@@ -1673,7 +1617,7 @@ test("all decoders pass down errors", () => {
     nullable: field("nullable", nullable(subDecoder), {
       mode: { default: undefined },
     }),
-    map1: field("map1", map(subDecoder, constant(null)), {
+    map1: field("map1", map(subDecoder, multi({ null: (x) => x })), {
       mode: { default: undefined },
     }),
     map2: field(
@@ -1691,7 +1635,6 @@ test("all decoders pass down errors", () => {
     boolean: 0,
     number: false,
     string: false,
-    constant: false,
     stringUnion: false,
     array: [subData],
     record: { key: subData },
@@ -1718,7 +1661,6 @@ test("all decoders pass down errors", () => {
         ],
         "arrayFields": null,
         "boolean": undefined,
-        "constant": undefined,
         "fields": null,
         "fieldsAuto": Object {
           "field": null,
@@ -1758,9 +1700,6 @@ test("all decoders pass down errors", () => {
     Got: false,
         At root["string"]:
     Expected a string
-    Got: false,
-        At root["constant"]:
-    Expected the value 1
     Got: false,
         At root["stringUnion"]:
     Expected a string

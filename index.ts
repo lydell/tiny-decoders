@@ -43,21 +43,6 @@ export function string(value: unknown): string {
   return value;
 }
 
-export function constant<
-  T extends boolean | number | string | null | undefined
->(constantValue: T): Decoder<T> {
-  return function constantDecoder(value: unknown): T {
-    if (value !== constantValue) {
-      throw new DecoderError({
-        tag: "constant",
-        expected: constantValue,
-        got: value,
-      });
-    }
-    return constantValue;
-  };
-}
-
 export function stringUnion<T extends Record<string, null>>(
   mapping: keyof T extends string
     ? keyof T extends never
@@ -505,11 +490,6 @@ export function map<T, U>(
 
 export type DecoderErrorVariant =
   | {
-      tag: "constant";
-      expected: boolean | number | string | null | undefined;
-      got: unknown;
-    }
-  | {
       tag: "custom";
       message: string;
       got: unknown;
@@ -578,9 +558,6 @@ function formatDecoderErrorVariant(
     case "array":
     case "object":
       return got(`Expected an ${variant.tag}`, variant.got);
-
-    case "constant":
-      return got(`Expected the value ${repr(variant.expected)}`, variant.got);
 
     case "unknown multi type":
       return `Expected one of these types: ${

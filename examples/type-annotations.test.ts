@@ -5,7 +5,6 @@ import { expectType, TypeEqual } from "ts-expect";
 
 import {
   boolean,
-  constant,
   Decoder,
   DecoderError,
   fields,
@@ -15,6 +14,7 @@ import {
   number,
   optional,
   string,
+  stringUnion,
   WithUndefinedAsOptional,
 } from "../";
 
@@ -171,7 +171,7 @@ test("type annotations", () => {
     age: number,
     active: boolean,
     country: optional(string),
-    type: constant("user"),
+    type: stringUnion({ user: null }),
   });
 
   // Then, let TypeScript infer the `User` type!
@@ -231,7 +231,7 @@ test("type annotations", () => {
     age: field("age", number),
     active: field("active", boolean),
     country: field("country", optional(string)),
-    type: field("type", constant<"user">("user")),
+    type: field("type", stringUnion({ user: null })),
   }));
 
   type User2 = ReturnType<typeof userDecoder2>;
@@ -256,11 +256,11 @@ test("type annotations", () => {
   // a better inferred type!
   const userDecoder3 = fieldsUnion("type", {
     anonymous: fieldsAuto({
-      type: constant("anonymous"),
+      type: () => "anonymous" as const,
       sessionId: number,
     }),
     registered: fieldsAuto({
-      type: constant("registered"),
+      type: () => "registered" as const,
       id: number,
       name: string,
     }),
@@ -317,7 +317,7 @@ test("type annotations", () => {
   expectType<TypeEqual<InferredType4, ActualType4>>(true);
 
   // To turn `type: string` into `type: "anonymous"` and `type: "registered"`, add
-  // `as const` (using the `constant` decoder does not seem to help):
+  // `as const`:
   const userDecoder5 = fields((field) => {
     const type = field("type", string);
 
@@ -441,14 +441,14 @@ test("type annotations", () => {
     switch (type) {
       case "anonymous":
         return fields((field) => ({
-          type: field("type", constant("anonymous")),
+          type: "anonymous" as const,
           sessionId: field("sessionId", number),
         }));
 
       case "registered":
         // You can also use `fieldsAuto`:
         return fieldsAuto({
-          type: constant("registered"),
+          type: () => "registered" as const,
           id: number,
           name: string,
         });
