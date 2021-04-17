@@ -427,7 +427,7 @@ More examples:
 ```ts
 type Values<T> = T[keyof T];
 
-export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
+function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   key: string,
   mapping: T
 ): Decoder<
@@ -453,15 +453,91 @@ TODO remove constant?
 
 ### tuple
 
+```ts
+function tuple<T extends ReadonlyArray<unknown>>(
+  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
+): Decoder<[...T]>;
+```
+
+Decodes a JSON array into a TypeScript tuple. They both must have the exact same length, otherwise an error is thrown.
+
+Example:
+
+```ts
+type Point = [number, number];
+
+const pointDecoder = tuple([number, number]);
+```
+
+See the [tuples example](https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.ts) for more details.
+
 ### multi
+
+```ts
+function multi<
+  T1 = never,
+  T2 = never,
+  T3 = never,
+  T4 = never,
+  T5 = never,
+  T6 = never,
+  T7 = never
+>(mapping: {
+  undefined?: Decoder<T1, undefined>;
+  null?: Decoder<T2, null>;
+  boolean?: Decoder<T3, boolean>;
+  number?: Decoder<T4, number>;
+  string?: Decoder<T5, string>;
+  array?: Decoder<T6, Array<unknown>>;
+  object?: Decoder<T7, Record<string, unknown>>;
+}): Decoder<T1 | T2 | T3 | T4 | T5 | T6 | T7>;
+```
+
+Decode multiple JSON types into a TypeScript type of choice.
+
+This is useful for supporting stuff that can be either a string or a number, for example.
+
+The `mapping` is an object where the keys are wanted JSON types and the values are callbacks for each type. Specify which JSON types you want and what to do with each (transform the data or decode it further).
+
+Example:
+
+TODO
 
 ### optional
 
+```ts
+function optional<T>(decoder: Decoder<T>): Decoder<T | undefined>;
+
+function optional<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
+```
+
+TODO
+
 ### nullable
+
+```ts
+function nullable<T>(decoder: Decoder<T>): Decoder<T | null>;
+
+function nullable<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
+```
+
+TODO
 
 ### map
 
+```ts
+function map<T, U>(decoder: Decoder<T>, mapper: Decoder<U, T>): Decoder<U>;
+```
+
+TODO
+
 ### lazy
+
+```ts
+function lazy<T>(callback: () => Decoder<T>): Decoder<T>;
+```
+
+TODO
 
 ## DecoderError
 
@@ -489,7 +565,7 @@ class DecoderError extends TypeError {
 }
 ```
 
-TODO text
+TODO
 
 ## repr
 

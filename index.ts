@@ -374,6 +374,7 @@ export function tuple<T extends ReadonlyArray<unknown>>(
     return result as [...T];
   };
 }
+
 export function multi<
   T1 = never,
   T2 = never,
