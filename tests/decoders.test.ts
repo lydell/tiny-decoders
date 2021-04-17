@@ -3,12 +3,12 @@ import { expectType, TypeEqual } from "ts-expect";
 import {
   array,
   boolean,
+  chain,
   Decoder,
   DecoderError,
   fields,
   fieldsAuto,
   fieldsUnion,
-  map,
   multi,
   nullable,
   number,
@@ -305,7 +305,7 @@ describe("record", () => {
   });
 
   test("keys to regex", () => {
-    const decoder = map(record(string), (items) =>
+    const decoder = chain(record(string), (items) =>
       Object.entries(items).map(
         ([key, value]) => [RegExp(key, "u"), value] as const
       )
@@ -1537,23 +1537,23 @@ describe("nullable", () => {
   });
 });
 
-test("map", () => {
-  expect(run(map(number, Math.round), 4.9)).toBe(5);
+test("chain", () => {
+  expect(run(chain(number, Math.round), 4.9)).toBe(5);
 
   expect(
     run(
-      map(array(number), (arr) => new Set(arr)),
+      chain(array(number), (arr) => new Set(arr)),
       [1, 2, 1]
     )
   ).toStrictEqual(new Set([1, 2]));
 
-  expect(run(map(number, string), 0)).toMatchInlineSnapshot(`
+  expect(run(chain(number, string), 0)).toMatchInlineSnapshot(`
     At root:
     Expected a string
     Got: 0
   `);
 
-  expect(run(map(number, string), "string")).toMatchInlineSnapshot(`
+  expect(run(chain(number, string), "string")).toMatchInlineSnapshot(`
     At root:
     Expected a number
     Got: "string"
@@ -1617,12 +1617,12 @@ test("all decoders pass down errors", () => {
     nullable: field("nullable", nullable(subDecoder), {
       mode: { default: undefined },
     }),
-    map1: field("map1", map(subDecoder, multi({ null: (x) => x })), {
+    chain1: field("chain1", chain(subDecoder, multi({ null: (x) => x })), {
       mode: { default: undefined },
     }),
-    map2: field(
-      "map2",
-      map((value) => value, subDecoder),
+    chain2: field(
+      "chain2",
+      chain((value) => value, subDecoder),
       {
         mode: { default: undefined },
       }
@@ -1649,8 +1649,8 @@ test("all decoders pass down errors", () => {
     multi2: subData,
     optional: subData,
     nullable: subData,
-    map1: subData,
-    map2: subData,
+    chain1: subData,
+    chain2: subData,
   };
 
   expect(runWithErrorsArray(decoder, data)).toMatchInlineSnapshot(`
@@ -1661,13 +1661,13 @@ test("all decoders pass down errors", () => {
         ],
         "arrayFields": null,
         "boolean": undefined,
+        "chain1": null,
+        "chain2": null,
         "fields": null,
         "fieldsAuto": Object {
           "field": null,
         },
         "fieldsUnion": null,
-        "map1": null,
-        "map2": null,
         "multi1": null,
         "multi2": null,
         "nullable": null,
@@ -1743,10 +1743,10 @@ test("all decoders pass down errors", () => {
         At root["nullable"]["test"]:
     Expected a boolean
     Got: 0,
-        At root["map1"]["test"]:
+        At root["chain1"]["test"]:
     Expected a boolean
     Got: 0,
-        At root["map2"]["test"]:
+        At root["chain2"]["test"]:
     Expected a boolean
     Got: 0,
       ],

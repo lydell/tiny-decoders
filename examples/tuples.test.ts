@@ -1,4 +1,4 @@
-import { Decoder, fields, fieldsAuto, map, number, string, tuple } from "../";
+import { chain, Decoder, fields, fieldsAuto, number, string, tuple } from "../";
 
 test("decoding tuples", () => {
   type PointTuple = [number, number];
@@ -33,8 +33,8 @@ test("decoding tuples", () => {
     }
   `);
 
-  // Or use `tuple` with `map`.
-  const pointDecoder2: Decoder<Point> = map(
+  // Or use `tuple` with `chain`.
+  const pointDecoder2: Decoder<Point> = chain(
     tuple([number, number]),
     ([x, y]) => ({
       x,
@@ -86,8 +86,8 @@ test("decoding tuples", () => {
     ]
   `);
 
-  // Or with `fieldsAuto` and `map`:
-  const pointTupleDecoder3: Decoder<PointTuple> = map(
+  // Or with `fieldsAuto` and `chain`:
+  const pointTupleDecoder3: Decoder<PointTuple> = chain(
     fieldsAuto({
       x: number,
       y: number,

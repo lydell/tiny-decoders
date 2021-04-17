@@ -1,9 +1,9 @@
 import {
   array,
+  chain,
   Decoder,
   fields,
   fieldsAuto,
-  map,
   number,
   optional,
   string,
@@ -50,31 +50,31 @@ test("decoding to a Set", () => {
   //
   //     field("numbers", optional(array(number)))
   //
-  // You can’t call `new Set()` on that, because it might be `undefined`. `map`
+  // You can’t call `new Set()` on that, because it might be `undefined`. `chain`
   // to the rescue! It lets you transform the result of a decoder, but still
   // returns a decoder, so it can be used with `optional`! In this case, the
-  // return value of the `map` call is a function that looks like this:
+  // return value of the `chain` call is a function that looks like this:
   //
   //    (value: unknown) => Set<number>
   const objDecoder2 = fields((field) => ({
     id: field("id", string),
     numbers: field(
       "numbers",
-      optional(map(array(number), (arr) => new Set(arr)))
+      optional(chain(array(number), (arr) => new Set(arr)))
     ),
   }));
   expect(objDecoder2(obj)).toEqual(objDecoder1(obj));
 
-  // `map` also comes in handy when using `fieldsAuto` (and other functions that
+  // `chain` also comes in handy when using `fieldsAuto` (and other functions that
   // accepts decoders as arguments):
   const objDecoder3 = fieldsAuto({
     id: string,
-    numbers: map(array(number), (arr) => new Set(arr)),
+    numbers: chain(array(number), (arr) => new Set(arr)),
   });
   expect(objDecoder3(obj)).toEqual(objDecoder1(obj));
 
-  // With `map`, you don’t _have_ to change the type, though. For example, you
+  // With `chain`, you don’t _have_ to change the type, though. For example, you
   // could use it to round numbers.
-  const decoder: Decoder<number> = map(number, Math.round);
+  const decoder: Decoder<number> = chain(number, Math.round);
   expect(decoder(4.9)).toMatchInlineSnapshot(`5`);
 });

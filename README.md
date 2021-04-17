@@ -171,10 +171,10 @@ Here’s a summary of all decoders:
 <td><code>T | null</code></td>
 </tr>
 <tr>
-<th><a href="#map">map</a></th>
+<th><a href="#chain">chain</a></th>
 <td><pre>(
   decoder: Decoder&lt;T&gt;,
-  mapper: Decoder&lt;U, T&gt;
+  next: Decoder&lt;U, T&gt;
 ) =&gt;
   Decoder&lt;U&gt;</pre></td>
 <td>n/a</td>
@@ -487,10 +487,10 @@ function nullable<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
 
 TODO
 
-### map
+### chain
 
 ```ts
-function map<T, U>(decoder: Decoder<T>, mapper: Decoder<U, T>): Decoder<U>;
+function chain<T, U>(decoder: Decoder<T>, next: Decoder<U, T>): Decoder<U>;
 ```
 
 TODO

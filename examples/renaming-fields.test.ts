@@ -1,4 +1,12 @@
-import { boolean, Decoder, fields, fieldsAuto, map, number, string } from "../";
+import {
+  boolean,
+  chain,
+  Decoder,
+  fields,
+  fieldsAuto,
+  number,
+  string,
+} from "../";
 
 test("renaming fields", () => {
   type UserSnakeCase = {
@@ -58,10 +66,10 @@ test("renaming fields", () => {
     }
   `);
 
-  // Another way is to use `map` to rename some fields after `fieldsAuto` has done
+  // Another way is to use `chain` to rename some fields after `fieldsAuto` has done
   // its job. Might be nice if there’s only a few fields that need renaming, but
   // it also looks kinda awkward, doesn’t it?
-  const userCamelCaseDecoder2: Decoder<UserCamelCase> = map(
+  const userCamelCaseDecoder2: Decoder<UserCamelCase> = chain(
     userSnakeCaseDecoder,
     ({ first_name: firstName, last_name: lastName, ...rest }) => ({
       firstName,
@@ -79,7 +87,7 @@ test("renaming fields", () => {
   `);
 
   // You also run the risk of accidentally keeping both spellings (no type errors!).
-  const userCamelCaseDecoder3: Decoder<UserCamelCase> = map(
+  const userCamelCaseDecoder3: Decoder<UserCamelCase> = chain(
     userSnakeCaseDecoder,
     (props) => ({
       firstName: props.first_name,

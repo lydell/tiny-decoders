@@ -1,4 +1,4 @@
-import { Decoder, fields, fieldsAuto, map, number, string } from "..";
+import { chain, Decoder, fields, fieldsAuto, number, string } from "..";
 
 test("adding extra fields to records", () => {
   // Want to add an extra field to a record, that doesn’t look at the input at
@@ -49,8 +49,8 @@ test("adding extra fields to records", () => {
 
   expect(productDecoder3(data)).toEqual(productDecoder2(data));
 
-  // Finally, you can do it with `map`.
-  const productDecoder4: Decoder<Product> = map(
+  // Finally, you can do it with `chain`.
+  const productDecoder4: Decoder<Product> = chain(
     fieldsAuto({
       name: string,
       price: number,

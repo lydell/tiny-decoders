@@ -479,12 +479,15 @@ export function nullable<T, U = null>(
   };
 }
 
-export function map<T, U>(
+export function chain<T, U>(
   decoder: Decoder<T>,
-  mapper: Decoder<U, T>
+  next: Decoder<U, T>
 ): Decoder<U> {
-  return function mapDecoder(value: unknown, errors?: Array<DecoderError>): U {
-    return mapper(decoder(value, errors), errors);
+  return function chainDecoder(
+    value: unknown,
+    errors?: Array<DecoderError>
+  ): U {
+    return next(decoder(value, errors), errors);
   };
 }
 
