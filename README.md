@@ -532,6 +532,53 @@ const numberSetDecoder: Decoder<Set<number>> = chain(
 ## DecoderError
 
 ```ts
+type DecoderErrorVariant =
+  | {
+      tag: "custom";
+      message: string;
+      got: unknown;
+    }
+  | {
+      tag: "exact fields";
+      knownFields: Array<string>;
+      got: Array<string>;
+    }
+  | {
+      tag: "tuple size";
+      expected: number;
+      got: number;
+    }
+  | {
+      tag: "unknown fieldsUnion tag";
+      knownTags: Array<string>;
+      got: string;
+    }
+  | {
+      tag: "unknown multi type";
+      knownTypes: Array<
+        | "array"
+        | "boolean"
+        | "null"
+        | "number"
+        | "object"
+        | "string"
+        | "undefined"
+      >;
+      got: unknown;
+    }
+  | {
+      tag: "unknown stringUnion variant";
+      knownVariants: Array<string>;
+      got: string;
+    }
+  | { tag: "array"; got: unknown }
+  | { tag: "boolean"; got: unknown }
+  | { tag: "number"; got: unknown }
+  | { tag: "object"; got: unknown }
+  | { tag: "string"; got: unknown };
+
+type Key = number | string; // Not exported.
+
 class DecoderError extends TypeError {
   path: Array<Key>;
 
@@ -555,7 +602,17 @@ class DecoderError extends TypeError {
 }
 ```
 
-TODO
+The error thrown by all decoders. It keeps track of where in the JSON the error occurred.
+
+At the places where you actually call a decoder function (as opposed to just combining them into bigger and bigger structures), use a `try-catch` to catch errors. If `caughtError instanceof DecoderError`, then you can use `caughtError.format()` to get a nice string explaining what went wrong.
+
+When creating a `DecoderError` you generally want to pass `message` and `value` rather than one of the existing `DecoderErrorVariant`s.
+
+- `message` is a string saying what went wrong.
+- `value` is the value being decoded that caused the error.
+- `key` is optional. If you’re at an object key or an array index you can pass that key to let the `DecoderError` know where the error occurred.
+
+Note: `DecoderError.at(error)` _mutates_ `error` if `error instanceof DecoderError`!
 
 ## repr
 
