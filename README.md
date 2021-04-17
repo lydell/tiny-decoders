@@ -193,13 +193,6 @@ Here’s a summary of all decoders:
 <td>n/a</td>
 <td><code>U</code></td>
 </tr>
-<tr>
-<th><a href="#lazy">lazy</a></th>
-<td><pre>(callback: () =&gt; Decoder&lt;T&gt;) =&gt;
-  Decoder&lt;T&gt;</pre></td>
-<td>n/a</td>
-<td><code>T</code></td>
-</tr>
 </tbody>
 </table>
 
@@ -527,14 +520,6 @@ TODO
 
 ```ts
 function map<T, U>(decoder: Decoder<T>, mapper: Decoder<U, T>): Decoder<U>;
-```
-
-TODO
-
-### lazy
-
-```ts
-function lazy<T>(callback: () => Decoder<T>): Decoder<T>;
 ```
 
 TODO

@@ -503,12 +503,6 @@ export function map<T, U>(
   };
 }
 
-export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
-  return function lazyDecoder(value: unknown, errors?: Array<DecoderError>): T {
-    return callback()(value, errors);
-  };
-}
-
 export type DecoderErrorVariant =
   | {
       tag: "constant";

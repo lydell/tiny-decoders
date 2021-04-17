@@ -1,14 +1,4 @@
-import {
-  array,
-  Decoder,
-  fields,
-  fieldsAuto,
-  lazy,
-  multi,
-  optional,
-  record,
-  string,
-} from "../";
+import { array, Decoder, fields, multi, record, string } from "../";
 
 test("recursive data structure", () => {
   // Consider this recursive data sctructure:
@@ -25,34 +15,16 @@ test("recursive data structure", () => {
     })
   );
 
-  // But when using `fieldsAuto` you might run into some minor problems.
+  // But when using `fieldsAuto` you’d run into problems.
   // This wouldn’t work to decode it, because we’re trying to use
   // `personDecoder` in the definition of `personDecoder` itself.
+  // So, use `fields` if you need recursion.
   /*
   const personDecoder2 = fieldsAuto<Person>({
     name: string,
     friends: array(personDecoder2), // ReferenceError: personDecoder2 is not defined
   });
   */
-
-  // With `lazy` we can delay the reference to `personDecoder2`.
-  // (You can of course also switch from `fieldsAuto` to `fields` instead of
-  // using `lazy` if you want.)
-  //
-  // Unfortunately you need double type annotations:
-  //
-  // - `Decoder<Person>` to appease TypeScript.
-  // - `fieldsAuto<Person>` to forbid accidental extra properties.
-  const personDecoder2: Decoder<Person> = fieldsAuto<Person>({
-    name: string,
-    friends: lazy(() => array(personDecoder2)),
-  });
-  // @ts-expect-error 'personDecoder2_bad' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
-  const personDecoder2_bad = fieldsAuto<Person>({
-    name: string,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    friends: lazy(() => array(personDecoder2_bad)),
-  });
 
   const data: unknown = {
     name: "John",
@@ -93,21 +65,19 @@ test("recursive data structure", () => {
       "name": "John",
     }
   `);
-
-  expect(personDecoder1(data)).toEqual(personDecoder2(data));
 });
 
 test("recurse non-record", () => {
-  // In the case of records, you can switch from `fieldsAuto` to `fields` to fix
-  // the recursiveness issue. But if you for example have a recursive record, you
-  // _have_ to use `lazy`.
-
   type Dict = { [key: string]: Dict | number };
 
   const dictDecoder: Decoder<Dict> = record(
     multi({
       number: (value) => value,
-      object: lazy(() => dictDecoder),
+      // The trick here is to use a seemingly useless arrow function to delay
+      // the reference to `dictDecoder`.
+      object: (value) => dictDecoder(value),
+      // ReferenceError: personDecoder2 is not defined.
+      // object: dictDecoder,
     })
   );
 
@@ -138,81 +108,6 @@ test("recurse non-record", () => {
   `);
 });
 
-test("indirectly recursive data structure", () => {
-  // Here’s a silly example of an indirectly recursive data structure.
-  type Person = {
-    name: string;
-    relationship?: Relationship;
-  };
-
-  type Relationship = {
-    type: string;
-    person: Person;
-  };
-
-  // Again, when using `fields` you shouldn’t encounter any problems, other than
-  // maybe having to disable an ESLint rule (no-use-before-define).
-  const personDecoder1 = fields(
-    (field): Person => ({
-      name: field("name", string),
-      relationship: field("relationship", optional(relationshipDecoder)),
-    })
-  );
-
-  // When using `fieldsAuto`, since `relationshipDecoder` isn’t defined yet that
-  // has to be lazy. You can’t re-order `personDecoder2` and
-  // `relationshipDecoder` to fix the issue either – that just flips the
-  // problem.
-  const personDecoder2 = fieldsAuto<Person>({
-    name: string,
-    relationship: optional(lazy(() => relationshipDecoder)),
-  });
-
-  // This one doesn’t need `lazy` since `personDecoder1` (and `personDecoder2`)
-  // is already defined.
-  const relationshipDecoder = fieldsAuto<Relationship>({
-    type: string,
-    person: personDecoder1,
-  });
-
-  const data: unknown = {
-    name: "John",
-    relationship: {
-      type: "fatherOf",
-      person: {
-        name: "Alice",
-        relationship: {
-          type: "sisterTo",
-          person: {
-            name: "Bob",
-          },
-        },
-      },
-    },
-  };
-
-  expect(personDecoder1(data)).toMatchInlineSnapshot(`
-    Object {
-      "name": "John",
-      "relationship": Object {
-        "person": Object {
-          "name": "Alice",
-          "relationship": Object {
-            "person": Object {
-              "name": "Bob",
-              "relationship": undefined,
-            },
-            "type": "sisterTo",
-          },
-        },
-        "type": "fatherOf",
-      },
-    }
-  `);
-
-  expect(personDecoder1(data)).toEqual(personDecoder2(data));
-});
-
 test("circular objects", () => {
   // This data structure is impossible to create without mutation, because you
   // can’t create a Person without creating a Person.
@@ -221,17 +116,12 @@ test("circular objects", () => {
     likes: Person;
   };
 
-  const personDecoder1 = fields(
+  const personDecoder = fields(
     (field): Person => ({
       name: field("name", string),
-      likes: field("likes", personDecoder1),
+      likes: field("likes", personDecoder),
     })
   );
-
-  const personDecoder2: Decoder<Person> = fieldsAuto<Person>({
-    name: string,
-    likes: lazy(() => personDecoder2),
-  });
 
   const alice: Record<string, unknown> = {
     name: "Alice",
@@ -246,14 +136,11 @@ test("circular objects", () => {
   // Make the object circular:
   alice.likes = bob;
 
-  // Be careful: Calling these functions would cause infinite recursion!
+  // Calling the decoder would cause infinite recursion!
+  // So be careful when working with recursive data!
   const wouldCauseInfiniteRecursion1: () => Person = jest.fn(() =>
-    personDecoder1(alice)
-  );
-  const wouldCauseInfiniteRecursion2: () => Person = jest.fn(() =>
-    personDecoder2(alice)
+    personDecoder(alice)
   );
 
   expect(wouldCauseInfiniteRecursion1).not.toHaveBeenCalled();
-  expect(wouldCauseInfiniteRecursion2).not.toHaveBeenCalled();
 });

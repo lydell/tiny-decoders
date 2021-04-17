@@ -9,7 +9,6 @@ import {
   fields,
   fieldsAuto,
   fieldsUnion,
-  lazy,
   map,
   multi,
   nullable,
@@ -1616,49 +1615,6 @@ test("map", () => {
   `);
 });
 
-test("lazy", () => {
-  // @ts-expect-error Argument of type '(value: unknown) => string' is not assignable to parameter of type '() => Decoder<unknown, unknown>'.
-  lazy(string);
-
-  expect(
-    run(
-      lazy(() => string),
-      "string"
-    )
-  ).toBe("string");
-
-  type NestedArray = Array<NestedArray | number>;
-  const nestedNumberDecoder: Decoder<NestedArray> = array(
-    multi({
-      number: (x) => x,
-      array: lazy(() => nestedNumberDecoder),
-    })
-  );
-  expect(nestedNumberDecoder([[[[[[[1337]]]]]]])).toMatchInlineSnapshot(`
-    Array [
-      Array [
-        Array [
-          Array [
-            Array [
-              Array [
-                Array [
-                  1337,
-                ],
-              ],
-            ],
-          ],
-        ],
-      ],
-    ]
-  `);
-
-  expect(run(nestedNumberDecoder, [[[["nope"]]]])).toMatchInlineSnapshot(`
-    At root[0][0][0][0]:
-    Expected one of these types: number, array
-    Got: "nope"
-  `);
-});
-
 test("all decoders pass down errors", () => {
   const subDecoder: Decoder<boolean | null> = fields((field) =>
     field("test", boolean, { mode: { default: null } })
@@ -1727,11 +1683,6 @@ test("all decoders pass down errors", () => {
         mode: { default: undefined },
       }
     ),
-    lazy: field(
-      "lazy",
-      lazy(() => subDecoder),
-      { mode: { default: undefined } }
-    ),
   }));
 
   const subData: unknown = { test: 0 };
@@ -1757,7 +1708,6 @@ test("all decoders pass down errors", () => {
     nullable: subData,
     map1: subData,
     map2: subData,
-    lazy: subData,
   };
 
   expect(runWithErrorsArray(decoder, data)).toMatchInlineSnapshot(`
@@ -1774,7 +1724,6 @@ test("all decoders pass down errors", () => {
           "field": null,
         },
         "fieldsUnion": null,
-        "lazy": null,
         "map1": null,
         "map2": null,
         "multi1": null,
@@ -1859,9 +1808,6 @@ test("all decoders pass down errors", () => {
     Expected a boolean
     Got: 0,
         At root["map2"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["lazy"]["test"]:
     Expected a boolean
     Got: 0,
       ],
