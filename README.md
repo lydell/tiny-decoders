@@ -32,7 +32,7 @@ type Decoder<T, U = unknown> = (value: U, errors?: Array<DecoderError>) => T;
 The above is the _full_ definition of a decoder.
 
 - The input value can be some other type (`U`) than `unknown` if you want.
-- Some decoders support [pushing errors to an array](#TODO).
+- Some decoders support [pushing errors to an array](#tolerant-decoding).
 
 Most of the time you don’t need to think about this, though!
 
@@ -285,3 +285,46 @@ function repr(
   }: ReprOptions = {}
 ): string;
 ```
+
+Takes any value, and returns a string representation of it for use in error messages. `DecoderError.prototype.format` uses it behind the scenes. If you want to do your own formatting, `repr` can be useful.
+
+Options:
+
+| name | type | default | description |
+| --- | --- | --- | --- |
+| recurse | `boolean` | `true` | Whether to recursively call `repr` on array items and object values. It only recurses once. |
+| maxArrayChildren | `number` | `5` | The number of array items to print (when `recurse` is `true`.) |
+| maxObjectChildren | `number` | `3` | The number of object key-values to print (when `recurse` is `true`.) |
+| maxLength | `number` | `100` | The maximum length of literals, such as strings, before truncating them. |
+| recurseMaxLength | `number` | `20` | Like `maxLength`, but when recursing. One typically wants shorter lengths here to avoid overly long error messages. |
+| sensitive | `boolean` | `false` | Set it do `true` if you deal with sensitive data to avoid leaks. See below. |
+
+## Sensitive data
+
+By default, the tiny-decoder’s error messages try to be helpful by showing you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
+
+Standard:
+
+```
+object["details"]["ssn"]: Expected a string, but got: 123456789
+```
+
+With `{ sensitive: true }` (in `ReprOptions`):
+
+```
+object["details"]["ssn"]: Expected a string, but got: number
+```
+
+## Tolerant decoding
+
+Since arrays and objects can hold multiple values, their decoders allow opting into tolerant decoding, where you can recover from errors, either by skipping values or providing defaults. Whenever that happens, the error that would otherwise have been thrown is pushed to an `errors` array (`Array<DecoderError>`, if provided), allowing you to inspect what was ignored. (Perhaps not the most beautiful API, but very simple.)
+
+For example, if you pass an `errors` array to a [fields] decoder, it will both push to the array and pass it along to its sub-decoders so they can push to it as well. If you make a custom decoder, you’ll have to remember to pass along `errors` as well when needed.
+
+Functions that support tolerant decoding take a `mode` option which can have the following values:
+
+- `"throw"` (default): Throws a `DecoderError` on the first invalid item.
+- `"skip"`: Items that fail are ignored. This means that a decoded array can be shorter than the input array – even empty! And a decoded object can have fewer keys that the input object. Errors are pushed to the `errors` array, if present. (Not available for [field][fields], since skipping doesn’t make sense it that case.)
+- `{ default: U }`: The passed default value is used for items that fail. A decoded array will always have the same length as the input array, and a decoded object will always have the same keys as the input object. Errors are pushed to the `errors` array, if present.
+
+See the [tolerant decoding example](https://github.com/lydell/tiny-decoders/blob/master/examples/tolerant-decoding.test.ts) for more information.

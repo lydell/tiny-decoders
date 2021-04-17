@@ -1,6 +1,6 @@
-import { array, DecoderError, fields, number, string } from "../";
+import { array, DecoderError, fields, number, string } from "..";
 
-test("allowing decoders to fail", () => {
+test("tolerant decoding", () => {
   // If you have a record, an array or a dict and a single field or item fails
   // to decode, you might not want the entire thing to fail. For example, you
   // might want to use all the data that suceeded and swap in a default value
