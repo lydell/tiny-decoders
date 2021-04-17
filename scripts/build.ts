@@ -21,7 +21,7 @@ const FILES_TO_COPY: Array<FileToCopy> = [
   {
     src: "README.md",
     transform: (content) =>
-      content.replace(/^#[^]+?\n# /, "# ").replace(/<!--[^]*$/, READ_MORE),
+      content.replace(/^#[^]+?\n# /, "# ").replace(/^##[^]*/m, READ_MORE),
   },
 ];
 
