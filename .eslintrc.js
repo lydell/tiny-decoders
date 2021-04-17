@@ -186,5 +186,13 @@ module.exports = {
         project: ["./tests/tsconfig.json"],
       },
     },
+    {
+      files: "examples/**/*.ts",
+      extends: ["plugin:jest/recommended", "plugin:jest/style"],
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+        project: ["./examples/tsconfig.json"],
+      },
+    },
   ],
 };

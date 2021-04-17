@@ -1,5 +1,3 @@
-// @flow strict
-
 import { expectType, TypeEqual } from "ts-expect";
 
 import { repr, ReprOptions } from "../";

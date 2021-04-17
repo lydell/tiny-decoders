@@ -9,5 +9,5 @@
   "module": "index.mjs",
   "exports": "./index.mjs",
   "sideEffects": false,
-  "keywords": ["decode", "decoders", "elm", "flow", "json", "typescript"]
+  "keywords": ["decode", "decoders", "elm", "json", "typescript"]
 }

@@ -1,38 +1,11 @@
 import { expectType, TypeEqual } from "ts-expect";
 
-import {
-  Decoder,
-  DecoderError,
-  DecoderErrorVariant,
-  fields,
-  nullable,
-  optional,
-  repr,
-  ReprOptions,
-  string,
-  tuple,
-} from "..";
+import { DecoderError, DecoderErrorVariant, ReprOptions } from "..";
 
 expect.addSnapshotSerializer({
   test: (value: unknown): boolean => typeof value === "string",
   print: String,
 });
-
-function thrownError<T>(decoder: Decoder<T>, value: unknown): DecoderError {
-  try {
-    decoder(value);
-  } catch (error) {
-    if (error instanceof DecoderError) {
-      return error;
-    }
-    throw new Error(
-      `Expected the decoder to throw a DecoderError, but it threw something else: ${repr(
-        error
-      )}`
-    );
-  }
-  throw new Error(`Expected the decoder to throw an error, but it didn’t`);
-}
 
 describe("constructor", () => {
   expectType<TypeEqual<DecoderError["variant"], DecoderErrorVariant>>(true);
@@ -88,9 +61,9 @@ describe("constructor", () => {
 
     // `.message` is sensitive.
     expect(error.message).toMatchInlineSnapshot(`
-          Expected a valid regex
-          Got: string
-      `);
+      Expected a valid regex
+      Got: string
+    `);
     expect(error2.message).toBe(error.message);
 
     expect(error.variant).toStrictEqual({
@@ -104,10 +77,10 @@ describe("constructor", () => {
     expect(error2.path).toStrictEqual(error.path);
 
     expect(error.format()).toMatchInlineSnapshot(`
-          At root["test-key"]:
-          Expected a valid regex
-          Got: "+"
-      `);
+      At root["test-key"]:
+      Expected a valid regex
+      Got: "+"
+    `);
     expect(error2.format()).toStrictEqual(error.format());
   });
 
@@ -201,9 +174,9 @@ describe("format", () => {
     `);
     expect(error.format({ sensitive: true, maxArrayChildren: 2 }))
       .toMatchInlineSnapshot(`
-      At root:
-      Expected a string
-      Got: [string, Object(1), (1 more)]
-    `);
+        At root:
+        Expected a string
+        Got: [string, Object(1), (1 more)]
+      `);
   });
 });
