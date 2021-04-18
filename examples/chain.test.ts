@@ -7,7 +7,7 @@ import {
   number,
   optional,
   string,
-} from "../";
+} from "..";
 
 test("decoding to a Set", () => {
   // Want to turn this into a Set of numbers?

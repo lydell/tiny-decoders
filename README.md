@@ -11,6 +11,17 @@ npm install tiny-decoders
 ## Example
 
 ```ts
+import {
+  array,
+  boolean,
+  DecoderError,
+  fields,
+  fieldsAuto,
+  number,
+  optional,
+  string,
+} from "tiny-decoders";
+
 type User = {
   name: string;
   active: boolean;
@@ -29,10 +40,18 @@ const userDecoder = fields(
 
 const payload: unknown = getSomeJSON();
 
-const user: User = userDecoder(payload);
+try {
+  const user: User = userDecoder(payload);
+} catch (error: unknown) {
+  if (error instanceof DecoderError) {
+    console.error(error.format());
+  } else {
+    console.error(error);
+  }
+}
 ```
 
-At this point `user` is guaranteed to be a valid `User`. Otherwise, an error like this one is thrown:
+Here’s an example error:
 
 ```
 At root["age"] (optional):
@@ -43,7 +62,7 @@ Got: "30"
 If you use the same field names in both JSON and TypeScript there’s a shortcut.
 
 ```ts
-const userDecoder = fieldsAuto({
+const userDecoder2 = fieldsAuto({
   full_name: string,
   is_active: boolean,
   age: optional(number),
@@ -51,10 +70,21 @@ const userDecoder = fieldsAuto({
 });
 ```
 
-You can even infer the type from the decoder instead of writing it manually!
+You can even [infer the type from the decoder](#type-inference) instead of writing it manually!
 
 ```ts
-type User = ReturnType<typeof userDecoder>;
+type User2 = ReturnType<typeof userDecoder2>;
+```
+
+The above produces this type:
+
+```ts
+type User = {
+  full_name: string;
+  is_active: boolean;
+  age: number | undefined;
+  interests: string[];
+};
 ```
 
 ## Decoder&lt;T&gt;
@@ -379,7 +409,7 @@ const ageDecoder: Decoder<number> = fields((field) => field("age", number));
 
 Note that if your input object and the decoded object look exactly the same and you don’t need any advanced features it’s often more convenient to use [fieldsAuto](#fieldsauto).
 
-Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see the [tuples example](https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.ts).
+Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see the [tuples example](examples/tuples.test.ts).
 
 The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
 
@@ -393,9 +423,9 @@ For the `mode` option, see [Tolerant decoding](#tolerant-decoding).
 
 More examples:
 
-- [Extra fields](https://github.com/lydell/tiny-decoders/blob/master/examples/extra-fields.test.ts).
-- [Renaming fields](https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-fields.test.ts).
-- [Tuples](https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.ts).
+- [Extra fields](examples/extra-fields.test.ts).
+- [Renaming fields](examples/renaming-fields.test.ts).
+- [Tuples](examples/tuples.test.ts).
 
 ### fieldsAuto
 
@@ -434,8 +464,8 @@ The `exact` option let’s you choose between ignoring extraneous data and makin
 
 More examples:
 
-- [Extra fields](https://github.com/lydell/tiny-decoders/blob/master/examples/extra-fields.test.ts).
-- [Renaming fields](https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-fields.test.ts).
+- [Extra fields](examples/extra-fields.test.ts).
+- [Renaming fields](examples/renaming-fields.test.ts).
 
 ### fieldsUnion
 
@@ -476,7 +506,7 @@ const shapeDecoder = fieldsUnion<Shape>("tag", {
 });
 ```
 
-See also the [renaming union field example](https://github.com/lydell/tiny-decoders/blob/master/examples/renaming-union-field.test.ts).
+See also the [renaming union field example](examples/renaming-union-field.test.ts).
 
 ### tuple
 
@@ -496,7 +526,7 @@ type Point = [number, number];
 const pointDecoder = tuple([number, number]);
 ```
 
-See the [tuples example](https://github.com/lydell/tiny-decoders/blob/master/examples/tuples.test.ts) for more details.
+See the [tuples example](examples/tuples.test.ts) for more details.
 
 ### multi
 
@@ -577,6 +607,8 @@ const numberSetDecoder: Decoder<Set<number>> = chain(
   (arr) => new Set(arr)
 );
 ```
+
+See the [chain example](examples/chain.test.ts) for more.
 
 ## DecoderError
 
@@ -729,11 +761,11 @@ Functions that support tolerant decoding take a `mode` option which can have the
 - `"skip"`: Items that fail are ignored. This means that a decoded array can be shorter than the input array – even empty! And a decoded object can have fewer keys that the input object. Errors are pushed to the `errors` array, if present. (Not available for [field][fields], since skipping doesn’t make sense it that case.)
 - `{ default: U }`: The passed default value is used for items that fail. A decoded array will always have the same length as the input array, and a decoded object will always have the same keys as the input object. Errors are pushed to the `errors` array, if present.
 
-See the [tolerant decoding example](https://github.com/lydell/tiny-decoders/blob/master/examples/tolerant-decoding.test.ts) for more information.
+See the [tolerant decoding example](examples/tolerant-decoding.test.ts) for more information.
 
 ## Type annotations
 
-The obvious type annotation for decoders is `Decoder<T>`. But sometimes that’s not the best choice, due to TypeScript quirks! For [fields](#fields) and [fieldsAuto](#fieldsAuto), the recommended approach is:
+The obvious type annotation for decoders is `: Decoder<T>`. But sometimes that’s not the best choice, due to TypeScript quirks! For [fields](#fields) and [fieldsAuto](#fieldsAuto), the recommended approach is:
 
 ```ts
 type Person = {
@@ -741,6 +773,7 @@ type Person = {
   age: number | undefined;
 };
 
+// Annotate the return type of the callback.
 const personDecoder = fields(
   (field): Person => ({
     name: field("name", string),
@@ -748,6 +781,7 @@ const personDecoder = fields(
   })
 );
 
+// Annotate the generic.
 const personDecoderAuto = autoFields<Person>({
   name: string,
   age: optional(number),
@@ -756,7 +790,7 @@ const personDecoderAuto = autoFields<Person>({
 
 That gives the best TypeScript error messages, and the most type safety.
 
-See the [type annotations and inference example](https://github.com/lydell/tiny-decoders/blob/master/examples/type-annotations.test.ts) for more details.
+See the [type annotations](examples/type-annotations.test.ts) for more details.
 
 ## Type inference
 
@@ -785,4 +819,41 @@ type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoderAuto>>;
 // This changes all `key: T | undefined` to `key?: T | undefined` of an object.
 ```
 
-See the [type annotations and inference example](https://github.com/lydell/tiny-decoders/blob/master/examples/type-annotations.test.ts) for more details.
+See the [type inference example](examples/type-inference.test.ts) and the [optional fields example](examples/optional-fields.test.ts) for more details.
+
+## Things left out
+
+Here are some decoders I’ve left out. They are not needed, rarely needed and/or too trivial to be included in a decoding library _for the minimalist._
+
+### lazy
+
+```ts
+export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
+  return function lazyDecoder(value: unknown, errors?: Array<DecoderError>): T {
+    return callback()(value, errors);
+  };
+```
+
+There used to be a `lazy` function. It was used for recursive structures, but when using [fields](#fields) or [multi](#multi) you don’t need it. See the [recursive example](examples/recursive.test.ts) for more information.
+
+### unknown
+
+```ts
+export function unknown(value: unknown): unknown {
+  return value;
+}
+```
+
+This decoder would turn any JSON value into TypeScript’s `unknown`. I rarely need that. When I do, there are other ways of achieving it – the `unknown` function above is just the identity function. See the [unknown example](examples/unknown.test.ts) for more details.
+
+### succeed
+
+```ts
+export function succeed<T>(value: T): Decoder<T> {
+  return function succeedDecoder() {
+    return value;
+  };
+}
+```
+
+This decoder would ignore its input and always “succeed” with a given value. This can be useful when using [fieldsAuto](#fieldsauto) inside [fieldsUnion](#fieldsunion). But I’m not sure if `succeed("Square")` is any more clear than `() => "Square" as const`. Some languages call this function `always` or `const`.
