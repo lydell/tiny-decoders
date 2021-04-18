@@ -79,7 +79,7 @@ type User2 = ReturnType<typeof userDecoder2>;
 The above produces this type:
 
 ```ts
-type User = {
+type User2 = {
   full_name: string;
   is_active: boolean;
   age: number | undefined;
@@ -857,3 +857,19 @@ export function succeed<T>(value: T): Decoder<T> {
 ```
 
 This decoder would ignore its input and always “succeed” with a given value. This can be useful when using [fieldsAuto](#fieldsauto) inside [fieldsUnion](#fieldsunion). But I’m not sure if `succeed("Square")` is any more clear than `() => "Square" as const`. Some languages call this function `always` or `const`.
+
+### either
+
+```ts
+export function either<T, U>(
+  decoder1: Decoder<T>,
+  decoder2: Decoder<U>
+): Decoder<T | U>;
+```
+
+This decoder would try `decoder1` first. If it fails, go on and try `decoder2`. If that fails, present both errors. I consider this a blunt tool.
+
+- If you want either a string or a number, use [multi](#multi). This let’s you switch between any JSON types.
+- For objects that can be decoded in different ways, use [fieldsUnion](#fieldsunion). If that’s not possible, use [fields](#fields) and look for the field(s) that tell which variant you’ve got. Then run the appropriate decoder for the rest of the object.
+
+The above approaches result in a much simpler [DecoderError](#decodererror) type, and also results in much better error messages, since there’s never a need to present something like “decoding failed in the following 5 ways: …”.
