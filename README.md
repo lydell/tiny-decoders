@@ -100,7 +100,7 @@ Here’s a summary of all decoders:
 </tr>
 <tr>
 <th><a href="#fields">fields</a></th>
-<td><pre>(callback: FieldsCallback) =&gt;
+<td><pre>(callback: Function) =&gt;
   Decoder&lt;T&gt;</pre></td>
 <td>object</td>
 <td><code>T</code></td>
@@ -151,7 +151,7 @@ Here’s a summary of all decoders:
 </tr>
 <tr>
 <th><a href="#multi">multi</a></th>
-<td><pre>(mapping: MultiMapping) =&gt;
+<td><pre>(mapping: Record&lt;string, Decoder&lt;T&gt;&gt;) =&gt;
   Decoder&lt;T&gt;</pre></td>
 <td>you decide</td>
 <td><code>T</code></td>
