@@ -627,7 +627,7 @@ export class DecoderError extends TypeError {
     this.optional = false;
   }
 
-  static MISSING_VALUE = {};
+  static MISSING_VALUE = Symbol("DecoderError.MISSING_VALUE");
 
   static at(error: unknown, key?: Key): DecoderError {
     if (error instanceof DecoderError) {
