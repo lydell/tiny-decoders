@@ -5,6 +5,7 @@ import * as rimraf from "rimraf";
 
 const DIR = path.dirname(__dirname);
 const BUILD = path.join(DIR, "build");
+const MODULE_BUILD = path.join(BUILD, "module");
 
 const READ_MORE =
   "**[➡️ Full readme](https://github.com/lydell/tiny-decoders/#readme)**";
@@ -42,7 +43,25 @@ for (const { src, dest = src, transform } of FILES_TO_COPY) {
   }
 }
 
-childProcess.spawnSync("npx", ["--no-install", "tsc"], {
+childProcess.spawnSync("npx", ["--no-install", "tsc", "--declaration"], {
   shell: true,
   stdio: "inherit",
 });
+
+fs.renameSync(path.join(BUILD, "index.js"), path.join(BUILD, "index.cjs"));
+
+childProcess.spawnSync(
+  "npx",
+  ["--no-install", "tsc", "--module", "es2015", "--outDir", MODULE_BUILD],
+  {
+    shell: true,
+    stdio: "inherit",
+  }
+);
+
+fs.renameSync(
+  path.join(MODULE_BUILD, "index.js"),
+  path.join(BUILD, "index.mjs")
+);
+
+rimraf.sync(MODULE_BUILD);
