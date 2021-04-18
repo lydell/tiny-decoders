@@ -1,5 +1,3 @@
-import * as d from "decoders";
-
 import {
   array,
   boolean,
@@ -96,79 +94,20 @@ test("error messages", () => {
     print: String,
   });
 
-  const accessoryDecoder1 = fieldsAuto({
+  const accessoryDecoder = fieldsAuto({
     id: string,
     name: string,
     discount: optional(number),
   });
-  const accessoryDecoder2 = d.object({
-    id: d.string,
-    name: d.string,
-    discount: d.nullable(d.number),
-  });
 
-  const productDecoder1 = fieldsAuto({
+  const productDecoder = fieldsAuto({
     id: string,
     name: string,
     price: number,
-    accessories: array(accessoryDecoder1),
+    accessories: array(accessoryDecoder),
   });
 
-  const productDecoder2 = d.object({
-    id: d.string,
-    name: d.string,
-    price: d.number,
-    accessories: d.array(accessoryDecoder2),
-  });
-
-  const productsDecoder1 = array(productDecoder1);
-  const productsDecoder2 = d.guard(d.array(productDecoder2));
-
-  expect(() => productsDecoder2(getProducts()))
-    .toThrowErrorMatchingInlineSnapshot(`
-
-      [
-        {
-          "id": "512971",
-          "name": "Ergonomic Mouse",
-          "image": "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-          "price": 499,
-          "accessories": [],
-        },
-        {
-          "id": "382973",
-          "name": "Ergonomic Keyboard",
-          "image": "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-          "price": 998,
-          "accessories": [
-            {
-              "name": "Keycap Puller",
-              "image": "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-              "discount": "5%",
-                          ^^^^
-                          Either:
-                          - Must be null
-                          - Must be number
-            },
-            ^ Missing key: "id" (at index 0)
-            {
-              "id": 892873,
-              "name": "Keycap Set",
-              "image": "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-              "discount": null,
-            },
-          ],
-        },
-        ^ index 1
-        {
-          "id": "493673",
-          "name": "Foot Pedals",
-          "image": "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-          "price": 299,
-          "accessories": [],
-        },
-      ]
-    `);
+  const productsDecoder1 = array(productDecoder);
 
   expect(run(productsDecoder1, getProducts())).toMatchInlineSnapshot(`
     At root[1]["accessories"][0]["id"]:

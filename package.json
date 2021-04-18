@@ -13,7 +13,6 @@
     "@types/rimraf": "3.0.0",
     "@typescript-eslint/eslint-plugin": "4.22.0",
     "@typescript-eslint/parser": "4.22.0",
-    "decoders": "1.23.5",
     "eslint": "7.24.0",
     "eslint-plugin-jest": "24.3.5",
     "eslint-plugin-simple-import-sort": "7.0.0",
