@@ -1,4 +1,4 @@
-# tiny-decoders
+# tiny-decoders ![no dependencies](https://img.shields.io/david/lydell/tiny-decoders.svg) [![minified size](https://img.shields.io/bundlephobia/min/tiny-decoders.svg)](https://bundlephobia.com/result?p=tiny-decoders)
 
 Type-safe data decoding for the minimalist.
 
