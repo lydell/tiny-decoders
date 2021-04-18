@@ -8,6 +8,55 @@ Type-safe data decoding for the minimalist.
 npm install tiny-decoders
 ```
 
+## Example
+
+```ts
+type User = {
+  name: string;
+  active: boolean;
+  age?: number;
+  interests: Array<string>;
+};
+
+const userDecoder = fields(
+  (field): User => ({
+    name: field("full_name", string),
+    active: field("is_active", boolean),
+    age: field("age", optional(number)),
+    interests: field("interests", array(string)),
+  })
+);
+
+const payload: unknown = getSomeJSON();
+
+const user: User = userDecoder(payload);
+```
+
+At this point `user` is guaranteed to be a valid `User`. Otherwise, an error like this one is thrown:
+
+```
+At root["age"] (optional):
+Expected a number
+Got: "30"
+```
+
+If you use the same field names in both JSON and TypeScript there’s a shortcut.
+
+```ts
+const userDecoder = fieldsAuto({
+  full_name: string,
+  is_active: boolean,
+  age: optional(number),
+  interests: array(string),
+});
+```
+
+You can even infer the type from the decoder instead of writing it manually!
+
+```ts
+type User = ReturnType<typeof userDecoder>;
+```
+
 ## Decoder&lt;T&gt;
 
 ```ts

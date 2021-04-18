@@ -28,6 +28,11 @@ function run<T>(
   }
 }
 
+expect.addSnapshotSerializer({
+  test: (value: unknown): boolean => typeof value === "string",
+  print: String,
+});
+
 test("the main readme example", () => {
   type User = {
     name: string;
@@ -49,24 +54,49 @@ test("the main readme example", () => {
 
   const user: User = userDecoder(payload);
 
-  expect(user).toMatchInlineSnapshot(`
-    Object {
-      "active": true,
-      "age": 30,
-      "interests": Array [
-        "Programming",
-        "Cooking",
-      ],
-      "name": "John Doe",
-    }
-  `);
+  expect(user).toStrictEqual({
+    name: "John Doe",
+    active: true,
+    age: 30,
+    interests: ["Programming", "Cooking"],
+  });
 
   const payload2: unknown = getSomeInvalidJSON();
 
   expect(run(userDecoder, payload2)).toMatchInlineSnapshot(`
-    "At root[\\"age\\"] (optional):
+    At root["age"] (optional):
     Expected a number
-    Got: \\"30\\""
+    Got: "30"
+  `);
+});
+
+test("the main readme example – variant", () => {
+  const userDecoder = fieldsAuto({
+    full_name: string,
+    is_active: boolean,
+    age: optional(number),
+    interests: array(string),
+  });
+
+  type User = ReturnType<typeof userDecoder>;
+
+  const payload: unknown = getSomeJSON();
+
+  const user: User = userDecoder(payload);
+
+  expect(user).toStrictEqual({
+    full_name: "John Doe",
+    is_active: true,
+    age: 30,
+    interests: ["Programming", "Cooking"],
+  });
+
+  const payload2: unknown = getSomeInvalidJSON();
+
+  expect(run(userDecoder, payload2)).toMatchInlineSnapshot(`
+    At root["age"] (optional):
+    Expected a number
+    Got: "30"
   `);
 });
 
@@ -86,87 +116,6 @@ function getSomeInvalidJSON(): unknown {
     age: "30",
     interests: [],
   };
-}
-
-test("error messages", () => {
-  expect.addSnapshotSerializer({
-    test: (value: unknown): boolean => typeof value === "string",
-    print: String,
-  });
-
-  const accessoryDecoder = fieldsAuto({
-    id: string,
-    name: string,
-    discount: optional(number),
-  });
-
-  const productDecoder = fieldsAuto({
-    id: string,
-    name: string,
-    price: number,
-    accessories: array(accessoryDecoder),
-  });
-
-  const productsDecoder1 = array(productDecoder);
-
-  expect(run(productsDecoder1, getProducts())).toMatchInlineSnapshot(`
-    At root[1]["accessories"][0]["id"]:
-    Expected a string
-    Got: undefined
-  `);
-
-  expect(run(productsDecoder1, getProducts({ missingId: false })))
-    .toMatchInlineSnapshot(`
-      At root[1]["accessories"][0]["discount"] (optional):
-      Expected a number
-      Got: "5%"
-    `);
-});
-
-function getProducts({
-  missingId = true,
-}: { missingId?: boolean } = {}): unknown {
-  return [
-    {
-      id: "512971",
-      name: "Ergonomic Mouse",
-      image:
-        "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-      price: 499,
-      accessories: [],
-    },
-    {
-      id: "382973",
-      name: "Ergonomic Keyboard",
-      image:
-        "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-      price: 998,
-      accessories: [
-        {
-          ...(missingId ? {} : { id: "489382" }),
-          name: "Keycap Puller",
-          image:
-            "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-          discount: "5%",
-        },
-        {
-          id: 892873,
-          name: "Keycap Set",
-          image:
-            "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-          discount: null,
-        },
-      ],
-    },
-    {
-      id: "493673",
-      name: "Foot Pedals",
-      image:
-        "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
-      price: 299,
-      accessories: [],
-    },
-  ];
 }
 
 test("default vs sensitive error messages", () => {
