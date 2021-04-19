@@ -1218,6 +1218,13 @@ describe("optional", () => {
 
     const person2: Person2 = { name: "John" };
     void person2;
+
+    // @ts-expect-error Type 'string' does not satisfy the constraint 'Record<string, unknown>'.
+    type Fail1 = WithUndefinedAsOptional<ReturnType<typeof string>>;
+
+    const arrayDecoder = array(number);
+    // @ts-expect-error Type 'number[]' does not satisfy the constraint 'Record<string, unknown>'. Index signature is missing in type 'number[]'.
+    type Fail2 = WithUndefinedAsOptional<ReturnType<typeof arrayDecoder>>;
   });
 
   test("optional autoField", () => {

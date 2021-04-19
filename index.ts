@@ -6,7 +6,7 @@ export type Decoder<T, U = unknown> = (
   errors?: Array<DecoderError>
 ) => T;
 
-export type WithUndefinedAsOptional<T> = Expand<
+export type WithUndefinedAsOptional<T extends Record<string, unknown>> = Expand<
   { [P in OptionalKeys<T>]?: T[P] } & { [P in RequiredKeys<T>]: T[P] }
 >;
 
