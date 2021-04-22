@@ -51,7 +51,7 @@ try {
 }
 ```
 
-Here’s an example error:
+Here’s an example error message:
 
 ```
 At root["age"] (optional):
@@ -59,7 +59,7 @@ Expected a number
 Got: "30"
 ```
 
-If you use the same field names in both JSON and TypeScript there’s a shortcut.
+If you use the same field names in both JSON and TypeScript there’s a shortcut:
 
 ```ts
 const userDecoder2 = fieldsAuto({
@@ -82,7 +82,7 @@ The above produces this type:
 type User2 = {
   full_name: string;
   is_active: boolean;
-  age: number | undefined;
+  age?: number;
   interests: string[];
 };
 ```
@@ -377,8 +377,8 @@ type User = {
   age: number;
   active: boolean;
   name: string;
-  description: string | undefined;
-  legacyId: string | undefined;
+  description?: string;
+  legacyId?: number;
   version: 1;
 };
 
@@ -393,7 +393,7 @@ const userDecoder = fields(
     // Optional field:
     description: field("description", optional(string)),
     // Allowing a field to fail:
-    legacyId: field("extra_data", number, { default: undefined }),
+    legacyId: field("extra_data", number, { mode: { default: undefined } }),
     // Hardcoded field:
     version: 1,
   })
@@ -449,7 +449,7 @@ type User = {
   active: boolean;
 };
 
-const userDecoder = autoFields<User>({
+const userDecoder = fieldsAuto<User>({
   name: string,
   age: number,
   active: boolean,
@@ -770,7 +770,7 @@ The obvious type annotation for decoders is `: Decoder<T>`. But sometimes that�
 ```ts
 type Person = {
   name: string;
-  age: number | undefined;
+  age?: number;
 };
 
 // Annotate the return type of the callback.

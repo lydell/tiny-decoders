@@ -147,3 +147,77 @@ test("default vs sensitive error messages", () => {
     Got: number
   `);
 });
+
+test("fields", () => {
+  type User = {
+    age: number;
+    active: boolean;
+    name: string;
+    description?: string;
+    legacyId?: number;
+    version: 1;
+  };
+
+  const userDecoder = fields(
+    (field): User => ({
+      // Simple field:
+      age: field("age", number),
+      // Renaming a field:
+      active: field("is_active", boolean),
+      // Combining two fields:
+      name: `${field("first_name", string)} ${field("last_name", string)}`,
+      // Optional field:
+      description: field("description", optional(string)),
+      // Allowing a field to fail:
+      legacyId: field("extra_data", number, { mode: { default: undefined } }),
+      // Hardcoded field:
+      version: 1,
+    })
+  );
+
+  expect(
+    userDecoder({
+      age: 30,
+      is_active: true,
+      first_name: "John",
+      last_name: "Doe",
+      legacyId: "bad",
+    })
+  ).toStrictEqual({
+    active: true,
+    age: 30,
+    description: undefined,
+    legacyId: undefined,
+    name: "John Doe",
+    version: 1,
+  });
+
+  // Plucking a single field out of an object:
+  const ageDecoder: Decoder<number> = fields((field) => field("age", number));
+
+  expect(ageDecoder({ age: 30 })).toBe(30);
+});
+
+test("type annotations", () => {
+  type Person = {
+    name: string;
+    age?: number;
+  };
+
+  // Annotate the return type of the callback.
+  const personDecoder = fields(
+    (field): Person => ({
+      name: field("name", string),
+      age: field("age", optional(number)),
+    })
+  );
+
+  // Annotate the generic.
+  const personDecoderAuto = fieldsAuto<Person>({
+    name: string,
+    age: optional(number),
+  });
+
+  const data: unknown = { name: "John" };
+  expect(personDecoder(data)).toStrictEqual(personDecoderAuto(data));
+});
