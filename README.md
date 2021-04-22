@@ -782,7 +782,7 @@ const personDecoder = fields(
 );
 
 // Annotate the generic.
-const personDecoderAuto = autoFields<Person>({
+const personDecoderAuto = fieldsAuto<Person>({
   name: string,
   age: optional(number),
 });
