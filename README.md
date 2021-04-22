@@ -523,7 +523,7 @@ Example:
 ```ts
 type Point = [number, number];
 
-const pointDecoder = tuple([number, number]);
+const pointDecoder: Decoder<Point> = tuple([number, number]);
 ```
 
 See the [tuples example](examples/tuples.test.ts) for more details.
@@ -675,7 +675,7 @@ class DecoderError extends TypeError {
       | (DecoderErrorVariant & { key?: Key })
   );
 
-  static MISSING_VALUE: UniqueValue;
+  static MISSING_VALUE: symbol;
 
   static at(error: unknown, key: Key): DecoderError;
 
