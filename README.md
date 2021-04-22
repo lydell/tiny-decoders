@@ -807,19 +807,12 @@ const personDecoderAuto = autoFields({
   age: optional(number),
 });
 
-// If you want all fields to be required:
 type Person = ReturnType<typeof personDecoder>;
 // or:
 type Person = ReturnType<typeof personDecoderAuto>;
-
-// If you want fields that can be `undefined` to be optional:
-type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoder>>;
-// or:
-type Person = WithUndefinedAsOptional<ReturnType<typeof personDecoderAuto>>;
-// This changes all `key: T | undefined` to `key?: T | undefined` of an object.
 ```
 
-See the [type inference example](examples/type-inference.test.ts) and the [optional fields example](examples/optional-fields.test.ts) for more details.
+See the [type inference example](examples/type-inference.test.ts) for more details.
 
 ## Things left out
 

@@ -6,9 +6,9 @@ export type Decoder<T, U = unknown> = (
   errors?: Array<DecoderError>
 ) => T;
 
-export type WithUndefinedAsOptional<T extends Record<string, unknown>> = Expand<
-  { [P in OptionalKeys<T>]?: T[P] } & { [P in RequiredKeys<T>]: T[P] }
->;
+type WithUndefinedAsOptional<T> = T extends Record<string, unknown>
+  ? Expand<{ [P in OptionalKeys<T>]?: T[P] } & { [P in RequiredKeys<T>]: T[P] }>
+  : T;
 
 type RequiredKeys<T> = {
   [P in keyof T]: undefined extends T[P] ? never : P;
@@ -174,11 +174,11 @@ export function fields<T>(
     exact?: "allow extra" | "push" | "throw";
     allow?: "array" | "object";
   } = {}
-): Decoder<T> {
+): Decoder<WithUndefinedAsOptional<T>> {
   return function fieldsDecoder(
     value: unknown,
     errors?: Array<DecoderError>
-  ): T {
+  ): WithUndefinedAsOptional<T> {
     const object: Record<string, unknown> =
       allow === "array"
         ? ((unknownArray(value) as unknown) as Record<string, unknown>)
@@ -231,18 +231,18 @@ export function fields<T>(
       }
     }
 
-    return result;
+    return result as WithUndefinedAsOptional<T>;
   };
 }
 
 export function fieldsAuto<T extends Record<string, unknown>>(
   mapping: { [P in keyof T]: P extends "__proto__" ? never : Decoder<T[P]> },
   { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
-): Decoder<T> {
+): Decoder<WithUndefinedAsOptional<T>> {
   return function fieldsAutoDecoder(
     value: unknown,
     errors?: Array<DecoderError>
-  ): T {
+  ): WithUndefinedAsOptional<T> {
     const object = unknownRecord(value);
     const keys = Object.keys(mapping);
     const result: Record<string, unknown> = {};
@@ -283,7 +283,7 @@ export function fieldsAuto<T extends Record<string, unknown>>(
       }
     }
 
-    return result as T;
+    return result as WithUndefinedAsOptional<T>;
   };
 }
 
@@ -311,11 +311,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
     const tag = field(key, string);
     if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
       const decoder = (mapping as T)[tag];
-      return decoder(object, errors) as Expand<
-        Values<
-          { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
-        >
-      >;
+      return decoder(object, errors);
     }
     throw new DecoderError({
       tag: "unknown fieldsUnion tag",
@@ -323,7 +319,13 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
       got: tag,
       key,
     });
-  });
+  }) as Decoder<
+    Expand<
+      Values<
+        { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
+      >
+    >
+  >;
 }
 
 export function tuple<T extends ReadonlyArray<unknown>>(
