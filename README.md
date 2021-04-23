@@ -685,7 +685,25 @@ class DecoderError extends TypeError {
 
 The error thrown by all decoders. It keeps track of where in the JSON the error occurred.
 
-At the places where you actually call a decoder function (as opposed to just combining them into bigger and bigger structures), use a `try-catch` to catch errors. If `caughtError instanceof DecoderError`, then you can use `caughtError.format()` to get a nice string explaining what went wrong.
+At the places where you actually call a decoder function (as opposed to just combining them into bigger and bigger structures), use a `try-catch` to catch errors. You can use `.format()` on the caught error to get a nice string explaining what went wrong.
+
+```ts
+const myDecoder = array(string);
+
+try {
+  myDecoder(someUnknownValue);
+} catch (error) {
+  if (error instanceof DecoderError) {
+    console.error(error.format());
+  } else {
+    console.error(error);
+  }
+}
+```
+
+### constructor
+
+The constructor either takes a `DecoderErrorVariant` or a `{ message, value, key }` object.
 
 When creating a `DecoderError` you generally want to pass `message` and `value` rather than one of the existing `DecoderErrorVariant`s.
 
@@ -693,7 +711,38 @@ When creating a `DecoderError` you generally want to pass `message` and `value` 
 - `value` is the value being decoded that caused the error.
 - `key` is optional. If you’re at an object key or an array index you can pass that key to let the `DecoderError` know where the error occurred.
 
-Note: `DecoderError.at(error)` _mutates_ `error` if `error instanceof DecoderError`!
+### static at
+
+`DecoderError.at(error, key)` returns a `DecoderError` from `error` and marks it as it happened at `key`.
+
+For example, you could turn the keys of an object into regexes. If one key isn’t a valid regex, you can use `at` to make the error message point at that key rather than at the whole object.
+
+```ts
+const decoder: Decoder<Array<[RegExp, number]>> = Decode.chain(
+  Decode.record(Decode.number),
+  (record) =>
+    Object.entries(record).map(([key, value]) => {
+      try {
+        return [RegExp(key, "u"), value];
+      } catch (error) {
+        throw Decode.DecoderError.at(error, key);
+      }
+    })
+);
+```
+
+Note: `DecoderError.at(error)` _mutates_ `error` if `error instanceof DecoderError`! For other values, it creates a new `DecoderError` – and in this case, the value that caused the error is set to `DecoderError.MISSING_VALUE`.
+
+### format
+
+Turn the `DecoderError` into a nicely formatted string. It uses [repr](#repr) under the hood and takes the same options.
+
+If you want to format the error yourself in a custom way, look at these properties:
+
+- `.path`: The path into a JSON object/array to the value that caused the error.
+- `.variant`: The actual error.
+- `.nullable`: The error happened at a [nullable](#nullable).
+- `.optional`: The error happened at an [optional](#optional).
 
 ## repr
 
@@ -720,7 +769,7 @@ function repr(
 ): string;
 ```
 
-Takes any value, and returns a string representation of it for use in error messages. `DecoderError.prototype.format` uses it behind the scenes. If you want to do your own formatting, `repr` can be useful.
+Takes any value, and returns a string representation of it for use in error messages. [DecoderError.prototype.format](#format) uses it behind the scenes. If you want to do your own formatting, `repr` can be useful.
 
 Options:
 
