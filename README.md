@@ -22,6 +22,9 @@ import {
   string,
 } from "tiny-decoders";
 
+// You can also import into a namespace if you want:
+import * as Decode from "tiny-decoders";
+
 type User = {
   name: string;
   active: boolean;
