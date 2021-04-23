@@ -39,7 +39,9 @@ test("type annotations", () => {
   greet(personDecoder1Auto(testPerson));
 
   // The way to make the above type errors more clear is to provide explicit type
-  // annotations, so that TypeScript knows what you’re trying to do.
+  // annotations, so that TypeScript knows what you’re trying to do. And yes,
+  // this is the recommended way of adding the type annotations for `fields` and
+  // `fieldsAuto` – see the next section for why.
   const personDecoder2 = fields(
     (field): Person => ({
       name: field("name", string),

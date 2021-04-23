@@ -1,12 +1,12 @@
 import { array, DecoderError, fields, number, string } from "..";
 
 test("tolerant decoding", () => {
-  // If you have a record, an array or a dict and a single field or item fails
-  // to decode, you might not want the entire thing to fail. For example, you
-  // might want to use all the data that suceeded and swap in a default value
-  // for the part that failed, or skip failing items of an array. The `array`,
-  // `dict` and `fields` decoders let you specify how to handle failures, and
-  // where to save error messages. (By default, they _throw_ errors.)
+  // If you have an object or array and a single field or item fails to decode,
+  // you might not want the entire thing to fail. For example, you might want to
+  // use all the data that suceeded and swap in a default value for the part
+  // that failed, or skip failing items of an array. The `array`, `record` and
+  // `fields` decoders let you specify how to handle failures, and where to save
+  // error messages. (By default, they _throw_ errors.)
 
   const productDecoder = fields((field) => ({
     id: field("id", number),
@@ -33,18 +33,18 @@ test("tolerant decoding", () => {
       "name": "Apple",
     }
   `);
+  // Jest’s snapshots show the errors as `TypeError`. `DecoderError` subclasses `TypeError`.
   expect(errors).toMatchInlineSnapshot(`
     Array [
       [TypeError: Expected a string
     Got: {"html": string}],
     ]
   `);
-  // Jest’s snapshots show the errors as `TypeError`. `DecoderError` subclasses `TypeError`.
   for (const error of errors) {
     expect(error).toBeInstanceOf(DecoderError);
   }
 
-  // For `array` and `dict` you can also skip bad values.
+  // For `array` and `record` you can also skip bad values.
   const namesDecoder1 = array(string, { mode: "skip" });
   const namesDecoder2 = array(string, { mode: { default: "unknown" } });
 

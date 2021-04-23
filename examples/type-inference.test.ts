@@ -33,7 +33,7 @@ test("making a type from a decoder", () => {
   type Person1 = ReturnType<typeof personDecoder1>;
   expectType<TypeEqual<Person1, { name: string; age: number }>>(true);
 
-  // Hover over `Person2` to see what it looks like!
+  // Hover over `Person1Auto` to see what it looks like!
   type Person1Auto = ReturnType<typeof personDecoder1Auto>;
   expectType<TypeEqual<Person1Auto, { name: string; age: number }>>(true);
 
@@ -46,13 +46,9 @@ test("making a type from a decoder", () => {
 
   // If it feels like you are specifying everything twice – once in a `type` or
   // `interface`, and once in the decoder – you might find this `ReturnType`
-  // technique interesting. If annotating your decoders like shown earlier in this
-  // file (`fields((field): MyType => ({...}))` and `fieldsAuto<MyType>({...})`),
-  // TypeScript will make sure that your type definition and decoders stay in
-  // sync, so there’s little room for error there. But with the `ReturnType`
-  // approach you don’t have to write what your records look like “twice.”
-  // Personally I don’t always mind the “duplication,” but when you do – try out
-  // the `ReturnType` approach!
+  // technique interesting. But this `ReturnType` approach you don’t have to
+  // write what your records look like “twice.” Personally I don’t always mind
+  // the “duplication,” but when you do – try out the `ReturnType` approach!
 
   // Here’s a more complex example for trying out TypeScript’s inference.
   const userDecoder = fieldsAuto({

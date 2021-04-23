@@ -11,7 +11,7 @@ test("decoding unknown values", () => {
 
   const messageDecoder1 = fieldsAuto<Message>({
     text: string,
-    // All fields are already `mixed` so you can pass them through as-is.
+    // All fields are already `unknown` so you can pass them through as-is.
     data: (value) => value,
   });
   expect(messageDecoder1(message)).toMatchInlineSnapshot(`
