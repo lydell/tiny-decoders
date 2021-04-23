@@ -1,7 +1,6 @@
 import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import * as rimraf from "rimraf";
 
 const DIR = path.dirname(__dirname);
 const BUILD = path.join(DIR, "build");
@@ -26,7 +25,7 @@ const FILES_TO_COPY: Array<FileToCopy> = [
 ];
 
 if (fs.existsSync(BUILD)) {
-  rimraf.sync(BUILD);
+  fs.rmdirSync(BUILD, { recursive: true });
 }
 
 fs.mkdirSync(BUILD);
@@ -63,4 +62,4 @@ fs.renameSync(
   path.join(BUILD, "index.mjs")
 );
 
-rimraf.sync(MODULE_BUILD);
+fs.rmdirSync(MODULE_BUILD, { recursive: true });
