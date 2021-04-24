@@ -120,7 +120,7 @@ Most of the time you don’t need to think about this, though!
 
 ## Decoders
 
-Here’s a summary of all decoders:
+Here’s a summary of all decoders (with slightly simplified type annotations):
 
 <table>
 <thead>
@@ -354,7 +354,7 @@ function fields<T>(
     field: <U, V = never>(
       key: string,
       decoder: Decoder<U>,
-      options?: { mode?: "throw" | { default: V } }
+      { mode = "throw" }: { mode?: "throw" | { default: V } } = {}
     ) => U | V,
     object: Record<string, unknown>,
     errors?: Array<DecoderError>
@@ -441,7 +441,7 @@ function fieldsAuto<T extends Record<string, unknown>>(
 
 Decodes a JSON object with certain fields into a TypeScript object type/interface with known fields.
 
-This is for situations where the JSON keys and your TypeScript type keys have the same names, and you don’t need any advanced features from [fields](#fields), like renaming fields.
+This is for situations where the JSON keys and your TypeScript type keys have the same names, and you don’t need any advanced features from [fields](#fields).
 
 Example:
 
@@ -708,7 +708,7 @@ try {
 
 The constructor either takes a `DecoderErrorVariant` or a `{ message, value, key }` object.
 
-When creating a `DecoderError` you generally want to pass `message` and `value` rather than one of the existing `DecoderErrorVariant`s.
+When creating a `DecoderError` you generally want to pass `{ message, value, key }` rather than one of the existing `DecoderErrorVariant`s.
 
 - `message` is a string saying what went wrong.
 - `value` is the value being decoded that caused the error.
@@ -716,7 +716,7 @@ When creating a `DecoderError` you generally want to pass `message` and `value` 
 
 ### static at
 
-`DecoderError.at(error, key)` returns a `DecoderError` from `error` and marks it as it happened at `key`.
+`DecoderError.at(error, key)` returns a `DecoderError` from `error` and marks it as having happened at `key`.
 
 For example, you could turn the keys of an object into regexes. If one key isn’t a valid regex, you can use `at` to make the error message point at that key rather than at the whole object.
 
@@ -805,12 +805,12 @@ object["details"]["ssn"]: Expected a string, but got: number
 
 Since arrays and objects can hold multiple values, their decoders allow opting into tolerant decoding, where you can recover from errors, either by skipping values or providing defaults. Whenever that happens, the error that would otherwise have been thrown is pushed to an `errors` array (`Array<DecoderError>`, if provided), allowing you to inspect what was ignored. (Perhaps not the most beautiful API, but very simple.)
 
-For example, if you pass an `errors` array to a [fields] decoder, it will both push to the array and pass it along to its sub-decoders so they can push to it as well. If you make a custom decoder, you’ll have to remember to pass along `errors` as well when needed.
+For example, if you pass an `errors` array to a [fields](#fields) decoder, it will both push to the array and pass it along to its sub-decoders so they can push to it as well. If you make a custom decoder, you’ll have to remember to pass along `errors` as well when needed.
 
 Functions that support tolerant decoding take a `mode` option which can have the following values:
 
 - `"throw"` (default): Throws a `DecoderError` on the first invalid item.
-- `"skip"`: Items that fail are ignored. This means that a decoded array can be shorter than the input array – even empty! And a decoded object can have fewer keys that the input object. Errors are pushed to the `errors` array, if present. (Not available for [field][fields], since skipping doesn’t make sense it that case.)
+- `"skip"`: Items that fail are ignored. This means that a decoded array can be shorter than the input array – even empty! And a decoded object can have fewer keys that the input object. Errors are pushed to the `errors` array, if present. (Not available for [fields](#fields), since skipping doesn’t make sense it that case.)
 - `{ default: U }`: The passed default value is used for items that fail. A decoded array will always have the same length as the input array, and a decoded object will always have the same keys as the input object. Errors are pushed to the `errors` array, if present.
 
 See the [tolerant decoding example](examples/tolerant-decoding.test.ts) for more information.
@@ -842,11 +842,11 @@ const personDecoderAuto = fieldsAuto<Person>({
 
 That gives the best TypeScript error messages, and the most type safety.
 
-See the [type annotations](examples/type-annotations.test.ts) for more details.
+See the [type annotations example](examples/type-annotations.test.ts) for more details.
 
 ## Type inference
 
-Rather than first defining the type and then defining the decoder (which often feels like writing the type once again), you can _only_ define the decoder and then infer the type.
+Rather than first defining the type and then defining the decoder (which often feels like writing the type twice), you can _only_ define the decoder and then infer the type.
 
 ```ts
 const personDecoder = fields((field) => ({
@@ -859,16 +859,16 @@ const personDecoderAuto = autoFields({
   age: optional(number),
 });
 
-type Person = ReturnType<typeof personDecoder>;
-// or:
-type Person = ReturnType<typeof personDecoderAuto>;
+type Person1 = ReturnType<typeof personDecoder>;
+
+type Person2 = ReturnType<typeof personDecoderAuto>;
 ```
 
 See the [type inference example](examples/type-inference.test.ts) for more details.
 
 ## Things left out
 
-Here are some decoders I’ve left out. They are not needed, rarely needed and/or too trivial to be included in a decoding library _for the minimalist._
+Here are some decoders I’ve left out. They are rarely needed or not needed at all, and/or too trivial to be included in a decoding library _for the minimalist._
 
 ### lazy
 
@@ -917,4 +917,4 @@ This decoder would try `decoder1` first. If it fails, go on and try `decoder2`. 
 - If you want either a string or a number, use [multi](#multi). This let’s you switch between any JSON types.
 - For objects that can be decoded in different ways, use [fieldsUnion](#fieldsunion). If that’s not possible, use [fields](#fields) and look for the field(s) that tell which variant you’ve got. Then run the appropriate decoder for the rest of the object.
 
-The above approaches result in a much simpler [DecoderError](#decodererror) type, and also results in much better error messages, since there’s never a need to present something like “decoding failed in the following 5 ways: …”.
+The above approaches result in a much simpler [DecoderError](#decodererror) type, and also results in much better error messages, since there’s never a need to present something like “decoding failed in the following 2 ways: …”
