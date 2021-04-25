@@ -1,5 +1,11 @@
 import { array, DecoderError, fields, number, string } from "..";
 
+expect.addSnapshotSerializer({
+  test: (value: unknown): boolean =>
+    typeof value === "string" && value.includes("At root"),
+  print: String,
+});
+
 test("tolerant decoding", () => {
   // If you have an object or array and a single field or item fails to decode,
   // you might not want the entire thing to fail. For example, you might want to
@@ -36,9 +42,9 @@ test("tolerant decoding", () => {
   // Jest’s snapshots show the errors as `TypeError`. `DecoderError` subclasses `TypeError`.
   expect(errors.map((error) => error.format()).join("\n\n"))
     .toMatchInlineSnapshot(`
-    "At root[\\"description\\"]:
+    At root["description"]:
     Expected a string
-    Got: {\\"html\\": \\"<p>Delici…ruit.</p>\\"}"
+    Got: {"html": "<p>Delici…ruit.</p>"}
   `);
   for (const error of errors) {
     expect(error).toBeInstanceOf(DecoderError);
@@ -60,13 +66,13 @@ test("tolerant decoding", () => {
   `);
   expect(namesErrors.map((error) => error.format()).join("\n\n"))
     .toMatchInlineSnapshot(`
-    "At root[2]:
+    At root[2]:
     Expected a string
     Got: null
 
     At root[4]:
     Expected a string
-    Got: {\\"value\\": \\"Edgar\\"}"
+    Got: {"value": "Edgar"}
   `);
   expect(namesDecoder2(list)).toMatchInlineSnapshot(`
     Array [

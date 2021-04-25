@@ -223,33 +223,33 @@ describe("array", () => {
     test("throw", () => {
       expect(runWithErrorsArray(array(number), [1, "2", 3]))
         .toMatchInlineSnapshot(`
-        At root[1]:
-        Expected a number
-        Got: "2"
-      `);
+          At root[1]:
+          Expected a number
+          Got: "2"
+        `);
       expect(runWithErrorsArray(array(number, { mode: "throw" }), [1, "2", 3]))
         .toMatchInlineSnapshot(`
-        At root[1]:
-        Expected a number
-        Got: "2"
-      `);
+          At root[1]:
+          Expected a number
+          Got: "2"
+        `);
     });
 
     test("skip", () => {
       expect(runWithErrorsArray(array(number, { mode: "skip" }), [1, "2", 3]))
         .toMatchInlineSnapshot(`
-        Object {
-          "decoded": Array [
-            1,
-            3,
-          ],
-          "errors": Array [
-            At root[1]:
-        Expected a number
-        Got: "2",
-          ],
-        }
-      `);
+          Object {
+            "decoded": Array [
+              1,
+              3,
+            ],
+            "errors": Array [
+              At root[1]:
+          Expected a number
+          Got: "2",
+            ],
+          }
+        `);
     });
 
     test("default", () => {
@@ -297,10 +297,10 @@ describe("record", () => {
     `);
 
     expect(run(record(number), [1])).toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: [1]
-      `);
+      At root:
+      Expected an object
+      Got: [1]
+    `);
   });
 
   test("keys to regex", () => {
@@ -343,10 +343,10 @@ describe("record", () => {
     test("throw", () => {
       expect(runWithErrorsArray(record(number), { a: 1, b: "2", c: 3 }))
         .toMatchInlineSnapshot(`
-        At root["b"]:
-        Expected a number
-        Got: "2"
-      `);
+          At root["b"]:
+          Expected a number
+          Got: "2"
+        `);
       expect(
         runWithErrorsArray(record(number, { mode: "throw" }), {
           a: 1,
@@ -425,17 +425,17 @@ describe("fields", () => {
 
     expect(run(personDecoder, { id: "1", first_name: "John" }))
       .toMatchInlineSnapshot(`
-      At root["id"]:
-      Expected a number
-      Got: "1"
-    `);
+        At root["id"]:
+        Expected a number
+        Got: "1"
+      `);
 
     expect(run(personDecoder, { id: 1, firstName: "John" }))
       .toMatchInlineSnapshot(`
-      At root["first_name"]:
-      Expected a string
-      Got: undefined
-    `);
+        At root["first_name"]:
+        Expected a string
+        Got: undefined
+      `);
 
     expect(
       run(
@@ -443,10 +443,10 @@ describe("fields", () => {
         [1]
       )
     ).toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: [1]
-      `);
+      At root:
+      Expected an object
+      Got: [1]
+    `);
   });
 
   describe("mode", () => {
@@ -715,23 +715,23 @@ describe("fieldsAuto", () => {
 
     expect(run(personDecoder, { id: "1", firstName: "John" }))
       .toMatchInlineSnapshot(`
-      At root["id"]:
-      Expected a number
-      Got: "1"
-    `);
+        At root["id"]:
+        Expected a number
+        Got: "1"
+      `);
 
     expect(run(personDecoder, { id: 1, first_name: "John" }))
       .toMatchInlineSnapshot(`
-      At root["firstName"]:
-      Expected a string
-      Got: undefined
-    `);
+        At root["firstName"]:
+        Expected a string
+        Got: undefined
+      `);
 
     expect(run(fieldsAuto({ 0: number }), [1])).toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: [1]
-      `);
+      At root:
+      Expected an object
+      Got: [1]
+    `);
   });
 
   describe("exact", () => {
@@ -1244,10 +1244,10 @@ describe("optional", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"] (optional):
-      Expected a number
-      Got: "old"
-    `);
+        At root["age"] (optional):
+        Expected a number
+        Got: "old"
+      `);
 
     const person: Person = { name: "John" };
     void person;
@@ -1279,10 +1279,10 @@ describe("optional", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"] (optional):
-      Expected a number
-      Got: "old"
-    `);
+        At root["age"] (optional):
+        Expected a number
+        Got: "old"
+      `);
 
     const person: Person = { name: "John" };
     void person;
@@ -1387,10 +1387,10 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: undefined }))
       .toMatchInlineSnapshot(`
-      At root["age"] (nullable):
-      Expected a number
-      Got: undefined
-    `);
+        At root["age"] (nullable):
+        Expected a number
+        Got: undefined
+      `);
 
     expect(personDecoder({ name: "John", age: null })).toStrictEqual({
       name: "John",
@@ -1404,10 +1404,10 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"] (nullable):
-      Expected a number
-      Got: "old"
-    `);
+        At root["age"] (nullable):
+        Expected a number
+        Got: "old"
+      `);
 
     // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
     const person: Person = { name: "John" };
@@ -1431,10 +1431,10 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: undefined }))
       .toMatchInlineSnapshot(`
-      At root["age"] (nullable):
-      Expected a number
-      Got: undefined
-    `);
+        At root["age"] (nullable):
+        Expected a number
+        Got: undefined
+      `);
 
     expect(personDecoder({ name: "John", age: null })).toStrictEqual({
       name: "John",
@@ -1448,10 +1448,10 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-      At root["age"] (nullable):
-      Expected a number
-      Got: "old"
-    `);
+        At root["age"] (nullable):
+        Expected a number
+        Got: "old"
+      `);
 
     // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
     const person: Person = { name: "John" };

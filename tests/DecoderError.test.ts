@@ -23,9 +23,9 @@ describe("constructor", () => {
 
     // `.message` is sensitive.
     expect(error.message).toMatchInlineSnapshot(`
-          Expected a valid regex
-          Got: string
-      `);
+      Expected a valid regex
+      Got: string
+    `);
     expect(error2.message).toBe(error.message);
 
     expect(error.variant).toStrictEqual({
@@ -39,10 +39,10 @@ describe("constructor", () => {
     expect(error2.path).toStrictEqual(error.path);
 
     expect(error.format()).toMatchInlineSnapshot(`
-          At root:
-          Expected a valid regex
-          Got: "+"
-      `);
+      At root:
+      Expected a valid regex
+      Got: "+"
+    `);
     expect(error2.format()).toStrictEqual(error.format());
   });
 
