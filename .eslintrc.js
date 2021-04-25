@@ -164,7 +164,7 @@ module.exports = {
     "simple-import-sort/imports": warn,
     "use-isnan": error,
     curly: warn,
-    eqeqeq: warn,
+    eqeqeq: [warn, "always", { null: "ignore" }],
     yoda: warn,
   },
   overrides: [

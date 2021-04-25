@@ -1,6 +1,3 @@
-/* eslint-disable prefer-arrow-callback */
-/* eslint eqeqeq: ["error", "always", {null: "ignore"}] */
-
 export type Decoder<T, U = unknown> = (
   value: U,
   errors?: Array<DecoderError>
@@ -307,6 +304,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
     >
   >
 > {
+  // eslint-disable-next-line prefer-arrow-callback
   return fields(function fieldsUnionFields(field, object, errors) {
     const tag = field(key, string);
     if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
