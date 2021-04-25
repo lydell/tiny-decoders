@@ -1,8 +1,4 @@
-!/**/.eslintrc.js
-!/*.js
-*.snap
+.cache
+.eslintrc.js
+build
 coverage
-dist
-flow-typed/npm
-node_modules
-typescript

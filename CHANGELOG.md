@@ -1,3 +1,42 @@
+### Version 6.0.0 (unreleased)
+
+- Removed: Flow support. This package has been re-written in TypeScript and is now TypeScript only.
+
+- Changed: New API.
+
+  - Renamed: `map` → `chain`
+  - Renamed: `dict` → `record`
+  - Renamed: `pair` → `tuple`
+  - Renamed: `triple` → `tuple`
+  - Renamed: `autoFields` → `fieldsAuto`
+
+  - Removed: `lazy`. Use `fields` or `multi` instead.
+  - Removed: `either`. Use `multi` or `fields` instead.
+  - Removed: `constant`. I have not found any use case for it.
+  - Removed: `WithUndefinedAsOptional`. `fields` and `fieldsAuto` do that (adding `?` to optional fields) automatically.
+  - Removed: `repr.sensitive`. `repr` now takes a `sensitive: boolean` option instead, since you’re in control of formatting via `DecoderError`. For example, call `error.format({ sensitve: true })` on a caught `error` to format it sensitively.
+
+  - Added: `multi`
+  - Added: `tuple`
+  - Added: `stringUnion`
+  - Added: `fieldsUnion`
+  - Added: `nullable`
+  - Added: The `exact` option for `fields` and `fieldsAuto`, which lets you error on extraneous properties.
+
+  - Changed: `optional` now only deals with `undefined`, not `null`. Use `nullable` for `null`. Use both if you want to handle both `undefined` and `null`.
+  - Changed: Decoders now works on _either_ objects or arrays, not both. For example, `array` only accepts `Array`s, not array-like types. For array-like types, `instanceof`-check instead. `fields` still lets you work on arrays if you pass the `{ allow: "array" }`, for cases where `tuple` won’t cut it.
+  - Decoders that take options now take an _object_ of options. For example, change `array(string, { default: undefined })` into `array(string, { mode: { default: undefined } })`.
+
+- Changed: A few modern JavaScript features such as `class` and `...` spread are now used (which should be supported in all evergreen browsers, but not Internet Explorer).
+
+- Changed: Slightly different error messages.
+
+- Fixed: The package now works both in ESM and CJS.
+
+- Fixed: `record` and `fieldsAuto` now avoid assigning to `__proto__`. The TypeScript types won’t even let you do it!
+
+- Improved: The decoders now throw `DecoderError`s, which you can format in any way you like. Or just call `.format()` on them to go with the default formatting.
+
 ### Version 5.0.0 (2020-04-19)
 
 - Changed: `record` is now called `fields` and now works with both objects and arrays. Besides being more flexible, this reduces the footprint of the library and means there’s one thing less to learn.

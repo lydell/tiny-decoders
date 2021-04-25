@@ -1,5 +1,4 @@
+.cache
+build
 coverage
-dist
-flow-typed/npm
-.vscode
-
+*.json
