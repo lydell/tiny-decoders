@@ -34,11 +34,11 @@ test("tolerant decoding", () => {
     }
   `);
   // Jest’s snapshots show the errors as `TypeError`. `DecoderError` subclasses `TypeError`.
-  expect(errors).toMatchInlineSnapshot(`
-    Array [
-      [TypeError: Expected a string
-    Got: {"html": string}],
-    ]
+  expect(errors.map((error) => error.format()).join("\n\n"))
+    .toMatchInlineSnapshot(`
+    "At root[\\"description\\"]:
+    Expected a string
+    Got: {\\"html\\": \\"<p>Delici…ruit.</p>\\"}"
   `);
   for (const error of errors) {
     expect(error).toBeInstanceOf(DecoderError);
@@ -58,13 +58,15 @@ test("tolerant decoding", () => {
       "David",
     ]
   `);
-  expect(namesErrors).toMatchInlineSnapshot(`
-    Array [
-      [TypeError: Expected a string
-    Got: null],
-      [TypeError: Expected a string
-    Got: {"value": string}],
-    ]
+  expect(namesErrors.map((error) => error.format()).join("\n\n"))
+    .toMatchInlineSnapshot(`
+    "At root[2]:
+    Expected a string
+    Got: null
+
+    At root[4]:
+    Expected a string
+    Got: {\\"value\\": \\"Edgar\\"}"
   `);
   expect(namesDecoder2(list)).toMatchInlineSnapshot(`
     Array [
