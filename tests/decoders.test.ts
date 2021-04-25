@@ -328,9 +328,9 @@ describe("record", () => {
 
     expect(run(fieldsAuto({ regexes: decoder }), { regexes: bad }))
       .toMatchInlineSnapshot(`
-      At root["regexes"]:
-      Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier
-    `);
+        At root["regexes"]:
+        Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier
+      `);
   });
 
   test("ignores __proto__", () => {
@@ -888,10 +888,10 @@ describe("fieldsUnion", () => {
     `);
     expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
       .toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags: "constructor"
-      Got: "hasOwnProperty"
-    `);
+        At root["tag"]:
+        Expected one of these tags: "constructor"
+        Got: "hasOwnProperty"
+      `);
   });
 
   test("empty object is not allowed", () => {

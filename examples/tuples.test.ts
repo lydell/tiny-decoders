@@ -46,13 +46,13 @@ test("decoding tuples", () => {
   // `tuple` works with any number of values. Here’s an example with four values:
   expect(tuple([number, number, number, number])([1, 2, 3, 4]))
     .toMatchInlineSnapshot(`
-    Array [
-      1,
-      2,
-      3,
-      4,
-    ]
-  `);
+      Array [
+        1,
+        2,
+        3,
+        4,
+      ]
+    `);
 
   // But in such cases it’s probably nicer to switch to an object:
   const longTupleDecoder = fields(

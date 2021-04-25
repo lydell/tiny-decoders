@@ -369,9 +369,9 @@ test("making a type from a decoder – unions", () => {
 
   expect(userDecoder5({ type: "anonymous", sessionId: 1 }))
     .toMatchInlineSnapshot(`
-    Object {
-      "sessionId": 1,
-      "type": "anonymous",
-    }
-  `);
+      Object {
+        "sessionId": 1,
+        "type": "anonymous",
+      }
+    `);
 });
