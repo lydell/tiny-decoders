@@ -521,7 +521,7 @@ describe("fields", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "one", "two"
-        Found extra fields: ["three", "four"]
+        Found extra fields: "three", "four"
       `);
     });
 
@@ -542,9 +542,24 @@ describe("fields", () => {
           "errors": Array [
             At root:
         Expected only these fields: "one", "two"
-        Found extra fields: ["three", "four"],
+        Found extra fields: "three", "four",
           ],
         }
+      `);
+    });
+
+    test("large number of excess properties", () => {
+      expect(
+        run(
+          fields((field) => [field("1", boolean), field("2", boolean)], {
+            exact: "throw",
+          }),
+          Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false]))
+        )
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields: "1", "2"
+        Found extra fields: "0", "3", "4", "5", "6", (93 more)
       `);
     });
 
@@ -575,7 +590,7 @@ describe("fields", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "isAdmin", "name", "access"
-        Found extra fields: ["age"]
+        Found extra fields: "age"
       `);
 
       expect(
@@ -588,7 +603,7 @@ describe("fields", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "isAdmin", "name"
-        Found extra fields: ["access", "age"]
+        Found extra fields: "access", "age"
       `);
     });
   });
@@ -645,7 +660,7 @@ describe("fields", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: ["a"]
+      Found extra fields: "a"
     `);
   });
 
@@ -763,7 +778,7 @@ describe("fieldsAuto", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "one", "two"
-        Found extra fields: ["three", "four"]
+        Found extra fields: "three", "four"
       `);
     });
 
@@ -787,9 +802,22 @@ describe("fieldsAuto", () => {
           "errors": Array [
             At root:
         Expected only these fields: "one", "two"
-        Found extra fields: ["three", "four"],
+        Found extra fields: "three", "four",
           ],
         }
+      `);
+    });
+
+    test("large number of excess properties", () => {
+      expect(
+        run(
+          fieldsAuto({ "1": boolean, "2": boolean }, { exact: "throw" }),
+          Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false]))
+        )
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields: "1", "2"
+        Found extra fields: "0", "3", "4", "5", "6", (93 more)
       `);
     });
   });
@@ -814,7 +842,7 @@ describe("fieldsAuto", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: ["a"]
+      Found extra fields: "a"
     `);
   });
 });

@@ -582,7 +582,10 @@ function formatDecoderErrorVariant(
     case "exact fields":
       return `Expected only these fields: ${stringList(
         variant.knownFields
-      )}\nFound extra fields: ${formatGot(variant.got)}`;
+      )}\nFound extra fields: ${formatGot(variant.got).replace(
+        /^\[|\]$/g,
+        ""
+      )}`;
 
     case "tuple size":
       return `Expected ${variant.expected} items\nGot: ${variant.got}`;
