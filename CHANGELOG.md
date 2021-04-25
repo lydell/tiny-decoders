@@ -1,4 +1,4 @@
-### Version 6.0.0 (unreleased)
+### Version 6.0.0 (2021-04-25)
 
 - Removed: Flow support. This package has been re-written in TypeScript and is now TypeScript only.
 
