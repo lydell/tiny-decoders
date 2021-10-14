@@ -854,7 +854,7 @@ const personDecoder = fields((field) => ({
   age: field("age", optional(number)),
 }));
 
-const personDecoderAuto = autoFields({
+const personDecoderAuto = fieldsAuto({
   name: string,
   age: optional(number),
 });
