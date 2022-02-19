@@ -39,7 +39,10 @@ test("adding extra fields to records", () => {
   expect(productDecoder2(data)).toEqual(productDecoder1(data));
 
   // If you like, you can define this helper function:
-  const always = <T>(value: T) => (): T => value;
+  const always =
+    <T>(value: T) =>
+    (): T =>
+      value;
 
   const productDecoder3 = fieldsAuto<Product>({
     name: string,

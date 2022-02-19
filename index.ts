@@ -178,7 +178,7 @@ export function fields<T>(
   ): WithUndefinedAsOptional<T> {
     const object: Record<string, unknown> =
       allow === "array"
-        ? ((unknownArray(value) as unknown) as Record<string, unknown>)
+        ? (unknownArray(value) as unknown as Record<string, unknown>)
         : unknownRecord(value);
     const knownFields = Object.create(null) as Record<string, null>;
 
@@ -299,9 +299,9 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
       }
 ): Decoder<
   Expand<
-    Values<
-      { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
-    >
+    Values<{
+      [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never;
+    }>
   >
 > {
   // eslint-disable-next-line prefer-arrow-callback
@@ -319,9 +319,9 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
     });
   }) as Decoder<
     Expand<
-      Values<
-        { [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }
-      >
+      Values<{
+        [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never;
+      }>
     >
   >;
 }

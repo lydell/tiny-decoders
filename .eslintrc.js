@@ -56,7 +56,6 @@ module.exports = {
     ],
     "@typescript-eslint/no-invalid-this": error,
     "@typescript-eslint/no-invalid-void-type": error,
-    "@typescript-eslint/no-loop-func": error,
     "@typescript-eslint/no-loss-of-precision": error,
     "@typescript-eslint/no-misused-promises": error,
     "@typescript-eslint/no-namespace": error,
@@ -96,7 +95,11 @@ module.exports = {
     "@typescript-eslint/sort-type-union-intersection-members": warn,
     "@typescript-eslint/strict-boolean-expressions": [
       error,
-      { allowString: false, allowNumber: false, allowNullableObject: false },
+      {
+        allowString: false,
+        allowNumber: false,
+        allowNullableObject: false,
+      },
     ],
     "@typescript-eslint/switch-exhaustiveness-check": error,
     "@typescript-eslint/triple-slash-reference": warn,
@@ -132,6 +135,11 @@ module.exports = {
         selector: "SequenceExpression",
         message:
           "The comma operator is confusing and a common mistake. Don’t use it!",
+      },
+      {
+        selector: `CallExpression[callee.property.name="then"] > :nth-child(2)`,
+        message:
+          "Use .then(onSuccess).catch(onError) instead of .then(onSuccess, onError)",
       },
     ],
     "no-self-compare": error,
