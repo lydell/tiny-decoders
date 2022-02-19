@@ -795,7 +795,7 @@ Options:
 
 ## Error messages
 
-**If you just use `error.message` you’re missing out!**
+**If you just use `error.message`, you’re missing out!**
 
 `error.message` example:
 
@@ -823,7 +823,7 @@ Got: number
 It’s helpful when errors show you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
 
 - `error.message` hides potentially sensitive data so accidental uncaught errors don’t leak anything.
-- `error.format()` defaults to showing actual values. It also shows the “path” to the problematic value (which isn’t available at the time `error` is constructed, which is why `error.message` doesn’t contain the path.)
+- `error.format()` defaults to showing actual values. It also shows the “path” to the problematic value (which isn’t available at the time `error` is constructed, which is why `error.message` doesn’t contain the path).
 - `error.format({ sensitive: true })` can be used to hide potentially sensitive data. (See `ReprOptions`.)
 
 ## Tolerant decoding
