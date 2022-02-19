@@ -135,6 +135,21 @@ test("default vs sensitive error messages", () => {
     },
   };
 
+  let message = "Expected userDecoder to fail!";
+  try {
+    userDecoder(data);
+  } catch (error) {
+    message =
+      error instanceof Error ? error.message : `Unknown error: ${repr(error)}`;
+  }
+
+  expect(message).toMatchInlineSnapshot(`
+    Expected a string
+    Got: number
+
+    For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
+  `);
+
   expect(run(userDecoder, data)).toMatchInlineSnapshot(`
     At root["details"]["ssn"]:
     Expected a string

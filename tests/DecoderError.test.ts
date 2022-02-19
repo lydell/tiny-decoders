@@ -25,6 +25,8 @@ describe("constructor", () => {
     expect(error.message).toMatchInlineSnapshot(`
       Expected a valid regex
       Got: string
+
+      For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
     `);
     expect(error2.message).toBe(error.message);
 
@@ -63,6 +65,8 @@ describe("constructor", () => {
     expect(error.message).toMatchInlineSnapshot(`
       Expected a valid regex
       Got: string
+
+      For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
     `);
     expect(error2.message).toBe(error.message);
 
@@ -113,7 +117,11 @@ describe("static at", () => {
     const error2 = DecoderError.at(error, 0);
     expect(error2).not.toBe(error);
     expect(error2).toBeInstanceOf(DecoderError);
-    expect(error2.message).toMatchInlineSnapshot(`something broke`);
+    expect(error2.message).toMatchInlineSnapshot(`
+      something broke
+
+      For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
+    `);
     expect(error2.path).toStrictEqual([0]);
     expect(error2.variant).toStrictEqual({
       tag: "custom",
@@ -131,7 +139,11 @@ describe("static at", () => {
     const error2 = DecoderError.at(error, 0);
     expect(error2).not.toBe(error);
     expect(error2).toBeInstanceOf(DecoderError);
-    expect(error2.message).toMatchInlineSnapshot(`text,5`);
+    expect(error2.message).toMatchInlineSnapshot(`
+      text,5
+
+      For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
+    `);
     expect(error2.path).toStrictEqual([0]);
     expect(error2.variant).toStrictEqual({
       tag: "custom",

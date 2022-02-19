@@ -617,12 +617,12 @@ export class DecoderError extends TypeError {
         ? params
         : { tag: "custom", message: params.message, got: params.value };
     super(
-      formatDecoderErrorVariant(
+      `${formatDecoderErrorVariant(
         variant,
         // Default to sensitive so accidental uncaught errors don’t leak
         // anything. Explicit `.format()` defaults to non-sensitive.
         { sensitive: true }
-      )
+      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`
     );
     this.path = key === undefined ? [] : [key];
     this.variant = variant;

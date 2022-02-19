@@ -1,4 +1,4 @@
-# tiny-decoders ![no dependencies](https://img.shields.io/david/lydell/tiny-decoders.svg) [![minified size](https://img.shields.io/bundlephobia/min/tiny-decoders.svg)](https://bundlephobia.com/result?p=tiny-decoders)
+# tiny-decoders [![minified size](https://img.shields.io/bundlephobia/min/tiny-decoders.svg)](https://bundlephobia.com/result?p=tiny-decoders)
 
 Type-safe data decoding for the minimalist.
 
@@ -7,6 +7,12 @@ Type-safe data decoding for the minimalist.
 ```
 npm install tiny-decoders
 ```
+
+**Don’t miss out!**
+
+- 👉 [Decoders summary](#decoders)
+- 👉 [Optimal type annotations](#type-annotations)
+- 👉 [Great error messages](#error-messages)
 
 ## Example
 
@@ -47,6 +53,7 @@ try {
   const user: User = userDecoder(payload);
 } catch (error: unknown) {
   if (error instanceof DecoderError) {
+    // `error.format()` gives a nicer error message than `error.message`.
     console.error(error.format());
   } else {
     console.error(error);
@@ -483,7 +490,7 @@ function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
 >;
 ```
 
-Decodes JSON objects with a common string field (that tells them apart) and a TypeScript union type.
+Decodes JSON objects with a common string field (that tells them apart) into a TypeScript union type.
 
 The `key` is the name of the common string field.
 
@@ -697,6 +704,7 @@ try {
   myDecoder(someUnknownValue);
 } catch (error) {
   if (error instanceof DecoderError) {
+    // `error.format()` gives a nicer error message than `error.message`.
     console.error(error.format());
   } else {
     console.error(error);
@@ -785,21 +793,38 @@ Options:
 | recurseMaxLength | `number` | `20` | Like `maxLength`, but when recursing. One typically wants shorter lengths here to avoid overly long error messages. |
 | sensitive | `boolean` | `false` | Set it do `true` if you deal with sensitive data to avoid leaks. See below. |
 
-## Sensitive data
+## Error messages
 
-By default, the tiny-decoder’s error messages try to be helpful by showing you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
+**If you just use `error.message` you’re missing out!**
 
-Standard:
-
-```
-object["details"]["ssn"]: Expected a string, but got: 123456789
-```
-
-With `{ sensitive: true }` (in `ReprOptions`):
+`error.message` example:
 
 ```
-object["details"]["ssn"]: Expected a string, but got: number
+Expected a string
+Got: number
 ```
+
+`error.format()` example:
+
+```
+At root["details"]["ssn"]:
+Expected a string
+Got: 123456789
+```
+
+`error.format({ sensitive: true })` example:
+
+```
+At root["details"]["ssn"]:
+Expected a string
+Got: number
+```
+
+It’s helpful when errors show you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
+
+- `error.message` hides potentially sensitive data so accidental uncaught errors don’t leak anything.
+- `error.format()` defaults to showing actual values. It also shows the “path” to the problematic value (which isn’t available at the time `error` is constructed, which is why `error.message` doesn’t contain the path.)
+- `error.format({ sensitive: true })` can be used to hide potentially sensitive data. (See `ReprOptions`.)
 
 ## Tolerant decoding
 
