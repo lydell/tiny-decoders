@@ -24,7 +24,9 @@ const FILES_TO_COPY: Array<FileToCopy> = [
   },
 ];
 
-if (fs.existsSync(BUILD)) {
+if (fs.rmSync !== undefined) {
+  fs.rmSync(BUILD, { recursive: true, force: true });
+} else if (fs.existsSync(BUILD)) {
   fs.rmdirSync(BUILD, { recursive: true });
 }
 
@@ -62,4 +64,8 @@ fs.renameSync(
   path.join(BUILD, "index.mjs")
 );
 
-fs.rmdirSync(MODULE_BUILD, { recursive: true });
+if (fs.rmSync !== undefined) {
+  fs.rmSync(MODULE_BUILD, { recursive: true, force: true });
+} else if (fs.existsSync(MODULE_BUILD)) {
+  fs.rmdirSync(MODULE_BUILD, { recursive: true });
+}

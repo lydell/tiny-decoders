@@ -204,29 +204,27 @@ The new features adds half a kilobyte to the bundle, but it’s worth it.
         height: number;
       };
 
-  const shapeDecoder = record(
-    (field, fieldError): Shape => {
-      const type = field("type", string);
+  const shapeDecoder = record((field, fieldError): Shape => {
+    const type = field("type", string);
 
-      switch (type) {
-        case "Circle":
-          return {
-            type: "Circle",
-            radius: field("radius", number),
-          };
+    switch (type) {
+      case "Circle":
+        return {
+          type: "Circle",
+          radius: field("radius", number),
+        };
 
-        case "Rectangle":
-          return autoRecord({
-            type: "Rectangle",
-            width: field("width", number),
-            height: field("height", number),
-          });
+      case "Rectangle":
+        return autoRecord({
+          type: "Rectangle",
+          width: field("width", number),
+          height: field("height", number),
+        });
 
-        default:
-          throw fieldError("type", `Invalid Shape type: ${repr(type)}`);
-      }
+      default:
+        throw fieldError("type", `Invalid Shape type: ${repr(type)}`);
     }
-  );
+  });
   ```
 
 ### Version 2.0.0 (2019-06-07)
