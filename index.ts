@@ -540,7 +540,12 @@ function formatDecoderErrorVariant(
   variant: DecoderErrorVariant,
   options?: ReprOptions
 ): string {
-  const formatGot = (value: unknown): string => repr(value, options);
+  const formatGot = (value: unknown): string => {
+    const formatted = repr(value, options);
+    return options?.sensitive === true
+      ? `${formatted}\n(Actual values are hidden in sensitive mode.)`
+      : formatted;
+  };
 
   const stringList = (strings: Array<string>): string =>
     strings.length === 0
@@ -617,12 +622,12 @@ export class DecoderError extends TypeError {
         ? params
         : { tag: "custom", message: params.message, got: params.value };
     super(
-      formatDecoderErrorVariant(
+      `${formatDecoderErrorVariant(
         variant,
         // Default to sensitive so accidental uncaught errors don’t leak
         // anything. Explicit `.format()` defaults to non-sensitive.
         { sensitive: true }
-      )
+      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`
     );
     this.path = key === undefined ? [] : [key];
     this.variant = variant;

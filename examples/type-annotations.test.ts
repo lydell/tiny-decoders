@@ -30,7 +30,7 @@ test("type annotations", () => {
     name: string,
     aye: number,
   });
-  // Since TypesCript has inferred legit decoders above, it marks the following
+  // Since TypeScript has inferred legit decoders above, it marks the following
   // two calls as errors (you can’t pass an object with `aye` as a `Person`),
   // while the _real_ errors of course are in the decoders themselves.
   // @ts-expect-error Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.
