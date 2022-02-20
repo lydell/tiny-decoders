@@ -1,3 +1,8 @@
+### Version 6.0.1 (2022-02-20)
+
+- Improved: `.message` of `DecoderError`s now link to the docs, which point you to using `.format()` instead for better error messages.
+- Improved: Sensitive formatting now has `(Actual values are hidden in sensitive mode.)` in the message to make it more clear that it is _possible_ to get the actual values in the messages.
+
 ### Version 6.0.0 (2021-04-25)
 
 - Removed: Flow support. This package has been re-written in TypeScript and is now TypeScript only.
