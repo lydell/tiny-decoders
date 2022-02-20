@@ -25,6 +25,7 @@ describe("constructor", () => {
     expect(error.message).toMatchInlineSnapshot(`
       Expected a valid regex
       Got: string
+      (Actual values are hidden in sensitive mode.)
 
       For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
     `);
@@ -65,6 +66,7 @@ describe("constructor", () => {
     expect(error.message).toMatchInlineSnapshot(`
       Expected a valid regex
       Got: string
+      (Actual values are hidden in sensitive mode.)
 
       For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
     `);
@@ -189,6 +191,7 @@ describe("format", () => {
         At root:
         Expected a string
         Got: [string, Object(1), (1 more)]
+        (Actual values are hidden in sensitive mode.)
       `);
   });
 });

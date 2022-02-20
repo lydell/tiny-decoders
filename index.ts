@@ -540,7 +540,12 @@ function formatDecoderErrorVariant(
   variant: DecoderErrorVariant,
   options?: ReprOptions
 ): string {
-  const formatGot = (value: unknown): string => repr(value, options);
+  const formatGot = (value: unknown): string => {
+    const formatted = repr(value, options);
+    return options?.sensitive === true
+      ? `${formatted}\n(Actual values are hidden in sensitive mode.)`
+      : formatted;
+  };
 
   const stringList = (strings: Array<string>): string =>
     strings.length === 0

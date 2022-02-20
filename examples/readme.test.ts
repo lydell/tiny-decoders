@@ -146,6 +146,7 @@ test("default vs sensitive error messages", () => {
   expect(message).toMatchInlineSnapshot(`
     Expected a string
     Got: number
+    (Actual values are hidden in sensitive mode.)
 
     For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
   `);
@@ -160,6 +161,7 @@ test("default vs sensitive error messages", () => {
     At root["details"]["ssn"]:
     Expected a string
     Got: number
+    (Actual values are hidden in sensitive mode.)
   `);
 });
 

@@ -802,6 +802,7 @@ Options:
 ```
 Expected a string
 Got: number
+(Actual values are hidden in sensitive mode.)
 ```
 
 `error.format()` example:
@@ -818,6 +819,7 @@ Got: 123456789
 At root["details"]["ssn"]:
 Expected a string
 Got: number
+(Actual values are hidden in sensitive mode.)
 ```
 
 It’s helpful when errors show you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
