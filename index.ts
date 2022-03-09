@@ -3,6 +3,8 @@ export type Decoder<T, U = unknown> = (
   errors?: Array<DecoderError>
 ) => T;
 
+export type UnDecoder<D> = D extends Decoder<infer T> ? T : never;
+
 type WithUndefinedAsOptional<T> = T extends Record<string, unknown>
   ? Expand<{ [P in OptionalKeys<T>]?: T[P] } & { [P in RequiredKeys<T>]: T[P] }>
   : T;
