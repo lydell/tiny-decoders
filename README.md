@@ -115,15 +115,14 @@ tiny-decoders ships with a bunch of decoders, and a few functions to combine dec
 ### Advanced variant
 
 ```ts
-type Decoder<T, U = unknown> = (value: U, errors?: Array<DecoderError>) => T;
+type Decoder<T, U = unknown> = (value: U) => T;
 ```
 
-The above is the _full_ definition of a decoder.
-
-- The input value can be some other type (`U`) than `unknown` if you want.
-- Some decoders support [pushing errors to an array](#tolerant-decoding).
+The above is the _full_ definition of a decoder. The input value can be some other type (`U`) than `unknown` if you want.
 
 Most of the time you don’t need to think about this, though!
+
+> ℹ️ Some decoders used to support a second `errors` parameter. That is no longer a thing.
 
 ## Decoders
 
@@ -322,10 +321,7 @@ const colorDecoder: Decoder<Color> = stringUnion({
 ### array
 
 ```ts
-function array<T, U = never>(
-  decoder: Decoder<T>,
-  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
-): Decoder<Array<T | U>>;
+function array<T>(decoder: Decoder<T>): Decoder<Array<T>>;
 ```
 
 Decodes a JSON array into a TypeScript `Array`.
@@ -334,15 +330,10 @@ The passed `decoder` is for each item of the array.
 
 For example, `array(string)` decodes an array of strings (into `Array<string>`).
 
-For the `mode` option, see [Tolerant decoding](#tolerant-decoding).
-
 ### record
 
 ```ts
-function record<T, U = never>(
-  decoder: Decoder<T>,
-  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
-): Decoder<Record<string, T | U>>;
+function record<T>(decoder: Decoder<T>): Decoder<Record<string, T>>;
 ```
 
 Decodes a JSON object into a TypeScript `Record`. (Yes, this function is named after TypeScript’s type. Other languages call this a “dict”.)
@@ -351,26 +342,19 @@ The passed `decoder` is for each value of the object.
 
 For example, `record(number)` decodes an object where the keys can be anything and the values are numbers (into `Record<string, number>`).
 
-For the `mode` option, see [Tolerant decoding](#tolerant-decoding).
-
 ### fields
 
 ```ts
 function fields<T>(
   callback: (
-    field: <U, V = never>(
-      key: string,
-      decoder: Decoder<U>,
-      { mode = "throw" }: { mode?: "throw" | { default: V } } = {}
-    ) => U | V,
-    object: Record<string, unknown>,
-    errors?: Array<DecoderError>
+    field: <U>(key: string, decoder: Decoder<U>) => U,
+    object: Record<string, unknown>
   ) => T,
   {
     exact = "allow extra",
     allow = "object",
   }: {
-    exact?: "allow extra" | "push" | "throw";
+    exact?: "allow extra" | "throw";
     allow?: "array" | "object";
   } = {}
 ): Decoder<T>;
@@ -388,7 +372,6 @@ type User = {
   active: boolean;
   name: string;
   description?: string;
-  legacyId?: number;
   version: 1;
 };
 
@@ -402,8 +385,6 @@ const userDecoder = fields(
     name: `${field("first_name", string)} ${field("last_name", string)}`,
     // Optional field:
     description: field("description", optional(string)),
-    // Allowing a field to fail:
-    legacyId: field("extra_data", number, { mode: { default: undefined } }),
     // Hardcoded field:
     version: 1,
   })
@@ -413,9 +394,9 @@ const userDecoder = fields(
 const ageDecoder: Decoder<number> = fields((field) => field("age", number));
 ```
 
-`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better error messages and automatic handling of the `errors` array, if provided. The nice thing about `field` is that it does _not_ return a new decoder – but the value of that field! This means that you can do for instance `const type: string = field("type", string)` and then use `type` however you want inside your callback.
+`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better error messages. The nice thing about `field` is that it does _not_ return a new decoder – but the value of that field! This means that you can do for instance `const type: string = field("type", string)` and then use `type` however you want inside your callback.
 
-`object` and `errors` are passed in case you’d need them for some edge case, such as if you need to check stuff like `"my-key" in object`.
+`object` is passed in case you need to check stuff like `"my-key" in object`.
 
 Note that if your input object and the decoded object look exactly the same and you don’t need any advanced features it’s often more convenient to use [fieldsAuto](#fieldsauto).
 
@@ -424,12 +405,9 @@ Also note that you can return any type from the callback, not just objects. If y
 The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
 
 - `"allow extra"` (default) allows extra properties on the object (or extra indexes on an array).
-- `"push"` pushes a `DecoderError` for extra properties to the `errors` array, if present.
 - `"throw"` throws a `DecoderError` for extra properties.
 
 The `allow` option defaults to only allowing JSON objects. Set it to `"array"` if you are decoding an array.
-
-For the `mode` option, see [Tolerant decoding](#tolerant-decoding).
 
 More examples:
 
@@ -442,7 +420,7 @@ More examples:
 ```ts
 function fieldsAuto<T extends Record<string, unknown>>(
   mapping: { [P in keyof T]: Decoder<T[P]> },
-  { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
 ): Decoder<T> {
 ```
 
@@ -469,7 +447,6 @@ const userDecoder = fieldsAuto<User>({
 The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
 
 - `"allow extra"` (default) allows extra properties on the object.
-- `"push"` pushes a `DecoderError` for extra properties to the `errors` array, if present.
 - `"throw"` throws a `DecoderError` for extra properties.
 
 More examples:
@@ -828,20 +805,6 @@ It’s helpful when errors show you the actual values that failed decoding to ma
 - `error.format()` defaults to showing actual values. It also shows the “path” to the problematic value (which isn’t available at the time `error` is constructed, which is why `error.message` doesn’t contain the path).
 - `error.format({ sensitive: true })` can be used to hide potentially sensitive data. (See `ReprOptions`.)
 
-## Tolerant decoding
-
-Since arrays and objects can hold multiple values, their decoders allow opting into tolerant decoding, where you can recover from errors, either by skipping values or providing defaults. Whenever that happens, the error that would otherwise have been thrown is pushed to an `errors` array (`Array<DecoderError>`, if provided), allowing you to inspect what was ignored. (Perhaps not the most beautiful API, but very simple.)
-
-For example, if you pass an `errors` array to a [fields](#fields) decoder, it will both push to the array and pass it along to its sub-decoders so they can push to it as well. If you make a custom decoder, you’ll have to remember to pass along `errors` as well when needed.
-
-Functions that support tolerant decoding take a `mode` option which can have the following values:
-
-- `"throw"` (default): Throws a `DecoderError` on the first invalid item.
-- `"skip"`: Items that fail are ignored. This means that a decoded array can be shorter than the input array – even empty! And a decoded object can have fewer keys that the input object. Errors are pushed to the `errors` array, if present. (Not available for [fields](#fields), since skipping doesn’t make sense it that case.)
-- `{ default: U }`: The passed default value is used for items that fail. A decoded array will always have the same length as the input array, and a decoded object will always have the same keys as the input object. Errors are pushed to the `errors` array, if present.
-
-See the [tolerant decoding example](examples/tolerant-decoding.test.ts) for more information.
-
 ## Type annotations
 
 The obvious type annotation for decoders is `: Decoder<T>`. But sometimes that’s not the best choice, due to TypeScript quirks! For [fields](#fields) and [fieldsAuto](#fieldsAuto), the recommended approach is:
@@ -901,8 +864,8 @@ Here are some decoders I’ve left out. They are rarely needed or not needed at 
 
 ```ts
 export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
-  return function lazyDecoder(value: unknown, errors?: Array<DecoderError>): T {
-    return callback()(value, errors);
+  return function lazyDecoder(value: unknown): T {
+    return callback()(value);
   };
 ```
 

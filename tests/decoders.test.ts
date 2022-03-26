@@ -32,25 +32,6 @@ function run<T>(decoder: Decoder<T>, value: unknown): T | string {
   }
 }
 
-function runWithErrorsArray<T>(
-  decoder: Decoder<T>,
-  value: unknown
-): string | { decoded: T; errors: Array<string> } {
-  const errors: Array<DecoderError> = [];
-  try {
-    const decoded = decoder(value);
-    expect(decoder(value, errors)).toStrictEqual(decoded);
-    return {
-      decoded,
-      errors: errors.map((error) => error.format()),
-    };
-  } catch (error) {
-    return error instanceof DecoderError
-      ? error.format()
-      : "Not a DecoderError";
-  }
-}
-
 expect.addSnapshotSerializer({
   test: (value: unknown): boolean =>
     typeof value === "string" && value.includes("At root"),
@@ -218,59 +199,6 @@ describe("array", () => {
       Got: Int32Array
     `);
   });
-
-  describe("mode", () => {
-    test("throw", () => {
-      expect(runWithErrorsArray(array(number), [1, "2", 3]))
-        .toMatchInlineSnapshot(`
-          At root[1]:
-          Expected a number
-          Got: "2"
-        `);
-      expect(runWithErrorsArray(array(number, { mode: "throw" }), [1, "2", 3]))
-        .toMatchInlineSnapshot(`
-          At root[1]:
-          Expected a number
-          Got: "2"
-        `);
-    });
-
-    test("skip", () => {
-      expect(runWithErrorsArray(array(number, { mode: "skip" }), [1, "2", 3]))
-        .toMatchInlineSnapshot(`
-          Object {
-            "decoded": Array [
-              1,
-              3,
-            ],
-            "errors": Array [
-              At root[1]:
-          Expected a number
-          Got: "2",
-            ],
-          }
-        `);
-    });
-
-    test("default", () => {
-      expect(
-        runWithErrorsArray(array(number, { mode: { default: 0 } }), [1, "2", 3])
-      ).toMatchInlineSnapshot(`
-        Object {
-          "decoded": Array [
-            1,
-            0,
-            3,
-          ],
-          "errors": Array [
-            At root[1]:
-        Expected a number
-        Got: "2",
-          ],
-        }
-      `);
-    });
-  });
 });
 
 describe("record", () => {
@@ -338,73 +266,6 @@ describe("record", () => {
       run(record(number), JSON.parse(`{"a": 1, "__proto__": 2, "b": 3}`))
     ).toStrictEqual({ a: 1, b: 3 });
   });
-
-  describe("mode", () => {
-    test("throw", () => {
-      expect(runWithErrorsArray(record(number), { a: 1, b: "2", c: 3 }))
-        .toMatchInlineSnapshot(`
-          At root["b"]:
-          Expected a number
-          Got: "2"
-        `);
-      expect(
-        runWithErrorsArray(record(number, { mode: "throw" }), {
-          a: 1,
-          b: "2",
-          c: 3,
-        })
-      ).toMatchInlineSnapshot(`
-        At root["b"]:
-        Expected a number
-        Got: "2"
-      `);
-    });
-
-    test("skip", () => {
-      expect(
-        runWithErrorsArray(record(number, { mode: "skip" }), {
-          a: 1,
-          b: "2",
-          c: 3,
-        })
-      ).toMatchInlineSnapshot(`
-        Object {
-          "decoded": Object {
-            "a": 1,
-            "c": 3,
-          },
-          "errors": Array [
-            At root["b"]:
-        Expected a number
-        Got: "2",
-          ],
-        }
-      `);
-    });
-
-    test("default", () => {
-      expect(
-        runWithErrorsArray(record(number, { mode: { default: 0 } }), {
-          a: 1,
-          b: "2",
-          c: 3,
-        })
-      ).toMatchInlineSnapshot(`
-        Object {
-          "decoded": Object {
-            "a": 1,
-            "b": 0,
-            "c": 3,
-          },
-          "errors": Array [
-            At root["b"]:
-        Expected a number
-        Got: "2",
-          ],
-        }
-      `);
-    });
-  });
 });
 
 describe("fields", () => {
@@ -449,49 +310,6 @@ describe("fields", () => {
     `);
   });
 
-  describe("mode", () => {
-    test("throw", () => {
-      expect(
-        runWithErrorsArray(
-          fields((field) => field("test", number)),
-          { test: "2" }
-        )
-      ).toMatchInlineSnapshot(`
-        At root["test"]:
-        Expected a number
-        Got: "2"
-      `);
-      expect(
-        runWithErrorsArray(
-          fields((field) => field("test", number, { mode: "throw" })),
-          { test: "2" }
-        )
-      ).toMatchInlineSnapshot(`
-        At root["test"]:
-        Expected a number
-        Got: "2"
-      `);
-    });
-
-    test("default", () => {
-      expect(
-        runWithErrorsArray(
-          fields((field) => field("test", number, { mode: { default: 0 } })),
-          { test: "2" }
-        )
-      ).toMatchInlineSnapshot(`
-        Object {
-          "decoded": 0,
-          "errors": Array [
-            At root["test"]:
-        Expected a number
-        Got: "2",
-          ],
-        }
-      `);
-    });
-  });
-
   describe("exact", () => {
     test("allows excess properties by default", () => {
       expect(
@@ -522,29 +340,6 @@ describe("fields", () => {
         At root:
         Expected only these fields: "one", "two"
         Found extra fields: "three", "four"
-      `);
-    });
-
-    test("push error on excess properties", () => {
-      expect(
-        runWithErrorsArray(
-          fields((field) => [field("one", string), field("two", boolean)], {
-            exact: "push",
-          }),
-          { one: "a", two: true, three: 3, four: {} }
-        )
-      ).toMatchInlineSnapshot(`
-        Object {
-          "decoded": Array [
-            "a",
-            true,
-          ],
-          "errors": Array [
-            At root:
-        Expected only these fields: "one", "two"
-        Found extra fields: "three", "four",
-          ],
-        }
       `);
     });
 
@@ -643,14 +438,12 @@ describe("fields", () => {
     });
   });
 
-  test("obj and errors", () => {
+  test("obj", () => {
     const objInput = {};
-    const errorsInput: Array<DecoderError> = [];
-    const result = fields((_field, obj, errors) => {
+    const result = fields((_field, obj) => {
       expect(obj).toBe(objInput);
-      expect(errors).toBe(errorsInput);
       return 1;
-    })(objInput, errorsInput);
+    })(objInput);
     expect(result).toBe(1);
   });
 
@@ -779,32 +572,6 @@ describe("fieldsAuto", () => {
         At root:
         Expected only these fields: "one", "two"
         Found extra fields: "three", "four"
-      `);
-    });
-
-    test("push error on excess properties", () => {
-      expect(
-        runWithErrorsArray(
-          fieldsAuto({ one: string, two: boolean }, { exact: "push" }),
-          {
-            one: "a",
-            two: true,
-            three: 3,
-            four: {},
-          }
-        )
-      ).toMatchInlineSnapshot(`
-        Object {
-          "decoded": Object {
-            "one": "a",
-            "two": true,
-          },
-          "errors": Array [
-            At root:
-        Expected only these fields: "one", "two"
-        Found extra fields: "three", "four",
-          ],
-        }
       `);
     });
 
@@ -1555,199 +1322,5 @@ test("chain", () => {
     At root:
     Expected a number
     Got: "string"
-  `);
-});
-
-test("all decoders pass down errors", () => {
-  const subDecoder: Decoder<boolean | null> = fields((field) =>
-    field("test", boolean, { mode: { default: null } })
-  );
-
-  const decoder = fields((field) => ({
-    boolean: field("boolean", boolean, { mode: { default: undefined } }),
-    number: field("number", number, { mode: { default: undefined } }),
-    string: field("string", string, { mode: { default: undefined } }),
-    stringUnion: field("stringUnion", stringUnion({ a: null }), {
-      mode: { default: undefined },
-    }),
-    array: field("array", array(subDecoder), { mode: { default: undefined } }),
-    record: field("record", record(subDecoder), {
-      mode: { default: undefined },
-    }),
-    fields: field(
-      "fields",
-      fields((field2) => field2("field", subDecoder)),
-      {
-        mode: { default: undefined },
-      }
-    ),
-    arrayFields: field(
-      "arrayFields",
-      fields((field2) => field2("0", subDecoder), { allow: "array" }),
-      {
-        mode: { default: undefined },
-      }
-    ),
-    fieldsAuto: field("fieldsAuto", fieldsAuto({ field: subDecoder }), {
-      mode: { default: undefined },
-    }),
-    fieldsUnion: field("fieldsUnion", fieldsUnion("tag", { a: subDecoder }), {
-      mode: { default: undefined },
-    }),
-    tuple1: field("tuple1", tuple([subDecoder]), {
-      mode: { default: undefined },
-    }),
-    tuple2: field("tuple2", tuple([subDecoder, boolean]), {
-      mode: { default: undefined },
-    }),
-    tuple3: field("tuple3", tuple([boolean, boolean, subDecoder]), {
-      mode: { default: undefined },
-    }),
-    multi1: field("multi1", multi({ boolean, object: subDecoder }), {
-      mode: { default: undefined },
-    }),
-    multi2: field("multi2", multi({ object: subDecoder, boolean }), {
-      mode: { default: undefined },
-    }),
-    optional: field("optional", optional(subDecoder), {
-      mode: { default: undefined },
-    }),
-    nullable: field("nullable", nullable(subDecoder), {
-      mode: { default: undefined },
-    }),
-    chain1: field("chain1", chain(subDecoder, multi({ null: (x) => x })), {
-      mode: { default: undefined },
-    }),
-    chain2: field(
-      "chain2",
-      chain((value) => value, subDecoder),
-      {
-        mode: { default: undefined },
-      }
-    ),
-  }));
-
-  const subData: unknown = { test: 0 };
-
-  const data: unknown = {
-    boolean: 0,
-    number: false,
-    string: false,
-    stringUnion: false,
-    array: [subData],
-    record: { key: subData },
-    fields: { field: subData },
-    arrayFields: [subData],
-    fieldsAuto: { field: subData },
-    fieldsUnion: { tag: "a", test: 0 },
-    tuple1: [subData],
-    tuple2: [subData, true],
-    tuple3: [true, true, subData],
-    multi1: subData,
-    multi2: subData,
-    optional: subData,
-    nullable: subData,
-    chain1: subData,
-    chain2: subData,
-  };
-
-  expect(runWithErrorsArray(decoder, data)).toMatchInlineSnapshot(`
-    Object {
-      "decoded": Object {
-        "array": Array [
-          null,
-        ],
-        "arrayFields": null,
-        "boolean": undefined,
-        "chain1": null,
-        "chain2": null,
-        "fields": null,
-        "fieldsAuto": Object {
-          "field": null,
-        },
-        "fieldsUnion": null,
-        "multi1": null,
-        "multi2": null,
-        "nullable": null,
-        "number": undefined,
-        "optional": null,
-        "record": Object {
-          "key": null,
-        },
-        "string": undefined,
-        "stringUnion": undefined,
-        "tuple1": Array [
-          null,
-        ],
-        "tuple2": Array [
-          null,
-          true,
-        ],
-        "tuple3": Array [
-          true,
-          true,
-          null,
-        ],
-      },
-      "errors": Array [
-        At root["boolean"]:
-    Expected a boolean
-    Got: 0,
-        At root["number"]:
-    Expected a number
-    Got: false,
-        At root["string"]:
-    Expected a string
-    Got: false,
-        At root["stringUnion"]:
-    Expected a string
-    Got: false,
-        At root["array"][0]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["record"]["key"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["fields"]["field"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["arrayFields"]["0"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["fieldsAuto"]["field"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["fieldsUnion"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["tuple1"][0]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["tuple2"][0]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["tuple3"][2]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["multi1"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["multi2"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["optional"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["nullable"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["chain1"]["test"]:
-    Expected a boolean
-    Got: 0,
-        At root["chain2"]["test"]:
-    Expected a boolean
-    Got: 0,
-      ],
-    }
   `);
 });

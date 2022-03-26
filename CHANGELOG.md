@@ -1,3 +1,15 @@
+### Version 7.0.0 (unreleased)
+
+- Changed: Removed “tolerant decoding”:
+
+  - Decoders no longer take an optional second `errors` parameter.
+  - The `mode` option has been removed from `array`, `record` and `field`.
+  - The `"push"` value has been removed from the `exact` option of `fields` and `fieldsAuto`.
+
+  Out of all the projects I’ve used tiny-decoders in, only one of them has used this feature. And even in that case it was overkill. Regular all-or-nothing decoding is enough.
+
+  Removing this feature makes tiny-decoders easier to understand, and tinier, which is the goal.
+
 ### Version 6.0.1 (2022-02-20)
 
 - Improved: `.message` of `DecoderError`s now link to the docs, which point you to using `.format()` instead for better error messages.
