@@ -155,10 +155,10 @@ describe("stringUnion", () => {
   });
 
   test("keys must be strings", () => {
-    // @ts-expect-error Type 'null' is not assignable to type '"stringUnion keys must be strings, not numbers"'.
+    // @ts-expect-error Type 'null' is not assignable to type '["stringUnion keys must be strings, not numbers", never]'.
     stringUnion({ 1: null });
-    // @ts-expect-error Type 'string' is not assignable to type 'null'.
-    stringUnion({ 1: "stringUnion keys must be strings, not numbers" });
+    // @ts-expect-error Type 'null' is not assignable to type 'never'.
+    stringUnion({ 1: ["stringUnion keys must be strings, not numbers", null] });
     const goodDecoder = stringUnion({ "1": null });
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, "1">>(true);
     expect(goodDecoder("1")).toBe("1");

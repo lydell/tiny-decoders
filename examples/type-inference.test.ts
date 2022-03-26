@@ -375,3 +375,38 @@ test("making a type from a decoder – unions", () => {
       }
     `);
 });
+
+test("making a type from an object and stringUnion", () => {
+  // Imagine this being the popular `chalk` terminal coloring package.
+  const chalk = {
+    hex:
+      (hex: string) =>
+      (text: string): string =>
+        `${hex}:${text}`,
+  };
+
+  // An object with severity names and a corresponding color.
+  const SEVERITIES = {
+    Low: "007CBB",
+    Medium: "FFA500",
+    High: "E64524",
+    Critical: "FF0000",
+  } as const;
+
+  // Create a type from the object, for just the severity names.
+  type Severity = keyof typeof SEVERITIES;
+  expectType<TypeEqual<Severity, "Critical" | "High" | "Low" | "Medium">>(true);
+
+  // Make a decoder for the severity names out of the object.
+  // The values in the object passed to `stringUnion` are typically `null`,
+  // but this is a good use case for allowing other values (strings in this case).
+  const severityDecoder = stringUnion(SEVERITIES);
+  expectType<TypeEqual<Severity, ReturnType<typeof severityDecoder>>>(true);
+  expect(severityDecoder("High")).toBe("High");
+
+  // Use the object to to color text.
+  function coloredSeverity(severity: Severity): string {
+    return chalk.hex(SEVERITIES[severity])(severity);
+  }
+  expect(coloredSeverity("Low")).toBe("007CBB:Low");
+});
