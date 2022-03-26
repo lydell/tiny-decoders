@@ -171,7 +171,6 @@ test("fields", () => {
     active: boolean;
     name: string;
     description?: string;
-    legacyId?: number;
     version: 1;
   };
 
@@ -185,8 +184,6 @@ test("fields", () => {
       name: `${field("first_name", string)} ${field("last_name", string)}`,
       // Optional field:
       description: field("description", optional(string)),
-      // Allowing a field to fail:
-      legacyId: field("extra_data", number, { mode: { default: undefined } }),
       // Hardcoded field:
       version: 1,
     })
@@ -198,13 +195,11 @@ test("fields", () => {
       is_active: true,
       first_name: "John",
       last_name: "Doe",
-      legacyId: "bad",
     })
   ).toStrictEqual({
     active: true,
     age: 30,
     description: undefined,
-    legacyId: undefined,
     name: "John Doe",
     version: 1,
   });

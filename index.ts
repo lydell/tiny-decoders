@@ -1,7 +1,4 @@
-export type Decoder<T, U = unknown> = (
-  value: U,
-  errors?: Array<DecoderError>
-) => T;
+export type Decoder<T, U = unknown> = (value: U) => T;
 
 type WithUndefinedAsOptional<T> = T extends Record<string, unknown>
   ? Expand<{ [P in OptionalKeys<T>]?: T[P] } & { [P in RequiredKeys<T>]: T[P] }>
@@ -78,75 +75,35 @@ function unknownRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function array<T, U = never>(
-  decoder: Decoder<T>,
-  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
-): Decoder<Array<T | U>> {
-  return function arrayDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): Array<T | U> {
+export function array<T>(decoder: Decoder<T>): Decoder<Array<T>> {
+  return function arrayDecoder(value: unknown): Array<T> {
     const arr = unknownArray(value);
     const result = [];
     for (let index = 0; index < arr.length; index++) {
       try {
-        const localErrors: Array<DecoderError> = [];
-        result.push(decoder(arr[index], localErrors));
-        if (errors != null) {
-          errors.push(
-            ...localErrors.map((error) => DecoderError.at(error, index))
-          );
-        }
+        result.push(decoder(arr[index]));
       } catch (error) {
-        if (mode === "throw") {
-          throw DecoderError.at(error, index);
-        }
-        if (errors != null) {
-          errors.push(DecoderError.at(error, index));
-        }
-        if (typeof mode !== "string") {
-          result.push(mode.default);
-        }
+        throw DecoderError.at(error, index);
       }
     }
     return result;
   };
 }
 
-export function record<T, U = never>(
-  decoder: Decoder<T>,
-  { mode = "throw" }: { mode?: "skip" | "throw" | { default: U } } = {}
-): Decoder<Record<string, T | U>> {
-  return function recordDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): Record<string, T | U> {
+export function record<T>(decoder: Decoder<T>): Decoder<Record<string, T>> {
+  return function recordDecoder(value: unknown): Record<string, T> {
     const object = unknownRecord(value);
     const keys = Object.keys(object);
-    const result: Record<string, T | U> = {};
+    const result: Record<string, T> = {};
 
     for (const key of keys) {
       if (key === "__proto__") {
         continue;
       }
       try {
-        const localErrors: Array<DecoderError> = [];
-        result[key] = decoder(object[key], localErrors);
-        if (errors != null) {
-          errors.push(
-            ...localErrors.map((error) => DecoderError.at(error, key))
-          );
-        }
+        result[key] = decoder(object[key]);
       } catch (error) {
-        if (mode === "throw") {
-          throw DecoderError.at(error, key);
-        }
-        if (errors != null) {
-          errors.push(DecoderError.at(error, key));
-        }
-        if (typeof mode !== "string") {
-          result[key] = mode.default;
-        }
+        throw DecoderError.at(error, key);
       }
     }
 
@@ -156,75 +113,46 @@ export function record<T, U = never>(
 
 export function fields<T>(
   callback: (
-    field: <U, V = never>(
-      key: string,
-      decoder: Decoder<U>,
-      options?: { mode?: "throw" | { default: V } }
-    ) => U | V,
-    object: Record<string, unknown>,
-    errors?: Array<DecoderError>
+    field: <U>(key: string, decoder: Decoder<U>) => U,
+    object: Record<string, unknown>
   ) => T,
   {
     exact = "allow extra",
     allow = "object",
   }: {
-    exact?: "allow extra" | "push" | "throw";
+    exact?: "allow extra" | "throw";
     allow?: "array" | "object";
   } = {}
 ): Decoder<WithUndefinedAsOptional<T>> {
-  return function fieldsDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): WithUndefinedAsOptional<T> {
+  return function fieldsDecoder(value: unknown): WithUndefinedAsOptional<T> {
     const object: Record<string, unknown> =
       allow === "array"
         ? (unknownArray(value) as unknown as Record<string, unknown>)
         : unknownRecord(value);
     const knownFields = Object.create(null) as Record<string, null>;
 
-    function field<U, V = never>(
-      key: string,
-      decoder: Decoder<U>,
-      { mode = "throw" }: { mode?: "throw" | { default: V } } = {}
-    ): U | V {
+    function field<U>(key: string, decoder: Decoder<U>): U {
       try {
-        const localErrors: Array<DecoderError> = [];
-        const result = decoder(object[key], localErrors);
-        if (errors != null) {
-          errors.push(
-            ...localErrors.map((error) => DecoderError.at(error, key))
-          );
-        }
+        const result = decoder(object[key]);
         knownFields[key] = null;
         return result;
       } catch (error) {
-        if (mode === "throw") {
-          throw DecoderError.at(error, key);
-        }
-        if (errors != null) {
-          errors.push(DecoderError.at(error, key));
-        }
-        return mode.default;
+        throw DecoderError.at(error, key);
       }
     }
 
-    const result = callback(field, object, errors);
+    const result = callback(field, object);
 
     if (exact !== "allow extra") {
       const unknownFields = Object.keys(object).filter(
         (key) => !Object.prototype.hasOwnProperty.call(knownFields, key)
       );
       if (unknownFields.length > 0) {
-        const error = new DecoderError({
+        throw new DecoderError({
           tag: "exact fields",
           knownFields: Object.keys(knownFields),
           got: unknownFields,
         });
-        if (exact === "throw") {
-          throw error;
-        } else if (errors != null) {
-          errors.push(error);
-        }
       }
     }
 
@@ -234,11 +162,10 @@ export function fields<T>(
 
 export function fieldsAuto<T extends Record<string, unknown>>(
   mapping: { [P in keyof T]: P extends "__proto__" ? never : Decoder<T[P]> },
-  { exact = "allow extra" }: { exact?: "allow extra" | "push" | "throw" } = {}
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
 ): Decoder<WithUndefinedAsOptional<T>> {
   return function fieldsAutoDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
+    value: unknown
   ): WithUndefinedAsOptional<T> {
     const object = unknownRecord(value);
     const keys = Object.keys(mapping);
@@ -250,13 +177,7 @@ export function fieldsAuto<T extends Record<string, unknown>>(
       }
       const decoder = mapping[key];
       try {
-        const localErrors: Array<DecoderError> = [];
-        result[key] = decoder(object[key], localErrors);
-        if (errors != null) {
-          errors.push(
-            ...localErrors.map((error) => DecoderError.at(error, key))
-          );
-        }
+        result[key] = decoder(object[key]);
       } catch (error) {
         throw DecoderError.at(error, key);
       }
@@ -267,16 +188,11 @@ export function fieldsAuto<T extends Record<string, unknown>>(
         (key) => !Object.prototype.hasOwnProperty.call(mapping, key)
       );
       if (unknownFields.length > 0) {
-        const error = new DecoderError({
+        throw new DecoderError({
           tag: "exact fields",
           knownFields: keys,
           got: unknownFields,
         });
-        if (exact === "throw") {
-          throw error;
-        } else if (errors != null) {
-          errors.push(error);
-        }
       }
     }
 
@@ -305,11 +221,11 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   >
 > {
   // eslint-disable-next-line prefer-arrow-callback
-  return fields(function fieldsUnionFields(field, object, errors) {
+  return fields(function fieldsUnionFields(field, object) {
     const tag = field(key, string);
     if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
       const decoder = (mapping as T)[tag];
-      return decoder(object, errors);
+      return decoder(object);
     }
     throw new DecoderError({
       tag: "unknown fieldsUnion tag",
@@ -329,10 +245,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
 export function tuple<T extends ReadonlyArray<unknown>>(
   mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
 ): Decoder<[...T]> {
-  return function tupleDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): [...T] {
+  return function tupleDecoder(value: unknown): [...T] {
     const arr = unknownArray(value);
     if (arr.length !== mapping.length) {
       throw new DecoderError({
@@ -345,13 +258,7 @@ export function tuple<T extends ReadonlyArray<unknown>>(
     for (let index = 0; index < arr.length; index++) {
       try {
         const decoder = mapping[index];
-        const localErrors: Array<DecoderError> = [];
-        result.push(decoder(arr[index], localErrors));
-        if (errors != null) {
-          errors.push(
-            ...localErrors.map((error) => DecoderError.at(error, index))
-          );
-        }
+        result.push(decoder(arr[index]));
       } catch (error) {
         throw DecoderError.at(error, index);
       }
@@ -378,36 +285,35 @@ export function multi<
   object?: Decoder<T7, Record<string, unknown>>;
 }): Decoder<T1 | T2 | T3 | T4 | T5 | T6 | T7> {
   return function multiDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
+    value: unknown
   ): T1 | T2 | T3 | T4 | T5 | T6 | T7 {
     if (value === undefined) {
       if (mapping.undefined !== undefined) {
-        return mapping.undefined(value, errors);
+        return mapping.undefined(value);
       }
     } else if (value === null) {
       if (mapping.null !== undefined) {
-        return mapping.null(value, errors);
+        return mapping.null(value);
       }
     } else if (typeof value === "boolean") {
       if (mapping.boolean !== undefined) {
-        return mapping.boolean(value, errors);
+        return mapping.boolean(value);
       }
     } else if (typeof value === "number") {
       if (mapping.number !== undefined) {
-        return mapping.number(value, errors);
+        return mapping.number(value);
       }
     } else if (typeof value === "string") {
       if (mapping.string !== undefined) {
-        return mapping.string(value, errors);
+        return mapping.string(value);
       }
     } else if (Array.isArray(value)) {
       if (mapping.array !== undefined) {
-        return mapping.array(value, errors);
+        return mapping.array(value);
       }
     } else {
       if (mapping.object !== undefined) {
-        return mapping.object(value as Record<string, unknown>, errors);
+        return mapping.object(value as Record<string, unknown>);
       }
     }
     throw new DecoderError({
@@ -429,15 +335,12 @@ export function optional<T, U = undefined>(
   decoder: Decoder<T>,
   defaultValue?: U
 ): Decoder<T | U> {
-  return function optionalDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): T | U {
+  return function optionalDecoder(value: unknown): T | U {
     if (value === undefined) {
       return defaultValue as T | U;
     }
     try {
-      return decoder(value, errors);
+      return decoder(value);
     } catch (error) {
       const newError = DecoderError.at(error);
       if (newError.path.length === 0) {
@@ -460,15 +363,12 @@ export function nullable<T, U = null>(
   ...rest: Array<unknown>
 ): Decoder<T | U> {
   const defaultValue = rest.length === 0 ? null : rest[0];
-  return function nullableDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): T | U {
+  return function nullableDecoder(value: unknown): T | U {
     if (value === null) {
       return defaultValue as T | U;
     }
     try {
-      return decoder(value, errors);
+      return decoder(value);
     } catch (error) {
       const newError = DecoderError.at(error);
       if (newError.path.length === 0) {
@@ -483,11 +383,8 @@ export function chain<T, U>(
   decoder: Decoder<T>,
   next: Decoder<U, T>
 ): Decoder<U> {
-  return function chainDecoder(
-    value: unknown,
-    errors?: Array<DecoderError>
-  ): U {
-    return next(decoder(value, errors), errors);
+  return function chainDecoder(value: unknown): U {
+    return next(decoder(value));
   };
 }
 
