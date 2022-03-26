@@ -404,7 +404,7 @@ test("making a type from an object and stringUnion", () => {
   expectType<TypeEqual<Severity, ReturnType<typeof severityDecoder>>>(true);
   expect(severityDecoder("High")).toBe("High");
 
-  // Use the object to to color text.
+  // Use the object to color text.
   function coloredSeverity(severity: Severity): string {
     return chalk.hex(SEVERITIES[severity])(severity);
   }
