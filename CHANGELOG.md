@@ -10,6 +10,8 @@
 
   Removing this feature makes tiny-decoders easier to understand, and tinier, which is the goal.
 
+- Changed: `stringUnion` now accepts `Record<string, unknown>` instead of `Record<string, null>`. If you already have an object with the correct keys but non-null values, then it can be handy to be able to use that object.
+
 ### Version 6.0.1 (2022-02-20)
 
 - Improved: `.message` of `DecoderError`s now link to the docs, which point you to using `.format()` instead for better error messages.
