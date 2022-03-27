@@ -298,14 +298,16 @@ Decodes a JSON string into a TypeScript `string`.
 ### stringUnion
 
 ```ts
-function stringUnion<T extends Record<string, null>>(
+function stringUnion<T extends Record<string, unknown>>(
   mapping: T
 ): Decoder<keyof T>;
 ```
 
 Decodes a set of specific JSON strings into a TypeScript union of those strings.
 
-The `mapping` is an object where the keys are the strings you want and the values are always `null`. The keys must be strings (not numbers) and you must provide at least one key.
+The `mapping` is an object where the keys are the strings you want. The keys must be strings (not numbers) and you must provide at least one key.
+
+The values in the object can be anything – they don’t matter. The convention is to use `null` as values. If you already have an object with the correct keys but non-null values, then it can be handy to be able to use that object – that’s why any values are allowed. There’s an example of that in the [type inference file](examples/type-inference.test.ts).
 
 Example:
 

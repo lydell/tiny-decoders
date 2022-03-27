@@ -37,14 +37,14 @@ export function string(value: unknown): string {
   return value;
 }
 
-export function stringUnion<T extends Record<string, null>>(
+export function stringUnion<T extends Record<string, unknown>>(
   mapping: keyof T extends string
     ? keyof T extends never
       ? "stringUnion must have at least one key"
       : T
     : {
         [P in keyof T]: P extends number
-          ? "stringUnion keys must be strings, not numbers"
+          ? ["stringUnion keys must be strings, not numbers", never]
           : T[P];
       }
 ): Decoder<keyof T> {
