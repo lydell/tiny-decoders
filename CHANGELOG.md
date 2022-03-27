@@ -1,4 +1,4 @@
-### Version 7.0.0 (unreleased)
+### Version 7.0.0 (2022-03-27)
 
 - Changed: Removed “tolerant decoding”:
 
