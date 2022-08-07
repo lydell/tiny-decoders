@@ -1,3 +1,7 @@
+### Version 7.0.1 (2022-08-07)
+
+- Fixed: The TypeScript definitions can now be found if you use `"type": "module"` in your package.json and `"module": "Node16"` or `"module": "NodeNext"` in your tsconfig.json.
+
 ### Version 7.0.0 (2022-03-27)
 
 - Changed: Removed “tolerant decoding”:
