@@ -366,7 +366,7 @@ Decodes a JSON object (or array) into any TypeScript you’d like (`T`), usually
 
 This is the most general function, which you can use for lots of different data. Other functions might be more convenient though.
 
-The type annotation is a bit ovewhelming, but using `fields` isn’t super complicated. In a callback, you get a `field` function that you use to pluck out stuff from the JSON object. For example:
+The type annotation is a bit overwhelming, but using `fields` isn’t super complicated. In a callback, you get a `field` function that you use to pluck out stuff from the JSON object. For example:
 
 ```ts
 type User = {
@@ -482,7 +482,7 @@ type Shape =
   | { tag: "Circle"; radius: number }
   | { tag: "Rectangle"; width: number; height: number };
 
-const shapeDecoder = fieldsUnion<Shape>("tag", {
+const shapeDecoder = fieldsUnion("tag", {
   Circle: fieldsAuto({
     tag: () => "Circle" as const,
     radius: number,

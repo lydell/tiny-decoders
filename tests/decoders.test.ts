@@ -624,8 +624,8 @@ describe("fieldsUnion", () => {
       }),
       Rectangle: fields((field) => ({
         tag: "Rectangle" as const,
-        width: field("width", number),
-        height: field("height", number),
+        width: field("width_px", number),
+        height: field("height_px", number),
       })),
     });
 
@@ -645,7 +645,7 @@ describe("fieldsUnion", () => {
 
     expect(run(shapeDecoder, { tag: "Rectangle", radius: 5 }))
       .toMatchInlineSnapshot(`
-        At root["width"]:
+        At root["width_px"]:
         Expected a number
         Got: undefined
       `);
