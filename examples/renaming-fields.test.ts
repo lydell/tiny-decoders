@@ -17,7 +17,7 @@ test("renaming fields", () => {
   };
 
   // Making decoders with `fieldsAuto` is convenient if the object you are
-  // decoding and your interal type have the same key names.
+  // decoding and your internal type have the same key names.
   const userSnakeCaseDecoder = fieldsAuto<UserSnakeCase>({
     first_name: string,
     last_name: string,

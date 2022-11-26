@@ -1,7 +1,7 @@
 import { array, Decoder, fields, multi, record, string } from "../";
 
 test("recursive data structure", () => {
-  // Consider this recursive data sctructure:
+  // Consider this recursive data structure:
   type Person = {
     name: string;
     friends: Array<Person>;

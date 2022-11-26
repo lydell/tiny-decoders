@@ -37,7 +37,7 @@
   - Removed: `either`. Use `multi` or `fields` instead.
   - Removed: `constant`. I have not found any use case for it.
   - Removed: `WithUndefinedAsOptional`. `fields` and `fieldsAuto` do that (adding `?` to optional fields) automatically.
-  - Removed: `repr.sensitive`. `repr` now takes a `sensitive: boolean` option instead, since you’re in control of formatting via `DecoderError`. For example, call `error.format({ sensitve: true })` on a caught `error` to format it sensitively.
+  - Removed: `repr.sensitive`. `repr` now takes a `sensitive: boolean` option instead, since you’re in control of formatting via `DecoderError`. For example, call `error.format({ sensitive: true })` on a caught `error` to format it sensitively.
 
   - Added: `multi`
   - Added: `tuple`
@@ -79,7 +79,7 @@
 
 ### Version 3.1.0 (2019-09-15)
 
-- Added: You can now set `repr.short = true` to get shorter error messages, containing only _where_ the error happened and the actual and expected types, but not showing any actual values. This is useful if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs. Another use case is if you simply prefer a shorter, oneline message.
+- Added: You can now set `repr.short = true` to get shorter error messages, containing only _where_ the error happened and the actual and expected types, but not showing any actual values. This is useful if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs. Another use case is if you simply prefer a shorter, one-line message.
 - Improved: Documentation on type inference in TypeScript.
 
 ### Version 3.0.1 (2019-08-08)
