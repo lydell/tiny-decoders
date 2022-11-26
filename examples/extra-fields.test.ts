@@ -21,7 +21,7 @@ test("adding extra fields to records", () => {
   );
 
   expect(productDecoder1(data)).toMatchInlineSnapshot(`
-    Object {
+    {
       "name": "Comfortable Bed",
       "price": 10000,
       "version": 1,

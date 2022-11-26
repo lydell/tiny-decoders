@@ -77,7 +77,7 @@ test("making a type from a decoder", () => {
 
   const user: User = userDecoder(data);
   expect(user).toMatchInlineSnapshot(`
-    Object {
+    {
       "active": true,
       "age": 30,
       "country": undefined,
@@ -369,7 +369,7 @@ test("making a type from a decoder – unions", () => {
 
   expect(userDecoder5({ type: "anonymous", sessionId: 1 }))
     .toMatchInlineSnapshot(`
-      Object {
+      {
         "sessionId": 1,
         "type": "anonymous",
       }

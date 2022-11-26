@@ -46,16 +46,16 @@ test("recursive data structure", () => {
   };
 
   expect(personDecoder1(data)).toMatchInlineSnapshot(`
-    Object {
-      "friends": Array [
-        Object {
-          "friends": Array [],
+    {
+      "friends": [
+        {
+          "friends": [],
           "name": "Alice",
         },
-        Object {
-          "friends": Array [
-            Object {
-              "friends": Array [],
+        {
+          "friends": [
+            {
+              "friends": [],
               "name": "Charlie",
             },
           ],
@@ -94,11 +94,11 @@ test("recurse non-record", () => {
   };
 
   expect(dictDecoder(data)).toMatchInlineSnapshot(`
-    Object {
-      "t": Object {
-        "i": Object {
+    {
+      "t": {
+        "i": {
           "e": 3,
-          "n": Object {
+          "n": {
             "t": 2,
             "y": 1,
           },

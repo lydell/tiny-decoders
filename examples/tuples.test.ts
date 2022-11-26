@@ -8,7 +8,7 @@ test("decoding tuples", () => {
   // If you want a quick way to decode the above into `[number, number]`, use `tuple`.
   const pointTupleDecoder1 = tuple<PointTuple>([number, number]);
   expect(pointTupleDecoder1(data)).toMatchInlineSnapshot(`
-    Array [
+    [
       50,
       325,
     ]
@@ -27,7 +27,7 @@ test("decoding tuples", () => {
     { allow: "array" }
   );
   expect(pointDecoder1(data)).toMatchInlineSnapshot(`
-    Object {
+    {
       "x": 50,
       "y": 325,
     }
@@ -46,7 +46,7 @@ test("decoding tuples", () => {
   // `tuple` works with any number of values. Here’s an example with four values:
   expect(tuple([number, number, number, number])([1, 2, 3, 4]))
     .toMatchInlineSnapshot(`
-      Array [
+      [
         1,
         2,
         3,
@@ -66,7 +66,7 @@ test("decoding tuples", () => {
   );
   expect(longTupleDecoder(["John", "Doe", 30, "Likes swimming."]))
     .toMatchInlineSnapshot(`
-      Object {
+      {
         "age": 30,
         "description": "Likes swimming.",
         "firstName": "John",
@@ -80,7 +80,7 @@ test("decoding tuples", () => {
     (field): PointTuple => [field("x", number), field("y", number)]
   );
   expect(pointTupleDecoder2(obj)).toMatchInlineSnapshot(`
-    Array [
+    [
       1,
       2,
     ]

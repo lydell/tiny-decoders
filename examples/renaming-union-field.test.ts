@@ -23,9 +23,9 @@ test("using different tags in JSON and in TypeScript", () => {
   expectType<TypeEqual<InferredType, ExpectedType>>(true);
 
   expect(decoder({ type: "circle", radius: 5 })).toMatchInlineSnapshot(`
-      Object {
-        "radius": 5,
-        "tag": "Circle",
-      }
-    `);
+    {
+      "radius": 5,
+      "tag": "Circle",
+    }
+  `);
 });

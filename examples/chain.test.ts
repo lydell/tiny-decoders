@@ -36,7 +36,7 @@ test("decoding to a Set", () => {
     numbers: new Set(field("numbers", array(number))),
   }));
   expect(objDecoder1(obj)).toMatchInlineSnapshot(`
-    Object {
+    {
       "id": "123",
       "numbers": Set {
         1,

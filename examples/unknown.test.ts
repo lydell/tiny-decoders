@@ -15,7 +15,7 @@ test("decoding unknown values", () => {
     data: (value) => value,
   });
   expect(messageDecoder1(message)).toMatchInlineSnapshot(`
-    Object {
+    {
       "data": 15,
       "text": "Hello, world!",
     }
@@ -30,7 +30,7 @@ test("decoding unknown values", () => {
     data: unknown,
   });
   expect(messageDecoder2(message)).toMatchInlineSnapshot(`
-    Object {
+    {
       "data": 15,
       "text": "Hello, world!",
     }

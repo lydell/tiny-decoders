@@ -251,7 +251,7 @@ describe("record", () => {
     ]);
 
     expect(run(decoder, bad)).toMatchInlineSnapshot(
-      `"Invalid regular expression: /\\\\d{4}:\\\\d{2/: Incomplete quantifier"`
+      `"Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier"`
     );
 
     expect(run(fieldsAuto({ regexes: decoder }), { regexes: bad }))

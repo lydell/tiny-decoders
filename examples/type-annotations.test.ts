@@ -127,13 +127,13 @@ test("type annotations", () => {
   greet(personDecoder8Auto(testPerson));
 
   expect(personDecoder8(testPerson)).toMatchInlineSnapshot(`
-    Object {
+    {
       "age": 30,
       "name": "John",
     }
   `);
   expect(personDecoder8Auto(testPerson)).toMatchInlineSnapshot(`
-    Object {
+    {
       "age": 30,
       "name": "John",
     }

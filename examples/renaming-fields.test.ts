@@ -32,7 +32,7 @@ test("renaming fields", () => {
     active: true,
   };
   expect(userSnakeCaseDecoder(user)).toMatchInlineSnapshot(`
-    Object {
+    {
       "active": true,
       "age": 30,
       "first_name": "John",
@@ -58,7 +58,7 @@ test("renaming fields", () => {
     })
   );
   expect(userCamelCaseDecoder1(user)).toMatchInlineSnapshot(`
-    Object {
+    {
       "active": true,
       "age": 30,
       "firstName": "John",
@@ -78,7 +78,7 @@ test("renaming fields", () => {
     })
   );
   expect(userCamelCaseDecoder2(user)).toMatchInlineSnapshot(`
-    Object {
+    {
       "active": true,
       "age": 30,
       "firstName": "John",
@@ -96,7 +96,7 @@ test("renaming fields", () => {
     })
   );
   expect(userCamelCaseDecoder3(user)).toMatchInlineSnapshot(`
-    Object {
+    {
       "active": true,
       "age": 30,
       "firstName": "John",
