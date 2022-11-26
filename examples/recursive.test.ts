@@ -22,7 +22,7 @@ test("recursive data structure", () => {
   /*
   const personDecoder2 = fieldsAuto<Person>({
     name: string,
-    friends: array(personDecoder2), // ReferenceError: personDecoder2 is not defined
+    friends: array(personDecoder2), // ReferenceError: Cannot access 'personDecoder2' before initialization
   });
   */
 
@@ -76,8 +76,8 @@ test("recurse non-record", () => {
       // The trick here is to use a seemingly useless arrow function to delay
       // the reference to `dictDecoder`.
       object: (value) => dictDecoder(value),
-      // ReferenceError: personDecoder2 is not defined.
-      // object: dictDecoder,
+      // Writing just `object: dictDecoder` would result in an error:
+      // ReferenceError: Cannot access 'dictDecoder' before initialization
     })
   );
 
