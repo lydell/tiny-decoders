@@ -45,6 +45,24 @@ export const string: Codec<string> = {
   encoder: identity,
 };
 
+// TODO: Decide which one to use. This one is nicer, but the other one protects against duplicate keys.
+export function stringUnionDecoder2<T extends ReadonlyArray<string>>(values: T[number] extends never ? "stringUnion must have at least one key" : [...T]): Codec<T[number]> {
+  return {
+    decoder: function stringUnionDecoder(value: unknown): T[number] {
+      const str = string.decoder(value);
+      if (!values.includes(str)) {
+        throw new DecoderError({
+          tag: "unknown stringUnion variant",
+          knownVariants: values as Array<string>,
+          got: str,
+        });
+      }
+      return str;
+    },
+    encoder: identity,
+  };
+}
+
 export function stringUnion<T extends Record<string, unknown>>(
   mapping: keyof T extends string
     ? keyof T extends never
