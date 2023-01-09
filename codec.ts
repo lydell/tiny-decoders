@@ -190,7 +190,7 @@ export function fields<T extends Record<string, unknown>>(
         }
       }
 
-      if (exact !== "allow extra") {
+      if (exact === "throw") {
         const unknownFields = Object.keys(object).filter(
           (key) => !Object.prototype.hasOwnProperty.call(mapping, key)
         );
@@ -314,58 +314,111 @@ const foo = fieldsUnion("tag", (t) => t.type, {
 
 type Mash<T> = T extends any ? { [P in keyof T]: Infer<T[P]> } : never;
 
+const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
+
+type TagCodec<Name extends string> = Codec<Name> & {
+  field: string;
+  _private: {
+    tag: typeof tagSymbol;
+    encodedName: Name;
+    originalName: string;
+  };
+};
+
 export function fieldsUnion2<
   T extends ReadonlyArray<Record<string, Codec<any>>>
 >(
-  key: string,
+  commonField: string,
   callback: // T[number] extends never
   //   ? "fieldsUnion must have at least one member"
   //   :
   (
-    tag: <S extends string>(
-      name: S,
-      name2?: string
-    ) => Codec<S> & { field: string }
+    tag: <Name extends string>(name: Name, originalName?: string) => Codec<Name>
   ) => [...T],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
 ): Codec<Mash<T[number]>> {
-  function tag<S extends string>(
-    name: S,
-    name2: string = name
-  ): Codec<S> & { field: string; unique: "TODO" } {
+  function tag<Name extends string>(
+    name: Name,
+    originalName: string = name
+  ): TagCodec<Name> {
     return {
-      decoder: function tagDecoder(value: unknown) {
-        if (value !== name2) {
-          throw new DecoderError({
-            tag: "tag",
-            expected: name2,
-            got: value,
-          });
-        }
-        return name;
+      decoder: () => name,
+      encoder: () => originalName,
+      field: commonField,
+      _private: {
+        tag: tagSymbol,
+        encodedName: name,
+        originalName,
       },
-      encoder: function tagEncoder() {
-        return name2;
-      },
-      field: key,
-      unique: "TODO",
     };
   }
 
   const variants = callback(tag);
 
-  // For each variant:
-  // - check that `tag` has been used exactly once
-  // - create mappings in both directions
-  //
-  // Then use mappings in decoder and encoder.
+  const decoderMap = new Map<string, Codec<any>["decoder"]>();
+  const encoderMap = new Map<string, Codec<any>["encoder"]>();
+
+  let encodedCommonField: string | undefined = undefined;
+
+  for (const variant of variants) {
+    let seenTag = false;
+    for (const [key, codec] of Object.entries(variant)) {
+      if ("_private" in codec) {
+        const data = codec._private as TagCodec<never>["_private"];
+        if (data.tag === tagSymbol) {
+          if (seenTag) {
+            throw new Error("TODO already called tag()");
+          }
+          seenTag = true;
+          if (encodedCommonField === undefined) {
+            encodedCommonField = key;
+          } else if (encodedCommonField !== key) {
+            throw new Error("TODO used another key for a previous tag() call");
+          }
+          if (decoderMap.has(data.originalName)) {
+            throw new Error("TODO duplicate originalName");
+          }
+          if (encoderMap.has(data.encodedName)) {
+            throw new Error("TODO duplicate encodedName");
+          }
+          const fullCodec = fields(variant, { exact });
+          decoderMap.set(data.originalName, fullCodec.decoder);
+          encoderMap.set(data.encodedName, fullCodec.encoder);
+        }
+      }
+    }
+    if (!seenTag) {
+      throw new Error("TODO didn't call tag()");
+    }
+  }
 
   return {
     decoder: function fieldsUnionDecoder(value: unknown) {
-      return ä;
+      const object = unknownRecord(value);
+      let originalName;
+      try {
+        originalName = string.decoder(object[commonField]);
+      } catch (error) {
+        throw DecoderError.at(error, commonField);
+      }
+      const decoder = decoderMap.get(originalName);
+      if (decoder === undefined) {
+        throw new DecoderError({
+          tag: "unknown fieldsUnion tag",
+          knownTags: Array.from(decoderMap.keys()),
+          got: originalName,
+          key: commonField,
+        });
+      }
+      return decoder(object) as Mash<T[number]>;
     },
     encoder: function fieldsUnionEncoder(value) {
-      return ä;
+      const encodedName = value[encodedCommonField as string] as string;
+      const encoder = encoderMap.get(encodedName);
+      if (encoder === undefined) {
+        throw new Error("TODO encoder was unexpectedly undefined");
+      }
+      return encoder(value);
     },
   };
 }
