@@ -7,7 +7,25 @@ export type Codec<T, U = unknown> = {
   encoder: (value: T) => U;
 };
 
-export type Infer<T> = T extends Codec<infer U> ? U : never;
+export type Infer<T> = T extends Codec<infer U>
+  ? WithUndefinedAsOptional<U>
+  : never;
+
+type WithUndefinedAsOptional<T> = T extends Record<string, unknown>
+  ? Expand<{ [P in OptionalKeys<T>]?: T[P] } & { [P in RequiredKeys<T>]: T[P] }>
+  : T;
+
+type RequiredKeys<T> = {
+  [P in keyof T]: undefined extends T[P] ? never : P;
+}[keyof T];
+
+type OptionalKeys<T> = {
+  [P in keyof T]: undefined extends T[P] ? P : never;
+}[keyof T];
+
+// Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
+// https://stackoverflow.com/a/57683652/2010616
+type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 function identity<T>(value: T): T {
   return value;
@@ -192,7 +210,9 @@ export function fields<T extends Record<string, unknown>>(
   };
 }
 
-type Mash<T> = T extends any ? { [P in keyof T]: Infer<T[P]> } : never;
+type Extract<T> = T extends any
+  ? { [P in keyof T]: T[P] extends Codec<infer U> ? U : never }
+  : never;
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
 
@@ -205,7 +225,7 @@ type TagCodec<Name extends string> = Codec<Name> & {
   };
 };
 
-export function fieldsUnion2<
+export function fieldsUnion<
   T extends ReadonlyArray<Record<string, Codec<any>>>
 >(
   commonField: string,
@@ -218,7 +238,7 @@ export function fieldsUnion2<
         ) => Codec<Name>
       ) => [...T],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
-): Codec<Mash<T[number]>> {
+): Codec<Extract<T[number]>> {
   function tag<Name extends string>(
     name: Name,
     originalName: string = name
@@ -292,7 +312,7 @@ export function fieldsUnion2<
           key: commonField,
         });
       }
-      return decoder(object) as Mash<T[number]>;
+      return decoder(object) as Extract<T[number]>;
     },
     encoder: function fieldsUnionEncoder(value) {
       const encodedName = value[encodedCommonField as string] as string;
