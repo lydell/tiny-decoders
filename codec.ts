@@ -46,7 +46,11 @@ export const string: Codec<string> = {
 };
 
 // TODO: Decide which one to use. This one is nicer, but the other one protects against duplicate keys.
-export function stringUnionDecoder2<T extends ReadonlyArray<string>>(values: T[number] extends never ? "stringUnion must have at least one key" : [...T]): Codec<T[number]> {
+export function stringUnionDecoder2<T extends ReadonlyArray<string>>(
+  values: T[number] extends never
+    ? "stringUnion must have at least one key"
+    : [...T]
+): Codec<T[number]> {
   return {
     decoder: function stringUnionDecoder(value: unknown): T[number] {
       const str = string.decoder(value);
@@ -218,7 +222,9 @@ export function fields<T extends Record<string, unknown>>(
 
 type Values<T> = T[keyof T];
 
-export function fieldsUnion<T extends Record<string, Codec<unknown>>>(
+// This works, but it feels so strange actually using fieldsUnion now.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function fieldsUnion<T extends Record<string, Codec<any>>>(
   key: string,
   toTag: (
     t: Expand<
@@ -280,6 +286,105 @@ export function fieldsUnion<T extends Record<string, Codec<unknown>>>(
     },
   };
 }
+
+export function constant<
+  T extends boolean | number | string | null | undefined
+>(value: T): Codec<T> {
+  return {
+    decoder: function constantDecoder(value2: unknown) {
+      if (value2 !== value) {
+        throw new DecoderError({
+          tag: "constant",
+          expected: value,
+          got: value2,
+        });
+      }
+      return value;
+    },
+    encoder: function constantEncoder() {
+      return value;
+    },
+  };
+}
+
+const foo = fieldsUnion("tag", (t) => t.type, {
+  foo: fields({ type: constant("foo"), bar: string }),
+  bar: fields({ type: constant("bar"), baz: number }),
+});
+
+type Mash<T> = T extends any ? { [P in keyof T]: Infer<T[P]> } : never;
+
+export function fieldsUnion2<
+  T extends ReadonlyArray<Record<string, Codec<any>>>
+>(
+  key: string,
+  callback: // T[number] extends never
+  //   ? "fieldsUnion must have at least one member"
+  //   :
+  (
+    tag: <S extends string>(
+      name: S,
+      name2?: string
+    ) => Codec<S> & { field: string }
+  ) => [...T],
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
+): Codec<Mash<T[number]>> {
+  function tag<S extends string>(
+    name: S,
+    name2: string = name
+  ): Codec<S> & { field: string; unique: "TODO" } {
+    return {
+      decoder: function tagDecoder(value: unknown) {
+        if (value !== name2) {
+          throw new DecoderError({
+            tag: "tag",
+            expected: name2,
+            got: value,
+          });
+        }
+        return name;
+      },
+      encoder: function tagEncoder() {
+        return name2;
+      },
+      field: key,
+      unique: "TODO",
+    };
+  }
+
+  const variants = callback(tag);
+
+  // For each variant:
+  // - check that `tag` has been used exactly once
+  // - create mappings in both directions
+  //
+  // Then use mappings in decoder and encoder.
+
+  return {
+    decoder: function fieldsUnionDecoder(value: unknown) {
+      return ä;
+    },
+    encoder: function fieldsUnionEncoder(value) {
+      return ä;
+    },
+  };
+}
+
+const bar = fieldsUnion2(
+  "type",
+  (tag) => [
+    {
+      tag: tag("Circle"),
+      radius: number,
+    },
+    {
+      tag: tag("Rectangle", "Rect"),
+      width: number,
+      height: number,
+    },
+  ],
+  { exact: "throw" }
+);
 
 export function tuple<T extends ReadonlyArray<unknown>>(
   mapping: readonly [...{ [P in keyof T]: Codec<T[P]> }]
