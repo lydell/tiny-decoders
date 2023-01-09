@@ -1,13 +1,13 @@
+// There are some things that cannot be implemented without `any`.
+// No `any` “leaks” when _using_ the library, though.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export type Codec<T, U = unknown> = {
   decoder: (value: U) => T;
   encoder: (value: T) => U;
 };
 
 export type Infer<T> = T extends Codec<infer U> ? U : never;
-
-// Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
-// https://stackoverflow.com/a/57683652/2010616
-type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 function identity<T>(value: T): T {
   return value;
@@ -45,10 +45,9 @@ export const string: Codec<string> = {
   encoder: identity,
 };
 
-// TODO: Decide which one to use. This one is nicer, but the other one protects against duplicate keys.
-export function stringUnionDecoder2<T extends ReadonlyArray<string>>(
+export function stringUnion<T extends ReadonlyArray<string>>(
   values: T[number] extends never
-    ? "stringUnion must have at least one key"
+    ? "stringUnion must have at least one variant"
     : [...T]
 ): Codec<T[number]> {
   return {
@@ -58,33 +57,6 @@ export function stringUnionDecoder2<T extends ReadonlyArray<string>>(
         throw new DecoderError({
           tag: "unknown stringUnion variant",
           knownVariants: values as Array<string>,
-          got: str,
-        });
-      }
-      return str;
-    },
-    encoder: identity,
-  };
-}
-
-export function stringUnion<T extends Record<string, unknown>>(
-  mapping: keyof T extends string
-    ? keyof T extends never
-      ? "stringUnion must have at least one key"
-      : T
-    : {
-        [P in keyof T]: P extends number
-          ? ["stringUnion keys must be strings, not numbers", never]
-          : T[P];
-      }
-): Codec<keyof T> {
-  return {
-    decoder: function stringUnionDecoder(value: unknown): keyof T {
-      const str = string.decoder(value);
-      if (!Object.prototype.hasOwnProperty.call(mapping, str)) {
-        throw new DecoderError({
-          tag: "unknown stringUnion variant",
-          knownVariants: Object.keys(mapping),
           got: str,
         });
       }
@@ -220,98 +192,6 @@ export function fields<T extends Record<string, unknown>>(
   };
 }
 
-type Values<T> = T[keyof T];
-
-// This works, but it feels so strange actually using fieldsUnion now.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function fieldsUnion<T extends Record<string, Codec<any>>>(
-  key: string,
-  toTag: (
-    t: Expand<
-      Values<{
-        [P in keyof T]: T[P] extends Codec<infer U, infer _> ? U : never;
-      }>
-    >
-  ) => keyof typeof mapping,
-  mapping: keyof T extends string
-    ? keyof T extends never
-      ? "fieldsUnion must have at least one member"
-      : T
-    : {
-        [P in keyof T]: P extends number
-          ? "fieldsUnion keys must be strings, not numbers"
-          : T[P];
-      }
-): Codec<
-  Expand<
-    Values<{
-      [P in keyof T]: T[P] extends Codec<infer U, infer _> ? U : never;
-    }>
-  >
-> {
-  return {
-    decoder: function fieldsUnionDecoder(value: unknown) {
-      const object = unknownRecord(value);
-      let tag;
-      try {
-        tag = string.decoder(object[key]);
-      } catch (error) {
-        throw DecoderError.at(error, key);
-      }
-      if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
-        const { decoder } = (mapping as T)[tag];
-        return decoder(object) as Expand<
-          Values<{
-            [P in keyof T]: T[P] extends Codec<infer U, infer _> ? U : never;
-          }>
-        >;
-      }
-      throw new DecoderError({
-        tag: "unknown fieldsUnion tag",
-        knownTags: Object.keys(mapping),
-        got: tag,
-        key,
-      });
-    },
-    encoder: function fieldsUnionEncoder(value) {
-      const tag = toTag(value);
-      const codec = mapping[tag] as Codec<
-        Record<string, unknown>,
-        Record<string, unknown>
-      >;
-      return {
-        ...codec.encoder(value),
-        [key]: tag,
-      };
-    },
-  };
-}
-
-export function constant<
-  T extends boolean | number | string | null | undefined
->(value: T): Codec<T> {
-  return {
-    decoder: function constantDecoder(value2: unknown) {
-      if (value2 !== value) {
-        throw new DecoderError({
-          tag: "constant",
-          expected: value,
-          got: value2,
-        });
-      }
-      return value;
-    },
-    encoder: function constantEncoder() {
-      return value;
-    },
-  };
-}
-
-const foo = fieldsUnion("tag", (t) => t.type, {
-  foo: fields({ type: constant("foo"), bar: string }),
-  bar: fields({ type: constant("bar"), baz: number }),
-});
-
 type Mash<T> = T extends any ? { [P in keyof T]: Infer<T[P]> } : never;
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
@@ -329,12 +209,14 @@ export function fieldsUnion2<
   T extends ReadonlyArray<Record<string, Codec<any>>>
 >(
   commonField: string,
-  callback: // T[number] extends never
-  //   ? "fieldsUnion must have at least one member"
-  //   :
-  (
-    tag: <Name extends string>(name: Name, originalName?: string) => Codec<Name>
-  ) => [...T],
+  callback: T[number] extends never
+    ? "fieldsUnion must have at least one variant"
+    : (
+        tag: <Name extends string>(
+          name: Name,
+          originalName?: string
+        ) => Codec<Name>
+      ) => [...T],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
 ): Codec<Mash<T[number]>> {
   function tag<Name extends string>(
@@ -353,7 +235,7 @@ export function fieldsUnion2<
     };
   }
 
-  const variants = callback(tag);
+  const variants = (callback as (tag_: typeof tag) => [...T])(tag);
 
   const decoderMap = new Map<string, Codec<any>["decoder"]>();
   const encoderMap = new Map<string, Codec<any>["encoder"]>();
@@ -422,22 +304,6 @@ export function fieldsUnion2<
     },
   };
 }
-
-const bar = fieldsUnion2(
-  "type",
-  (tag) => [
-    {
-      tag: tag("Circle"),
-      radius: number,
-    },
-    {
-      tag: tag("Rectangle", "Rect"),
-      width: number,
-      height: number,
-    },
-  ],
-  { exact: "throw" }
-);
 
 export function tuple<T extends ReadonlyArray<unknown>>(
   mapping: readonly [...{ [P in keyof T]: Codec<T[P]> }]
