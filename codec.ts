@@ -7,7 +7,7 @@ export type Codec<T, U = unknown> = {
   encoder: (value: T) => U;
 };
 
-export type Infer<T> = T extends Codec<infer U>
+export type Infer<T extends Codec<any, any>> = T extends Codec<infer U, any>
   ? WithUndefinedAsOptional<U>
   : never;
 
