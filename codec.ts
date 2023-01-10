@@ -333,7 +333,7 @@ export function fieldsUnion<
 
 export function tuple<T extends ReadonlyArray<unknown>, U>(
   mapping: readonly [...{ [P in keyof T]: Codec<T[P], U> }]
-): Codec<[...T], Array<unknown>> {
+): Codec<[...T], Array<U>> {
   return {
     decoder: function tupleDecoder(value) {
       const arr = unknownArray(value);
@@ -607,7 +607,7 @@ export function nullable<T, V, U = null>(
   };
 }
 
-export function chain<T, U, V>(
+export function chain<T, V, U>(
   codec: Codec<T, V>,
   decoder: (value: T) => U,
   encoder: (value: U) => T
