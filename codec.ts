@@ -439,6 +439,38 @@ const bar = chain(multi(["number", "string"]), {
   },
   encoder: (value) => ({ type: "string" as const, value }),
 });
+void bar;
+type bar = Infer<typeof bar>;
+
+type Result<Value, Err> =
+  | {
+      type: "error";
+      error: Err;
+    }
+  | {
+      type: "ok";
+      value: Value;
+    };
+
+const resultCodec = function <Value, Err>(
+  decodeValue: Codec<Value>,
+  decodeError: Codec<Err>
+): Codec<Result<Value, Err>> {
+  return fieldsUnion("type", (tag) => [
+    {
+      type: tag("ok"),
+      value: decodeValue,
+    },
+    {
+      type: tag("error"),
+      error: decodeError,
+    },
+  ]);
+};
+
+const foo = resultCodec(number, string);
+void foo;
+type foo = Infer<typeof foo>;
 
 export function optional<T>(decoder: Codec<T>): Codec<T | undefined>;
 
