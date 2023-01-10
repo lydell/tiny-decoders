@@ -4,7 +4,7 @@
 
 export type Codec<Decoded, Encoded> = {
   decoder: (value: unknown) => Decoded;
-  encoder: (value: Decoded) => Encoded;
+  encoder: (value: WithUndefinedAsOptional<Decoded>) => Encoded;
 };
 
 export type Infer<ACodec extends Codec<any, any>> = ACodec extends Codec<
@@ -118,7 +118,9 @@ export function array<DecodedItem, EncodedItem>(
     encoder: function arrayEncoder(arr) {
       const result = [];
       for (const item of arr) {
-        result.push(codec.encoder(item));
+        result.push(
+          codec.encoder(item as WithUndefinedAsOptional<DecodedItem>)
+        );
       }
       return result;
     },
@@ -153,7 +155,9 @@ export function record<DecodedValue, EncodedValue>(
         if (key === "__proto__") {
           continue;
         }
-        result[key] = codec.encoder(value);
+        result[key] = codec.encoder(
+          value as WithUndefinedAsOptional<DecodedValue>
+        );
       }
       return result;
     },
@@ -217,7 +221,9 @@ export function fields<
         if (field === "__proto__") {
           continue;
         }
-        result[field] = encoder(object[key] as Decoded[string]);
+        result[field] = encoder(
+          object[key] as WithUndefinedAsOptional<Decoded[string]>
+        );
       }
       return result;
     },
@@ -412,7 +418,13 @@ export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
       const result = [];
       for (let index = 0; index < mapping.length; index++) {
         const { encoder } = mapping[index];
-        result.push(encoder(value[index]));
+        result.push(
+          encoder(
+            (value as [...Decoded])[index] as WithUndefinedAsOptional<
+              Decoded[number]
+            >
+          )
+        );
       }
       return result;
     },
@@ -628,7 +640,7 @@ export function optional<Decoded, Encoded, Default = undefined>(
     encoder: function optionalEncoder(value) {
       return value === defaultValue
         ? undefined
-        : codec.encoder(value as Decoded);
+        : codec.encoder(value as WithUndefinedAsOptional<Decoded>);
     },
   };
 }
@@ -663,7 +675,9 @@ export function nullable<Decoded, Encoded, Default = null>(
       }
     },
     encoder: function nullableEncoder(value) {
-      return value === defaultValue ? null : codec.encoder(value as Decoded);
+      return value === defaultValue
+        ? null
+        : codec.encoder(value as WithUndefinedAsOptional<Decoded>);
     },
   };
 }
@@ -680,7 +694,11 @@ export function chain<Decoded, Encoded, NewDecoded>(
       return transform.decoder(codec.decoder(value));
     },
     encoder: function chainEncoder(value) {
-      return codec.encoder(transform.encoder(value));
+      return codec.encoder(
+        transform.encoder(
+          value as NewDecoded
+        ) as WithUndefinedAsOptional<Decoded>
+      );
     },
   };
 }
