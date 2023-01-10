@@ -472,6 +472,53 @@ const foo = resultCodec(number, string);
 void foo;
 type foo = Infer<typeof foo>;
 
+type Dict = { [key: string]: Dict | number };
+
+const dictCodec: Codec<Dict> = record(
+  chain(multi(["number", "object"]), {
+    decoder: (value) => {
+      switch (value.type) {
+        case "number":
+          return value.value;
+        case "object":
+          return dictCodec.decoder(value.value);
+      }
+    },
+    encoder: (value) => {
+      if (typeof value === "number") {
+        return { type: "number" as const, value };
+      } else {
+        return {
+          type: "object" as const,
+          // Hmm, not quite sure about this one.
+          value: dictCodec.encoder(value) as Record<string, unknown>,
+        };
+      }
+    },
+  })
+);
+
+export function recursive<T>(callback: () => Codec<T>): Codec<T> {
+  return {
+    decoder: function lazyDecoder(value: unknown): T {
+      return callback().decoder(value);
+    },
+    encoder: function lazyEncoder(value: T): unknown {
+      return callback().encoder(value);
+    },
+  };
+}
+
+type Person = {
+  name: string;
+  friends: Array<Person>;
+};
+
+const personCodec: Codec<Person> = fields({
+  name: string,
+  friends: array(recursive(() => personCodec)),
+});
+
 export function optional<T>(decoder: Codec<T>): Codec<T | undefined>;
 
 export function optional<T, U>(codec: Codec<T>, defaultValue: U): Codec<T | U>;
