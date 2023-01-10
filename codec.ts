@@ -241,41 +241,41 @@ type TagCodec<Name extends string> = Codec<Name, string> & {
 
 type TagData = {
   tag: typeof tagSymbol;
+  decodedName: string;
   encodedName: string;
-  originalName: string;
 };
 
 export function fieldsUnion<
   Variants extends ReadonlyArray<Record<string, Codec<any, any>>>,
   EncodedFieldValueUnion
 >(
-  commonField: string,
+  encodedCommonField: string,
   callback: Variants[number] extends never
     ? "fieldsUnion must have at least one variant"
     : (
         tag: <Name extends string>(
-          name: Name,
-          originalName?: string
+          decodedName: Name,
+          encodedName?: string
         ) => Codec<Name, string>
       ) => [...Variants],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
 ): Codec<Extract<Variants[number]>, Record<string, EncodedFieldValueUnion>> {
-  if (commonField === "__proto__") {
+  if (encodedCommonField === "__proto__") {
     throw new Error("fieldsUnion: commonField cannot be __proto__");
   }
 
   function tag<Name extends string>(
-    name: Name,
-    originalName: string = name
+    decodedName: Name,
+    encodedName: string = decodedName
   ): TagCodec<Name> {
     return {
-      decoder: () => name,
-      encoder: () => originalName,
-      field: commonField,
+      decoder: () => decodedName,
+      encoder: () => encodedName,
+      field: encodedCommonField,
       _private: {
         tag: tagSymbol,
-        encodedName: name,
-        originalName,
+        decodedName,
+        encodedName,
       },
     };
   }
@@ -283,13 +283,13 @@ export function fieldsUnion<
   const variants = (callback as (tag_: typeof tag) => [...Variants])(tag);
 
   type VariantCodec = Codec<any, Record<string, EncodedFieldValueUnion>>;
-  const decoderMap = new Map<string, VariantCodec["decoder"]>();
-  const encoderMap = new Map<string, VariantCodec["encoder"]>();
+  const decoderMap = new Map<string, VariantCodec["decoder"]>(); // encodedName -> decoder
+  const encoderMap = new Map<string, VariantCodec["encoder"]>(); // decodedName -> encoder
 
-  let encodedCommonField: string | undefined = undefined;
+  let decodedCommonField: string | undefined = undefined;
 
-  for (const variant of variants) {
-    let seenTag = false;
+  for (const [index, variant] of variants.entries()) {
+    let seenTag: string | undefined = undefined;
     for (const [key, codec] of Object.entries(variant)) {
       if (key === "__proto__") {
         continue;
@@ -297,60 +297,85 @@ export function fieldsUnion<
       if ("_private" in codec) {
         const data = codec._private as TagData;
         if (data.tag === tagSymbol) {
-          if (seenTag) {
-            throw new Error("TODO already called tag()");
+          const errorPrefix = `Codec.fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
+            key
+          )}: `;
+          if (seenTag !== undefined) {
+            throw new Error(
+              `${errorPrefix}\`tag()\` was already used on key: ${JSON.stringify(
+                seenTag
+              )})}`
+            );
           }
-          seenTag = true;
-          if (encodedCommonField === undefined) {
-            encodedCommonField = key;
-          } else if (encodedCommonField !== key) {
-            throw new Error("TODO used another key for a previous tag() call");
+          seenTag = key;
+          if (decodedCommonField === undefined) {
+            decodedCommonField = key;
+          } else if (decodedCommonField !== key) {
+            throw new Error(
+              `${errorPrefix}\`tag()\` was used on another key in a previous variant: ${JSON.stringify(
+                decodedCommonField
+              )})}`
+            );
           }
-          if (decoderMap.has(data.originalName)) {
-            throw new Error("TODO duplicate originalName");
+          if (encoderMap.has(data.decodedName)) {
+            throw new Error(
+              `${errorPrefix}The decoded variant name was already used in a previous variant: ${JSON.stringify(
+                data.decodedName
+              )}`
+            );
           }
-          if (encoderMap.has(data.encodedName)) {
-            throw new Error("TODO duplicate encodedName");
+          if (decoderMap.has(data.encodedName)) {
+            throw new Error(
+              `${errorPrefix}The encoded variant name was already used in a previous variant: ${JSON.stringify(
+                data.encodedName
+              )}`
+            );
           }
           const fullCodec: Codec<
             Record<string, unknown>,
             Record<string, EncodedFieldValueUnion>
           > = fields(variant, { exact });
-          decoderMap.set(data.originalName, fullCodec.decoder);
-          encoderMap.set(data.encodedName, fullCodec.encoder);
+          decoderMap.set(data.encodedName, fullCodec.decoder);
+          encoderMap.set(data.decodedName, fullCodec.encoder);
         }
       }
     }
-    if (!seenTag) {
-      throw new Error("TODO didn't call tag()");
+    if (seenTag === undefined) {
+      throw new Error(
+        `Codec.fieldsUnion: Variant at index ${index}: \`tag()\` was never used on any key.`
+      );
     }
   }
 
   return {
     decoder: function fieldsUnionDecoder(value) {
       const object = unknownRecord(value);
-      let originalName;
+      let encodedName;
       try {
-        originalName = string.decoder(object[commonField]);
+        encodedName = string.decoder(object[encodedCommonField]);
       } catch (error) {
-        throw DecoderError.at(error, commonField);
+        throw DecoderError.at(error, encodedCommonField);
       }
-      const decoder = decoderMap.get(originalName);
+      const decoder = decoderMap.get(encodedName);
       if (decoder === undefined) {
         throw new DecoderError({
           tag: "unknown fieldsUnion tag",
           knownTags: Array.from(decoderMap.keys()),
-          got: originalName,
-          key: commonField,
+          got: encodedName,
+          key: encodedCommonField,
         });
       }
       return decoder(object) as Extract<Variants[number]>;
     },
     encoder: function fieldsUnionEncoder(value) {
-      const encodedName = value[encodedCommonField as string] as string;
-      const encoder = encoderMap.get(encodedName);
+      const decodedName = value[decodedCommonField as string] as string;
+      const encoder = encoderMap.get(decodedName);
       if (encoder === undefined) {
-        throw new Error("TODO encoder was unexpectedly undefined");
+        throw new Error(
+          `Codec.fieldsUnion: Unexpectedly found no encoder for decoded variant name: ${JSON.stringify(
+            decodedName
+          )} at key ${JSON.stringify(decodedCommonField)}`
+        );
       }
       return encoder(value);
     },
