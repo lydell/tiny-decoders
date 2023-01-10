@@ -491,9 +491,8 @@ export function multi<
   };
 }
 
-const bar = chain(
-  multi(["number", "string"]),
-  (value) => {
+const bar = chain(multi(["number", "string"]), {
+  decoder: (value) => {
     switch (value.type) {
       case "number":
         return value.value.toString();
@@ -501,8 +500,8 @@ const bar = chain(
         return value.value;
     }
   },
-  (value) => ({ type: "string" as const, value })
-);
+  encoder: (value) => ({ type: "string" as const, value }),
+});
 void bar;
 type bar = Infer<typeof bar>;
 
@@ -539,9 +538,8 @@ type foo = Infer<typeof foo>;
 type Dict = { [key: string]: Dict | number };
 
 const dictCodec: Codec<Dict, Record<string, unknown>> = record(
-  chain(
-    multi(["number", "object"]),
-    (value) => {
+  chain(multi(["number", "object"]), {
+    decoder: (value) => {
       switch (value.type) {
         case "number":
           return value.value;
@@ -549,7 +547,7 @@ const dictCodec: Codec<Dict, Record<string, unknown>> = record(
           return dictCodec.decoder(value.value);
       }
     },
-    (value) => {
+    encoder: (value) => {
       if (typeof value === "number") {
         return { type: "number" as const, value };
       } else {
@@ -558,8 +556,8 @@ const dictCodec: Codec<Dict, Record<string, unknown>> = record(
           value: dictCodec.encoder(value),
         };
       }
-    }
-  )
+    },
+  })
 );
 
 const dictFoo: Codec<Record<string, string>, Record<string, unknown>> = record(
@@ -672,15 +670,17 @@ export function nullable<Decoded, Encoded, Default = null>(
 
 export function chain<Decoded, Encoded, NewDecoded>(
   codec: Codec<Decoded, Encoded>,
-  decoder: (value: Decoded) => NewDecoded,
-  encoder: (value: NewDecoded) => Decoded
+  transform: {
+    decoder: (value: Decoded) => NewDecoded;
+    encoder: (value: NewDecoded) => Decoded;
+  }
 ): Codec<NewDecoded, Encoded> {
   return {
     decoder: function chainDecoder(value) {
-      return decoder(codec.decoder(value));
+      return transform.decoder(codec.decoder(value));
     },
     encoder: function chainEncoder(value) {
-      return codec.encoder(encoder(value));
+      return codec.encoder(transform.encoder(value));
     },
   };
 }
