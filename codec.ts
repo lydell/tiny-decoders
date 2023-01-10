@@ -150,6 +150,9 @@ export function record<DecodedValue, EncodedValue>(
     encoder: function recordEncoder(object) {
       const result: Record<string, EncodedValue> = {};
       for (const [key, value] of Object.entries(object)) {
+        if (key === "__proto__") {
+          continue;
+        }
         result[key] = codec.encoder(value);
       }
       return result;
@@ -162,9 +165,9 @@ export function fields<
   EncodedFieldValueUnion
 >(
   mapping: {
-    [Key in keyof Decoded]: Key extends "__proto__"
-      ? never
-      : Codec<Decoded[Key], EncodedFieldValueUnion> & { field?: string };
+    [Key in keyof Decoded]: Codec<Decoded[Key], EncodedFieldValueUnion> & {
+      field?: string;
+    };
   },
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
 ): Codec<Decoded, Record<string, EncodedFieldValueUnion>> {
@@ -179,6 +182,9 @@ export function fields<
           continue;
         }
         const { decoder, field = key } = mapping[key];
+        if (field === "__proto__") {
+          continue;
+        }
         try {
           result[key] = decoder(object[field]);
         } catch (error) {
@@ -203,12 +209,14 @@ export function fields<
     },
     encoder: function fieldsEncoder(object) {
       const result: Record<string, EncodedFieldValueUnion> = {};
-      const keys = Object.keys(mapping);
-      for (const key of keys) {
+      for (const key of Object.keys(mapping)) {
         if (key === "__proto__") {
           continue;
         }
         const { encoder, field = key } = mapping[key];
+        if (field === "__proto__") {
+          continue;
+        }
         result[field] = encoder(object[key] as Decoded[string]);
       }
       return result;
@@ -252,6 +260,10 @@ export function fieldsUnion<
       ) => [...Variants],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
 ): Codec<Extract<Variants[number]>, Record<string, EncodedFieldValueUnion>> {
+  if (commonField === "__proto__") {
+    throw new Error("fieldsUnion: commonField cannot be __proto__");
+  }
+
   function tag<Name extends string>(
     name: Name,
     originalName: string = name
@@ -279,6 +291,9 @@ export function fieldsUnion<
   for (const variant of variants) {
     let seenTag = false;
     for (const [key, codec] of Object.entries(variant)) {
+      if (key === "__proto__") {
+        continue;
+      }
       if ("_private" in codec) {
         const data = codec._private as TagData;
         if (data.tag === tagSymbol) {
