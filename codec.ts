@@ -510,6 +510,15 @@ const dictFoo: Codec<Record<string, string>, Record<string, unknown>> = record(
 );
 void dictFoo;
 
+const fieldsFoo: Codec<
+  { name: string; age: number },
+  Record<string, number | string>
+> = fields({
+  name: string,
+  age: number,
+});
+void fieldsFoo;
+
 export function recursive<T, U>(callback: () => Codec<T, U>): Codec<T, U> {
   return {
     decoder: function lazyDecoder(value) {
