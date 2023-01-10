@@ -437,6 +437,97 @@ export function multi<
   };
 }
 
+type Mash<T> = T extends any
+  ? T extends "undefined"
+    ? { type: "undefined" }
+    : T extends "null"
+    ? { type: "null" }
+    : T extends "boolean"
+    ? { type: "boolean"; value: boolean }
+    : T extends "number"
+    ? { type: "number"; value: number }
+    : T extends "string"
+    ? { type: "string"; value: string }
+    : T extends "array"
+    ? { type: "array"; value: Array<unknown> }
+    : T extends "object"
+    ? { type: "object"; value: Record<string, unknown> }
+    : never
+  : never;
+
+export function multi2<
+  T extends ReadonlyArray<
+    "array" | "boolean" | "null" | "number" | "object" | "string" | "undefined"
+  >
+>(
+  types: T[number] extends never ? "multi must have at least one type" : [...T]
+): Codec<Mash<T[number]>> {
+  return {
+    decoder: function multiDecoder(value: unknown): Mash<T[number]> {
+      if (value === undefined) {
+        if (types.includes("undefined")) {
+          return { type: "undefined" } as unknown as Mash<T[number]>;
+        }
+      } else if (value === null) {
+        if (types.includes("null")) {
+          return { type: "null" } as unknown as Mash<T[number]>;
+        }
+      } else if (typeof value === "boolean") {
+        if (types.includes("boolean")) {
+          return { type: "boolean", value } as unknown as Mash<T[number]>;
+        }
+      } else if (typeof value === "number") {
+        if (types.includes("number")) {
+          return { type: "number", value } as unknown as Mash<T[number]>;
+        }
+      } else if (typeof value === "string") {
+        if (types.includes("string")) {
+          return { type: "string", value } as unknown as Mash<T[number]>;
+        }
+      } else if (Array.isArray(value)) {
+        if (types.includes("array")) {
+          return { type: "array", value } as unknown as Mash<T[number]>;
+        }
+      } else {
+        if (types.includes("object")) {
+          return { type: "object", value } as unknown as Mash<T[number]>;
+        }
+      }
+      throw new DecoderError({
+        tag: "unknown multi type",
+        knownTypes: types as Array<"undefined">, // Type checking hack.
+        got: value,
+      });
+    },
+    encoder: function multiEncoder(value: Mash<T[number]>): unknown {
+      switch (value.type) {
+        case "undefined":
+          return undefined;
+        case "null":
+          return null;
+        case "boolean":
+        case "number":
+        case "string":
+        case "array":
+        case "object":
+          return value.value;
+      }
+    },
+  };
+}
+
+const bar = chain(multi2(["number", "string"]), {
+  decoder: (value) => {
+    switch (value.type) {
+      case "number":
+        return value.value.toString();
+      case "string":
+        return value.value;
+    }
+  },
+  encoder: (value) => ({ type: "string" as const, value }),
+});
+
 export function optional<T>(decoder: Codec<T>): Codec<T | undefined>;
 
 export function optional<T, U>(codec: Codec<T>, defaultValue: U): Codec<T | U>;
