@@ -2,7 +2,8 @@
 // No `any` “leaks” when _using_ the library, though.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export type Codec<T, U = unknown> = {
+// TODO: Better type variable names.
+export type Codec<T, U> = {
   decoder: (value: unknown) => T;
   encoder: (value: T) => U;
 };
@@ -96,7 +97,7 @@ function unknownRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function array<T>(codec: Codec<T>): Codec<Array<T>, Array<unknown>> {
+export function array<T, U>(codec: Codec<T, U>): Codec<Array<T>, Array<U>> {
   return {
     decoder: function arrayDecoder(value) {
       const arr = unknownArray(value);
@@ -120,9 +121,9 @@ export function array<T>(codec: Codec<T>): Codec<Array<T>, Array<unknown>> {
   };
 }
 
-export function record<T>(
-  codec: Codec<T>
-): Codec<Record<string, T>, Record<string, unknown>> {
+export function record<T, U>(
+  codec: Codec<T, U>
+): Codec<Record<string, T>, Record<string, U>> {
   return {
     decoder: function recordDecoder(value) {
       const object = unknownRecord(value);
@@ -143,7 +144,7 @@ export function record<T>(
       return result;
     },
     encoder: function recordEncoder(object) {
-      const result: Record<string, unknown> = {};
+      const result: Record<string, U> = {};
       for (const [key, value] of Object.entries(object)) {
         result[key] = codec.encoder(value);
       }
@@ -152,14 +153,14 @@ export function record<T>(
   };
 }
 
-export function fields<T extends Record<string, unknown>>(
+export function fields<T extends Record<string, unknown>, U>(
   mapping: {
     [P in keyof T]: P extends "__proto__"
       ? never
-      : Codec<T[P]> & { field?: string };
+      : Codec<T[P], U> & { field?: string };
   },
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
-): Codec<T, Record<string, unknown>> {
+): Codec<T, Record<string, U>> {
   return {
     decoder: function fieldsAutoDecoder(value) {
       const object = unknownRecord(value);
@@ -194,7 +195,7 @@ export function fields<T extends Record<string, unknown>>(
       return result as T;
     },
     encoder: function fieldsAutoEncoder(object) {
-      const result: Record<string, unknown> = {};
+      const result: Record<string, U> = {};
       const keys = Object.keys(mapping);
       for (const key of keys) {
         if (key === "__proto__") {
@@ -209,24 +210,25 @@ export function fields<T extends Record<string, unknown>>(
 }
 
 type Extract<T> = T extends any
-  ? { [P in keyof T]: T[P] extends Codec<infer U> ? U : never }
+  ? { [P in keyof T]: T[P] extends Codec<infer U, any> ? U : never }
   : never;
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
 
-type TagCodec<Name extends string> = Codec<Name> & {
+type TagCodec<Name extends string> = Codec<Name, string> & {
   field: string;
-  _private: {
-    tag: typeof tagSymbol;
-    encodedName: Name;
-    originalName: string;
-  };
+  _private: TagData;
 };
 
-type VariantCodec = Codec<any, Record<string, unknown>>;
+type TagData = {
+  tag: typeof tagSymbol;
+  encodedName: string;
+  originalName: string;
+};
 
 export function fieldsUnion<
-  T extends ReadonlyArray<Record<string, Codec<any>>>
+  T extends ReadonlyArray<Record<string, Codec<any, any>>>,
+  U
 >(
   commonField: string,
   callback: T[number] extends never
@@ -235,10 +237,10 @@ export function fieldsUnion<
         tag: <Name extends string>(
           name: Name,
           originalName?: string
-        ) => Codec<Name>
+        ) => Codec<Name, string>
       ) => [...T],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
-): Codec<Extract<T[number]>, Record<string, unknown>> {
+): Codec<Extract<T[number]>, Record<string, U>> {
   function tag<Name extends string>(
     name: Name,
     originalName: string = name
@@ -257,6 +259,7 @@ export function fieldsUnion<
 
   const variants = (callback as (tag_: typeof tag) => [...T])(tag);
 
+  type VariantCodec = Codec<any, Record<string, U>>;
   const decoderMap = new Map<string, VariantCodec["decoder"]>();
   const encoderMap = new Map<string, VariantCodec["encoder"]>();
 
@@ -266,7 +269,7 @@ export function fieldsUnion<
     let seenTag = false;
     for (const [key, codec] of Object.entries(variant)) {
       if ("_private" in codec) {
-        const data = codec._private as TagCodec<never>["_private"];
+        const data = codec._private as TagData;
         if (data.tag === tagSymbol) {
           if (seenTag) {
             throw new Error("TODO already called tag()");
@@ -283,7 +286,10 @@ export function fieldsUnion<
           if (encoderMap.has(data.encodedName)) {
             throw new Error("TODO duplicate encodedName");
           }
-          const fullCodec = fields(variant, { exact });
+          const fullCodec: Codec<
+            Record<string, unknown>,
+            Record<string, U>
+          > = fields(variant, { exact });
           decoderMap.set(data.originalName, fullCodec.decoder);
           encoderMap.set(data.encodedName, fullCodec.encoder);
         }
@@ -325,8 +331,8 @@ export function fieldsUnion<
   };
 }
 
-export function tuple<T extends ReadonlyArray<unknown>>(
-  mapping: readonly [...{ [P in keyof T]: Codec<T[P]> }]
+export function tuple<T extends ReadonlyArray<unknown>, U>(
+  mapping: readonly [...{ [P in keyof T]: Codec<T[P], U> }]
 ): Codec<[...T], Array<unknown>> {
   return {
     decoder: function tupleDecoder(value) {
@@ -454,9 +460,9 @@ type Result<Value, Err> =
     };
 
 const resultCodec = function <Value, Err>(
-  decodeValue: Codec<Value>,
-  decodeError: Codec<Err>
-): Codec<Result<Value, Err>> {
+  decodeValue: Codec<Value, unknown>,
+  decodeError: Codec<Err, unknown>
+): Codec<Result<Value, Err>, unknown> {
   return fieldsUnion("type", (tag) => [
     {
       type: tag("ok"),
@@ -499,7 +505,9 @@ const dictCodec: Codec<Dict, Record<string, unknown>> = record(
   )
 );
 
-const dictFoo: Codec<Record<string, string>> = record(string);
+const dictFoo: Codec<Record<string, string>, Record<string, unknown>> = record(
+  string
+);
 void dictFoo;
 
 export function recursive<T, U>(callback: () => Codec<T, U>): Codec<T, U> {
@@ -518,22 +526,26 @@ type Person = {
   friends: Array<Person>;
 };
 
-const personCodec: Codec<Person> = fields({
+const personCodec: Codec<Person, Record<string, unknown>> = fields({
   name: string,
   friends: array(recursive(() => personCodec)),
 });
 
-// TODO: Second type variable
-export function optional<T>(decoder: Codec<T>): Codec<T | undefined>;
+export function optional<T, V>(
+  decoder: Codec<T, V>
+): Codec<T | undefined, V | undefined>;
 
-export function optional<T, U>(codec: Codec<T>, defaultValue: U): Codec<T | U>;
+export function optional<T, V, U>(
+  codec: Codec<T, V>,
+  defaultValue: U
+): Codec<T | U, V | undefined>;
 
-export function optional<T, U = undefined>(
-  codec: Codec<T>,
+export function optional<T, V, U = undefined>(
+  codec: Codec<T, V>,
   defaultValue?: U
-): Codec<T | U> {
+): Codec<T | U, V | undefined> {
   return {
-    decoder: function optionalDecoder(value: unknown): T | U {
+    decoder: function optionalDecoder(value) {
       if (value === undefined) {
         return defaultValue as T | U;
       }
@@ -547,24 +559,26 @@ export function optional<T, U = undefined>(
         throw newError;
       }
     },
-    encoder: function optionalEncoder(value: T | U): unknown {
+    encoder: function optionalEncoder(value) {
       return value === defaultValue ? undefined : codec.encoder(value as T);
     },
   };
 }
 
-// TODO: Second type variable
-export function nullable<T>(decoder: Codec<T>): Codec<T | null>;
+export function nullable<T, V>(decoder: Codec<T, V>): Codec<T | null, V | null>;
 
-export function nullable<T, U>(codec: Codec<T>, defaultValue: U): Codec<T | U>;
+export function nullable<T, V, U>(
+  codec: Codec<T, V>,
+  defaultValue: U
+): Codec<T | U, V | null>;
 
-export function nullable<T, U = null>(
-  codec: Codec<T>,
+export function nullable<T, V, U = null>(
+  codec: Codec<T, V>,
   ...rest: Array<unknown>
-): Codec<T | U> {
+): Codec<T | U, V | null> {
   const defaultValue = rest.length === 0 ? null : rest[0];
   return {
-    decoder: function nullableDecoder(value: unknown): T | U {
+    decoder: function nullableDecoder(value) {
       if (value === null) {
         return defaultValue as T | U;
       }
@@ -578,17 +592,17 @@ export function nullable<T, U = null>(
         throw newError;
       }
     },
-    encoder: function nullableEncoder(value: T | U): unknown {
+    encoder: function nullableEncoder(value) {
       return value === defaultValue ? null : codec.encoder(value as T);
     },
   };
 }
 
-export function chain<T, U>(
-  codec: Codec<T>,
+export function chain<T, U, V>(
+  codec: Codec<T, V>,
   decoder: (value: T) => U,
   encoder: (value: U) => T
-): Codec<U> {
+): Codec<U, V> {
   return {
     decoder: function chainDecoder(value) {
       return decoder(codec.decoder(value));
