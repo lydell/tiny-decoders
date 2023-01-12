@@ -227,7 +227,7 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
   };
 }
 
-type Extract<MappingsUnion extends Record<string, Codec<any, any>>> =
+type InferFieldsUnion<MappingsUnion extends Record<string, Codec<any, any>>> =
   MappingsUnion extends any ? InferFields<MappingsUnion> : never;
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
@@ -257,7 +257,10 @@ export function fieldsUnion<
         ) => Codec<Name, string>
       ) => [...Variants],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
-): Codec<Extract<Variants[number]>, Record<string, EncodedFieldValueUnion>> {
+): Codec<
+  InferFieldsUnion<Variants[number]>,
+  Record<string, EncodedFieldValueUnion>
+> {
   if (encodedCommonField === "__proto__") {
     throw new Error("fieldsUnion: commonField cannot be __proto__");
   }
@@ -363,7 +366,7 @@ export function fieldsUnion<
           key: encodedCommonField,
         });
       }
-      return decoder(object) as Extract<Variants[number]>;
+      return decoder(object) as InferFieldsUnion<Variants[number]>;
     },
     encoder: function fieldsUnionEncoder(value) {
       const decodedName = value[decodedCommonField as string] as string;
