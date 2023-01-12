@@ -227,10 +227,8 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
   };
 }
 
-type Extract<VariantsUnion extends Record<string, Codec<any, any>>> =
-  VariantsUnion extends any
-    ? { [Key in keyof VariantsUnion]: Infer<VariantsUnion[Key]> }
-    : never;
+type Extract<MappingsUnion extends Record<string, Codec<any, any>>> =
+  MappingsUnion extends any ? InferFields<MappingsUnion> : never;
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
 
@@ -502,7 +500,7 @@ export function multi<
   };
 }
 
-type Fu = Infer<typeof fu>;
+type fu = Infer<typeof fu>;
 const fu = fieldsUnion("type", (tag) => [
   {
     tag: tag("fu"),
