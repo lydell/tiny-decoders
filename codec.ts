@@ -9,6 +9,25 @@ export type Codec<Decoded, Encoded = unknown> = {
 
 export type Infer<T extends Codec<any, any>> = ReturnType<T["decoder"]>;
 
+export function parse<Decoded>(
+  codec: Codec<Decoded, any>,
+  jsonString: string
+): Decoded | DecoderError | SyntaxError {
+  try {
+    return codec.decoder(JSON.parse(jsonString));
+  } catch (error) {
+    return error as DecoderError | SyntaxError;
+  }
+}
+
+export function stringify<Decoded, Encoded>(
+  codec: Codec<Decoded, Encoded>,
+  value: Decoded,
+  space?: number | string
+): string {
+  return JSON.stringify(codec.encoder(value), null, space);
+}
+
 function identity<T>(value: T): T {
   return value;
 }
