@@ -382,6 +382,17 @@ export function fieldsUnion<
   };
 }
 
+// TODO: Good name
+export function named<T extends Codec<any, any>>(
+  encodedFieldName: string,
+  codec: T
+): T & { field: string } {
+  return {
+    field: encodedFieldName,
+    ...codec,
+  };
+}
+
 export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
   mapping: readonly [
     ...{ [Key in keyof Decoded]: Codec<Decoded[Key], EncodedItem> }
@@ -491,11 +502,13 @@ export function multi<
   };
 }
 
+type Fu = Infer<typeof fu>;
 const fu = fieldsUnion("type", (tag) => [
   {
     tag: tag("fu"),
-    fullName: { field: "full_name", ...string, bield: 5 },
-    hmm: { decoder: () => 5, encoder: () => 5, bield: 5 },
+    fullName: named("full_name", string),
+    hmm: named("HMM", optional(string)),
+    flip: optional(named("flip", boolean)),
   },
 ]);
 void fu;
@@ -574,12 +587,13 @@ const dictFoo: Codec<Record<string, string>, Record<string, unknown>> = record(
 );
 void dictFoo;
 
-const fieldsFoo: Codec<
-  { name: string; age: number },
-  Record<string, number | string>
-> = fields({
+const age = named("AGE", optional(number));
+const page = optional(named("PAGE", number));
+
+const fieldsFoo = fields({
   name: string,
-  age: number,
+  age,
+  page,
 });
 void fieldsFoo;
 
