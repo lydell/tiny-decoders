@@ -39,6 +39,10 @@ export function stringify<Decoded, Encoded>(
   return JSON.stringify(codec.encoder(value), null, space);
 }
 
+export const parseWithoutCodec = JSON.parse;
+
+export const stringifyWithoutCodec = JSON.stringify;
+
 function identity<T>(value: T): T {
   return value;
 }
