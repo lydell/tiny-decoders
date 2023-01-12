@@ -4,31 +4,10 @@
 
 export type Codec<Decoded, Encoded = unknown> = {
   decoder: (value: unknown) => Decoded;
-  encoder: (value: WithUndefinedAsOptional<Decoded>) => Encoded;
+  encoder: (value: Decoded) => Encoded;
 };
 
-export type Infer<ACodec extends Codec<any, any>> = ACodec extends Codec<
-  infer Decoded,
-  any
->
-  ? WithUndefinedAsOptional<Decoded>
-  : never;
-
-type WithUndefinedAsOptional<T> = T extends Record<string, unknown>
-  ? Expand<{ [K in OptionalKeys<T>]?: T[K] } & { [K in RequiredKeys<T>]: T[K] }>
-  : T;
-
-type RequiredKeys<T> = {
-  [K in keyof T]: undefined extends T[K] ? never : K;
-}[keyof T];
-
-type OptionalKeys<T> = {
-  [K in keyof T]: undefined extends T[K] ? K : never;
-}[keyof T];
-
-// Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
-// https://stackoverflow.com/a/57683652/2010616
-type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+export type Infer<T extends Codec<any, any>> = ReturnType<T["decoder"]>;
 
 function identity<T>(value: T): T {
   return value;
@@ -118,9 +97,7 @@ export function array<DecodedItem, EncodedItem>(
     encoder: function arrayEncoder(arr) {
       const result = [];
       for (const item of arr) {
-        result.push(
-          codec.encoder(item as WithUndefinedAsOptional<DecodedItem>)
-        );
+        result.push(codec.encoder(item));
       }
       return result;
     },
@@ -155,26 +132,42 @@ export function record<DecodedValue, EncodedValue>(
         if (key === "__proto__") {
           continue;
         }
-        result[key] = codec.encoder(
-          value as WithUndefinedAsOptional<DecodedValue>
-        );
+        result[key] = codec.encoder(value);
       }
       return result;
     },
   };
 }
 
-export function fields<
-  Decoded extends Record<string, unknown>,
-  EncodedFieldValueUnion
->(
-  mapping: {
-    [Key in keyof Decoded]: Codec<Decoded[Key], EncodedFieldValueUnion> & {
-      field?: string;
-    };
-  },
+type FieldsMapping = Record<
+  string,
+  Codec<any, any> & {
+    field?: string;
+    optional?: boolean;
+  }
+>;
+
+type InferFields<Mapping extends FieldsMapping> = Expand<
+  // eslint-disable-next-line @typescript-eslint/sort-type-union-intersection-members
+  {
+    [Key in keyof Mapping as Mapping[Key] extends { optional: true }
+      ? never
+      : Key]: Infer<Mapping[Key]>;
+  } & {
+    [Key in keyof Mapping as Mapping[Key] extends { optional: true }
+      ? Key
+      : never]?: Infer<Mapping[Key]>;
+  }
+>;
+
+// Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
+// https://stackoverflow.com/a/57683652/2010616
+type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+
+export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
+  mapping: Mapping,
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
-): Codec<Decoded, Record<string, EncodedFieldValueUnion>> {
+): Codec<InferFields<Mapping>, Record<string, EncodedFieldValueUnion>> {
   return {
     decoder: function fieldsDecoder(value) {
       const object = unknownRecord(value);
@@ -185,12 +178,15 @@ export function fields<
         if (key === "__proto__") {
           continue;
         }
-        const { decoder, field = key } = mapping[key];
+        const { decoder, field = key, optional = false } = mapping[key];
         if (field === "__proto__") {
           continue;
         }
         try {
-          result[key] = decoder(object[field]);
+          const decoded: unknown = decoder(object[field]);
+          if (!optional || decoded !== undefined) {
+            result[key] = decoded;
+          }
         } catch (error) {
           throw DecoderError.at(error, key);
         }
@@ -209,7 +205,7 @@ export function fields<
         }
       }
 
-      return result as Decoded;
+      return result as InferFields<Mapping>;
     },
     encoder: function fieldsEncoder(object) {
       const result: Record<string, EncodedFieldValueUnion> = {};
@@ -217,26 +213,24 @@ export function fields<
         if (key === "__proto__") {
           continue;
         }
-        const { encoder, field = key } = mapping[key];
+        const { encoder, field = key, optional = false } = mapping[key];
         if (field === "__proto__") {
           continue;
         }
-        result[field] = encoder(
-          object[key] as WithUndefinedAsOptional<Decoded[string]>
-        );
+        const value = object[key as keyof InferFields<Mapping>];
+        if (!optional || value !== undefined) {
+          result[field] = encoder(value) as EncodedFieldValueUnion;
+        }
       }
       return result;
     },
   };
 }
 
-type Extract<Variants> = Variants extends any
-  ? {
-      [Key in keyof Variants]: Variants[Key] extends Codec<infer Decoded, any>
-        ? Decoded
-        : never;
-    }
-  : never;
+type Extract<VariantsUnion extends Record<string, Codec<any, any>>> =
+  VariantsUnion extends any
+    ? { [Key in keyof VariantsUnion]: Infer<VariantsUnion[Key]> }
+    : never;
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
 
@@ -252,7 +246,7 @@ type TagData = {
 };
 
 export function fieldsUnion<
-  Variants extends ReadonlyArray<Record<string, Codec<any, any>>>,
+  Variants extends ReadonlyArray<FieldsMapping>,
   EncodedFieldValueUnion
 >(
   encodedCommonField: string,
@@ -338,7 +332,7 @@ export function fieldsUnion<
             );
           }
           const fullCodec: Codec<
-            Record<string, unknown>,
+            InferFields<Variants[number]>,
             Record<string, EncodedFieldValueUnion>
           > = fields(variant, { exact });
           decoderMap.set(data.encodedName, fullCodec.decoder);
@@ -418,13 +412,7 @@ export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
       const result = [];
       for (let index = 0; index < mapping.length; index++) {
         const { encoder } = mapping[index];
-        result.push(
-          encoder(
-            (value as [...Decoded])[index] as WithUndefinedAsOptional<
-              Decoded[number]
-            >
-          )
-        );
+        result.push(encoder(value[index]));
       }
       return result;
     },
@@ -502,6 +490,15 @@ export function multi<
     },
   };
 }
+
+const fu = fieldsUnion("type", (tag) => [
+  {
+    tag: tag("fu"),
+    fullName: { field: "full_name", ...string, bield: 5 },
+    hmm: { decoder: () => 5, encoder: () => 5, bield: 5 },
+  },
+]);
+void fu;
 
 const bar = chain(multi(["number", "string"]), {
   decoder: (value) => {
@@ -611,18 +608,19 @@ const personCodec: Codec<Person, Record<string, unknown>> = fields({
 
 export function optional<Decoded, Encoded>(
   decoder: Codec<Decoded, Encoded>
-): Codec<Decoded | undefined, Encoded | undefined>;
+): Codec<Decoded | undefined, Encoded | undefined> & { optional: true };
 
 export function optional<Decoded, Encoded, Default>(
   codec: Codec<Decoded, Encoded>,
   defaultValue: Default
-): Codec<Decoded | Default, Encoded | undefined>;
+): Codec<Decoded | Default, Encoded | undefined> & { optional: true };
 
 export function optional<Decoded, Encoded, Default = undefined>(
   codec: Codec<Decoded, Encoded>,
   defaultValue?: Default
-): Codec<Decoded | Default, Encoded | undefined> {
+): Codec<Decoded | Default, Encoded | undefined> & { optional: true } {
   return {
+    optional: true,
     decoder: function optionalDecoder(value) {
       if (value === undefined) {
         return defaultValue as Decoded | Default;
@@ -640,7 +638,7 @@ export function optional<Decoded, Encoded, Default = undefined>(
     encoder: function optionalEncoder(value) {
       return value === defaultValue
         ? undefined
-        : codec.encoder(value as WithUndefinedAsOptional<Decoded>);
+        : codec.encoder(value as Decoded);
     },
   };
 }
@@ -675,9 +673,7 @@ export function nullable<Decoded, Encoded, Default = null>(
       }
     },
     encoder: function nullableEncoder(value) {
-      return value === defaultValue
-        ? null
-        : codec.encoder(value as WithUndefinedAsOptional<Decoded>);
+      return value === defaultValue ? null : codec.encoder(value as Decoded);
     },
   };
 }
@@ -694,11 +690,7 @@ export function chain<Decoded, Encoded, NewDecoded>(
       return transform.decoder(codec.decoder(value));
     },
     encoder: function chainEncoder(value) {
-      return codec.encoder(
-        transform.encoder(
-          value as NewDecoded
-        ) as WithUndefinedAsOptional<Decoded>
-      );
+      return codec.encoder(transform.encoder(value));
     },
   };
 }
