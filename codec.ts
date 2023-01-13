@@ -13,7 +13,7 @@ export type Codec<
 };
 
 type CodecOptions = {
-  field?: string;
+  encodedFieldName?: string;
   optional?: boolean;
 };
 
@@ -217,7 +217,11 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
         if (key === "__proto__") {
           continue;
         }
-        const { decoder, field = key, optional = false } = mapping[key];
+        const {
+          decoder,
+          encodedFieldName: field = key,
+          optional = false,
+        } = mapping[key];
         if (field === "__proto__") {
           continue;
         }
@@ -252,7 +256,11 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
         if (key === "__proto__") {
           continue;
         }
-        const { encoder, field = key, optional = false } = mapping[key];
+        const {
+          encoder,
+          encodedFieldName: field = key,
+          optional = false,
+        } = mapping[key];
         if (field === "__proto__") {
           continue;
         }
@@ -272,7 +280,11 @@ type InferFieldsUnion<
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
 
-type TagCodec<Name extends string> = Codec<Name, string, { field: string }> & {
+type TagCodec<Name extends string> = Codec<
+  Name,
+  string,
+  { encodedFieldName: string }
+> & {
   _private: TagData;
 };
 
@@ -311,7 +323,7 @@ export function fieldsUnion<
     return {
       decoder: () => decodedName,
       encoder: () => encodedName,
-      field: encodedCommonField,
+      encodedFieldName: encodedCommonField,
       _private: {
         tag: tagSymbol,
         decodedName,
@@ -426,12 +438,12 @@ export function fieldsUnion<
 export function named<Decoded, Encoded, Options extends CodecOptions>(
   encodedFieldName: string,
   codec: Codec<Decoded, Encoded, Options>
-): Codec<Decoded, Encoded, Expand<Options & { field: string }>> {
+): Codec<Decoded, Encoded, Expand<Options & { encodedFieldName: string }>> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
-    field: encodedFieldName,
-  } as Codec<Decoded, Encoded, Expand<Options & { field: string }>>;
+    encodedFieldName,
+  } as Codec<Decoded, Encoded, Expand<Options & { encodedFieldName: string }>>;
 }
 
 export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
