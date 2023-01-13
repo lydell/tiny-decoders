@@ -17,6 +17,14 @@ type CodecOptions = {
   optional?: boolean;
 };
 
+type MergeOptions<A extends CodecOptions, B extends CodecOptions> = Expand<
+  A & B
+>;
+
+// Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
+// https://stackoverflow.com/a/57683652/2010616
+type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+
 export type Infer<T extends Codec<any>> = ReturnType<T["decoder"]>;
 
 // TODO: Should this swallow the SyntaxError as well? What’s the use having two different ones?
@@ -199,10 +207,6 @@ type InferFields<Mapping extends FieldsMapping> = Expand<
   }
 >;
 
-// Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
-// https://stackoverflow.com/a/57683652/2010616
-type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
-
 export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
   mapping: Mapping,
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
@@ -274,9 +278,8 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
   };
 }
 
-type InferFieldsUnion<
-  MappingsUnion extends Record<string, Codec<any, any, CodecOptions>>
-> = MappingsUnion extends any ? InferFields<MappingsUnion> : never;
+type InferFieldsUnion<MappingsUnion extends FieldsMapping> =
+  MappingsUnion extends any ? InferFields<MappingsUnion> : never;
 
 const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
 
@@ -438,12 +441,20 @@ export function fieldsUnion<
 export function named<Decoded, Encoded, Options extends CodecOptions>(
   encodedFieldName: string,
   codec: Codec<Decoded, Encoded, Options>
-): Codec<Decoded, Encoded, Expand<Options & { encodedFieldName: string }>> {
+): Codec<
+  Decoded,
+  Encoded,
+  MergeOptions<Options, { encodedFieldName: string }>
+> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
     encodedFieldName,
-  } as Codec<Decoded, Encoded, Expand<Options & { encodedFieldName: string }>>;
+  } as Codec<
+    Decoded,
+    Encoded,
+    MergeOptions<Options, { encodedFieldName: string }>
+  >;
 }
 
 export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
@@ -680,7 +691,7 @@ export function optional<Decoded, Encoded, Options extends CodecOptions>(
 ): Codec<
   Decoded | undefined,
   Encoded | undefined,
-  Expand<Options & { optional: true }>
+  MergeOptions<Options, { optional: true }>
 >;
 
 export function optional<
@@ -694,7 +705,7 @@ export function optional<
 ): Codec<
   Decoded | Default,
   Encoded | undefined,
-  Expand<Options & { optional: true }>
+  MergeOptions<Options, { optional: true }>
 >;
 
 export function optional<
@@ -708,7 +719,7 @@ export function optional<
 ): Codec<
   Decoded | Default,
   Encoded | undefined,
-  Expand<Options & { optional: true }>
+  MergeOptions<Options, { optional: true }>
 > {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
@@ -736,7 +747,7 @@ export function optional<
   } as Codec<
     Decoded | Default,
     Encoded | undefined,
-    Expand<Options & { optional: true }>
+    MergeOptions<Options, { optional: true }>
   >;
 }
 
