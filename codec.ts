@@ -31,8 +31,19 @@ export function parse<Decoded>(
   codec: Codec<Decoded>,
   jsonString: string
 ): Decoded | DecoderError {
+  let json: unknown;
   try {
-    return codec.decoder(JSON.parse(jsonString));
+    json = JSON.parse(jsonString);
+  } catch (error) {
+    return new DecoderError({
+      tag: "custom",
+      message: error instanceof Error ? error.message : String(error),
+      got: jsonString,
+      cause: error,
+    });
+  }
+  try {
+    return codec.decoder(json);
   } catch (error) {
     return DecoderError.at(error);
   }
