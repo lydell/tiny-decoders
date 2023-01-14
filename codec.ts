@@ -27,15 +27,14 @@ type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 export type Infer<T extends Codec<any>> = ReturnType<T["decoder"]>;
 
-// TODO: Should this swallow the SyntaxError as well? What’s the use having two different ones?
 export function parse<Decoded>(
   codec: Codec<Decoded>,
   jsonString: string
-): Decoded | DecoderError | SyntaxError {
+): Decoded | DecoderError {
   try {
     return codec.decoder(JSON.parse(jsonString));
   } catch (error) {
-    return error instanceof SyntaxError ? error : DecoderError.at(error);
+    return DecoderError.at(error);
   }
 }
 
