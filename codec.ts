@@ -703,19 +703,15 @@ const personCodec: Codec<Person, Record<string, unknown>> = fields({
 
 export function optional<Decoded, Encoded, Options extends CodecOptions>(
   codec: Codec<Decoded, Encoded, Options>
-): Codec<Decoded, Encoded, MergeOptions<Options, { optional: true }>> {
+): Codec<
+  Decoded | undefined,
+  Encoded | undefined,
+  MergeOptions<Options, { optional: true }>
+> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
     optional: true,
-  } as Codec<Decoded, Encoded, MergeOptions<Options, { optional: true }>>;
-}
-
-export function undefinedOr<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>
-): Codec<Decoded | undefined, Encoded | undefined, Options> {
-  return {
-    ...codec,
     decoder: function undefinedOrDecoder(value) {
       if (value === undefined) {
         return undefined;
@@ -733,10 +729,14 @@ export function undefinedOr<Decoded, Encoded, Options extends CodecOptions>(
     encoder: function undefinedOrEncoder(value) {
       return value === undefined ? undefined : codec.encoder(value);
     },
-  };
+  } as Codec<
+    Decoded | undefined,
+    Encoded | undefined,
+    MergeOptions<Options, { optional: true }>
+  >;
 }
 
-export function nullOr<Decoded, Encoded, Options extends CodecOptions>(
+export function nullable<Decoded, Encoded, Options extends CodecOptions>(
   codec: Codec<Decoded, Encoded, Options>
 ): Codec<Decoded | null, Encoded | null, Options> {
   return {
@@ -788,10 +788,10 @@ const t1 = optional(string);
 const t2 = named("", string);
 const t3 = named("", optional(string));
 const t4 = optional(named("", string));
-const t5 = nullOr(string);
-const t6 = optional(nullOr(string));
-const t7 = nullOr(optional(string));
-const t8 = chain(nullOr(optional(named("", string))), {
+const t5 = nullable(string);
+const t6 = optional(nullable(string));
+const t7 = nullable(optional(string));
+const t8 = chain(nullable(optional(named("", string))), {
   decoder: (value) => value,
   encoder: (value) => value,
 });
