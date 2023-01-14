@@ -974,6 +974,10 @@ export class DecoderError extends TypeError {
 
   optional: boolean;
 
+  // Unnecessary if using `"lib": ["ES2022"]` in tsconfig.json.
+  // For those who don’t, this allows `.cause` to be used anyway.
+  override cause?: unknown;
+
   constructor(
     options:
       | { message: string; value: unknown; key?: Key; cause?: unknown }
