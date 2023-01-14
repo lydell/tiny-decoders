@@ -964,12 +964,12 @@ export class DecoderError extends TypeError {
 
   optional: boolean;
 
-  constructor({
-    key,
-    ...params
-  }:
-    | { message: string; value: unknown; key?: Key }
-    | (DecoderErrorVariant & { key?: Key })) {
+  constructor(
+    options:
+      | { message: string; value: unknown; key?: Key; cause?: unknown }
+      | (DecoderErrorVariant & { key?: Key; cause?: unknown })
+  ) {
+    const { key, cause, ...params } = options;
     const variant: DecoderErrorVariant =
       "tag" in params
         ? params
@@ -980,7 +980,8 @@ export class DecoderError extends TypeError {
         // Default to sensitive so accidental uncaught errors don’t leak
         // anything. Explicit `.format()` defaults to non-sensitive.
         { sensitive: true }
-      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`
+      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`,
+      "cause" in options ? { cause } : {}
     );
     this.path = key === undefined ? [] : [key];
     this.variant = variant;
@@ -1002,6 +1003,7 @@ export class DecoderError extends TypeError {
       message: error instanceof Error ? error.message : String(error),
       got: DecoderError.MISSING_VALUE,
       key,
+      cause: error,
     });
   }
 
