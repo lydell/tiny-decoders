@@ -450,6 +450,13 @@ export function fieldsUnion<
   return {
     decoder: function fieldsUnionDecoder(value) {
       const object = unknownRecord(value);
+      if (!(encodedCommonField in object)) {
+        throw new DecoderError({
+          tag: "missing field",
+          field: encodedCommonField,
+          got: object,
+        });
+      }
       let encodedName;
       try {
         encodedName = string.decoder(object[encodedCommonField]);
@@ -465,7 +472,18 @@ export function fieldsUnion<
           key: encodedCommonField,
         });
       }
-      return decoder(object) as InferFieldsUnion<Variants[number]>;
+      try {
+        return decoder(object) as InferFieldsUnion<Variants[number]>;
+      } catch (error) {
+        const newError = DecoderError.at(error);
+        if (newError.path.length === 0) {
+          newError.fieldsUnionEncodedCommonField = {
+            key: encodedCommonField,
+            value: encodedName,
+          };
+        }
+        throw newError;
+      }
     },
     encoder: function fieldsUnionEncoder(value) {
       const decodedName = value[decodedCommonField as string] as string;
@@ -942,7 +960,7 @@ function formatDecoderErrorVariant(
     case "missing field": {
       const { maxObjectChildren = MAX_OBJECT_CHILDREN_DEFAULT } = options;
       const keys = Object.keys(variant.got);
-      return `Expected a field called: ${JSON.stringify(
+      return `Expected an object with a field called: ${JSON.stringify(
         variant.field
       )}\nGot: ${formatGot(variant.got)}${
         keys.length > maxObjectChildren
@@ -977,6 +995,13 @@ export class DecoderError extends TypeError {
 
   optional: boolean;
 
+  fieldsUnionEncodedCommonField:
+    | {
+        key: string;
+        value: string;
+      }
+    | undefined;
+
   // Unnecessary if using `"lib": ["ES2022"]` in tsconfig.json.
   // For those who don’t, this allows `.cause` to be used anyway.
   override cause?: unknown;
@@ -1004,6 +1029,7 @@ export class DecoderError extends TypeError {
     this.variant = variant;
     this.nullable = false;
     this.optional = false;
+    this.fieldsUnionEncodedCommonField = undefined;
 
     // For Node.js 14 and 15, which don’t support the `cause` option.
     if ("cause" in options && !("cause" in this)) {
@@ -1033,8 +1059,14 @@ export class DecoderError extends TypeError {
     const path = this.path.map((part) => `[${JSON.stringify(part)}]`).join("");
     const nullableString = this.nullable ? " (nullable)" : "";
     const optionalString = this.optional ? " (optional)" : "";
+    const fieldsUnionString =
+      this.fieldsUnionEncodedCommonField === undefined
+        ? ""
+        : ` (for ${JSON.stringify(
+            this.fieldsUnionEncodedCommonField.key
+          )}: ${JSON.stringify(this.fieldsUnionEncodedCommonField.value)})`;
     const variant = formatDecoderErrorVariant(this.variant, options);
-    return `At root${path}${nullableString}${optionalString}:\n${variant}`;
+    return `At root${path}${nullableString}${optionalString}${fieldsUnionString}:\n${variant}`;
   }
 }
 
