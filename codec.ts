@@ -1091,14 +1091,16 @@ export function repr(
       indent,
       sensitive,
     },
-    0
+    0,
+    []
   );
 }
 
 function reprHelper(
   value: unknown,
   options: Required<ReprOptions>,
-  level: number
+  level: number,
+  seen: Array<unknown>
 ): string {
   const { indent, maxLength, sensitive } = options;
   const type = typeof value;
@@ -1133,6 +1135,10 @@ function reprHelper(
         return "[]";
       }
 
+      if (seen.includes(arr)) {
+        return `circular ${toStringType}(${arr.length})`;
+      }
+
       if (options.depth < level) {
         return `${toStringType}(${arr.length})`;
       }
@@ -1144,7 +1150,9 @@ function reprHelper(
 
       for (let index = 0; index <= end; index++) {
         const item =
-          index in arr ? reprHelper(arr[index], options, level + 1) : "<empty>";
+          index in arr
+            ? reprHelper(arr[index], options, level + 1, [...seen, arr])
+            : "<empty>";
         items.push(item);
       }
 
@@ -1169,6 +1177,10 @@ function reprHelper(
         return `${prefix}{}`;
       }
 
+      if (seen.includes(object)) {
+        return `circular ${name}(${keys.length})`;
+      }
+
       if (options.depth < level) {
         return `${name}(${keys.length})`;
       }
@@ -1179,7 +1191,10 @@ function reprHelper(
         .slice(0, options.maxObjectChildren)
         .map((key2) => {
           const truncatedKey = truncate(JSON.stringify(key2), maxLength);
-          const valueRepr = reprHelper(object[key2], options, level + 1);
+          const valueRepr = reprHelper(object[key2], options, level + 1, [
+            ...seen,
+            object,
+          ]);
           const separator =
             truncatedKey.length + valueRepr.length > maxLength
               ? `\n${indent.repeat(level + 2)}`
