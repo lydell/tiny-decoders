@@ -1038,28 +1038,48 @@ export class DecoderError extends TypeError {
   }
 }
 
-const MAX_OBJECT_CHILDREN_DEFAULT = 3;
+const MAX_OBJECT_CHILDREN_DEFAULT = 5;
 
 export type ReprOptions = {
-  recurse?: boolean;
+  depth?: number;
+  indent?: string;
   maxArrayChildren?: number;
   maxObjectChildren?: number;
   maxLength?: number;
-  recurseMaxLength?: number;
   sensitive?: boolean;
 };
 
 export function repr(
   value: unknown,
   {
-    recurse = true,
+    depth = 0,
+    indent = "  ",
     maxArrayChildren = 5,
     maxObjectChildren = MAX_OBJECT_CHILDREN_DEFAULT,
     maxLength = 100,
-    recurseMaxLength = 20,
     sensitive = false,
   }: ReprOptions = {}
 ): string {
+  return reprHelper(
+    value,
+    {
+      depth,
+      maxArrayChildren,
+      maxObjectChildren,
+      maxLength,
+      indent,
+      sensitive,
+    },
+    0
+  );
+}
+
+function reprHelper(
+  value: unknown,
+  options: Required<ReprOptions>,
+  level: number
+): string {
+  const { indent, maxLength, sensitive } = options;
   const type = typeof value;
   const toStringType = Object.prototype.toString
     .call(value)
@@ -1088,24 +1108,22 @@ export function repr(
 
     if (Array.isArray(value)) {
       const arr: Array<unknown> = value;
-      if (!recurse && arr.length > 0) {
+      if (arr.length === 0) {
+        return "[]";
+      }
+
+      if (options.depth < level) {
         return `${toStringType}(${arr.length})`;
       }
 
       const lastIndex = arr.length - 1;
       const items = [];
 
-      const end = Math.min(maxArrayChildren - 1, lastIndex);
+      const end = Math.min(options.maxArrayChildren - 1, lastIndex);
 
       for (let index = 0; index <= end; index++) {
         const item =
-          index in arr
-            ? repr(arr[index], {
-                recurse: false,
-                maxLength: recurseMaxLength,
-                sensitive,
-              })
-            : "<empty>";
+          index in arr ? reprHelper(arr[index], options, level + 1) : "<empty>";
         items.push(item);
       }
 
@@ -1113,7 +1131,9 @@ export function repr(
         items.push(`(${lastIndex - end} more)`);
       }
 
-      return `[${items.join(", ")}]`;
+      return `[\n${indent.repeat(level + 1)}${items.join(
+        `,\n${indent.repeat(level + 1)}`
+      )}\n${indent.repeat(level)}]`;
     }
 
     if (toStringType === "Object") {
@@ -1122,30 +1142,34 @@ export function repr(
 
       // `class Foo {}` has `toStringType === "Object"` and `name === "Foo"`.
       const { name } = object.constructor;
+      const prefix = name === "Object" ? "" : `${name} `;
 
-      if (!recurse && keys.length > 0) {
+      if (keys.length === 0) {
+        return `${prefix}{}`;
+      }
+
+      if (options.depth < level) {
         return `${name}(${keys.length})`;
       }
 
-      const numHidden = Math.max(0, keys.length - maxObjectChildren);
+      const numHidden = Math.max(0, keys.length - options.maxObjectChildren);
 
       const items = keys
-        .slice(0, maxObjectChildren)
-        .map(
-          (key2) =>
-            `${truncate(JSON.stringify(key2), recurseMaxLength)}: ${repr(
-              object[key2],
-              {
-                recurse: false,
-                maxLength: recurseMaxLength,
-                sensitive,
-              }
-            )}`
-        )
+        .slice(0, options.maxObjectChildren)
+        .map((key2) => {
+          const truncatedKey = truncate(JSON.stringify(key2), maxLength);
+          const valueRepr = reprHelper(object[key2], options, level + 1);
+          const separator =
+            truncatedKey.length + valueRepr.length > maxLength
+              ? `\n${indent.repeat(level + 2)}`
+              : " ";
+          return `${truncatedKey}:${separator}${valueRepr}`;
+        })
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);
 
-      const prefix = name === "Object" ? "" : `${name} `;
-      return `${prefix}{${items.join(", ")}}`;
+      return `${prefix}{\n${indent.repeat(level + 1)}${items.join(
+        `,\n${indent.repeat(level + 1)}`
+      )}\n${indent.repeat(level)}}`;
     }
 
     return toStringType;
