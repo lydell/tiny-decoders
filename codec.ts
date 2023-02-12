@@ -449,20 +449,9 @@ export function fieldsUnion<
 
   return {
     decoder: function fieldsUnionDecoder(value) {
-      const object = unknownRecord(value);
-      if (!(encodedCommonField in object)) {
-        throw new DecoderError({
-          tag: "missing field",
-          field: encodedCommonField,
-          got: object,
-        });
-      }
-      let encodedName;
-      try {
-        encodedName = string.decoder(object[encodedCommonField]);
-      } catch (error) {
-        throw DecoderError.at(error, encodedCommonField);
-      }
+      const encodedName = fields({ [encodedCommonField]: string }).decoder(
+        value
+      )[encodedCommonField];
       const decoder = decoderMap.get(encodedName);
       if (decoder === undefined) {
         throw new DecoderError({
@@ -473,7 +462,7 @@ export function fieldsUnion<
         });
       }
       try {
-        return decoder(object) as InferFieldsUnion<Variants[number]>;
+        return decoder(value) as InferFieldsUnion<Variants[number]>;
       } catch (error) {
         const newError = DecoderError.at(error);
         if (newError.path.length === 0) {
