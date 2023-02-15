@@ -133,17 +133,17 @@ export const string: Codec<string, string> = {
 };
 
 export function stringUnion<Variants extends ReadonlyArray<string>>(
-  values: Variants[number] extends never
+  variants: Variants[number] extends never
     ? "stringUnion must have at least one variant"
     : [...Variants]
 ): Codec<Variants[number], Variants[number]> {
   return {
     decoder: function stringUnionDecoder(value) {
       const str = string.decoder(value);
-      if (!values.includes(str)) {
+      if (!variants.includes(str)) {
         throw new DecoderError({
           tag: "unknown stringUnion variant",
-          knownVariants: values as Array<string>,
+          knownVariants: variants as Array<string>,
           got: str,
         });
       }
@@ -449,9 +449,9 @@ export function fieldsUnion<
 
   return {
     decoder: function fieldsUnionDecoder(value) {
-      const encodedName = fields({ [encodedCommonField]: string }).decoder(
+      const encodedName = singleField(encodedCommonField, string).decoder(
         value
-      )[encodedCommonField];
+      );
       const decoder = decoderMap.get(encodedName);
       if (decoder === undefined) {
         throw new DecoderError({
