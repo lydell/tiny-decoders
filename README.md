@@ -1,6 +1,6 @@
 # tiny-decoders [![minified size](https://img.shields.io/bundlephobia/min/tiny-decoders.svg)](https://bundlephobia.com/result?p=tiny-decoders)
 
-Type-safe data decoding for the minimalist.
+Type-safe data decoding and encoding for the minimalist.
 
 ## Installation
 
@@ -17,47 +17,61 @@ npm install tiny-decoders
 ## Example
 
 ```ts
+import * as Codec from "tiny-decoders";
+
+type User = Codec.Infer<typeof User>;
+
+const User = Codec.fields({
+  name: Codec.string,
+  age: Codec.optional(Codec.number),
+  interests: Codec.array(Codec.string),
+  active: Codec.named("is_active", boolean),
+});
+```
+
+Here’s the same example, but with bare imports and no inferred types:
+
+```ts
 import {
   array,
   boolean,
-  DecoderError,
+  Codec,
   fields,
-  fieldsAuto,
+  named,
   number,
   optional,
   string,
 } from "tiny-decoders";
 
-// You can also import into a namespace if you want:
-import * as Decode from "tiny-decoders";
-
 type User = {
   name: string;
-  active: boolean;
   age?: number;
   interests: Array<string>;
+  active: boolean;
 };
 
-const userDecoder = fields(
-  (field): User => ({
-    name: field("full_name", string),
-    active: field("is_active", boolean),
-    age: field("age", optional(number)),
-    interests: field("interests", array(string)),
-  })
-);
+const User: Codec<User> = fields({
+  name: string,
+  age: optional(number),
+  interests: array(string),
+  active: named("is_active", boolean),
+});
+```
 
-const payload: unknown = getSomeJSON();
+Here’s a way to run it in a type safe way:
 
-try {
-  const user: User = userDecoder(payload);
-} catch (error: unknown) {
-  if (error instanceof DecoderError) {
-    // `error.format()` gives a nicer error message than `error.message`.
-    console.error(error.format());
-  } else {
-    console.error(error);
-  }
+```ts
+const payload: string = getSomeJSON();
+
+const maybeUser = Codec.parse(User, payload);
+
+if (maybeUser instanceof Codec.DecoderError) {
+  // `error.format()` gives a nicer error message than `error.message`.
+  console.error(error.format());
+} else {
+  console.log(maybeUser.name, maybeUser.age);
+  // Turn it back to JSON again:
+  console.log(Codec.stringify(User, maybeUser));
 }
 ```
 
@@ -69,69 +83,63 @@ Expected a number
 Got: "30"
 ```
 
-If you use the same field names in both JSON and TypeScript there’s a shortcut:
+## Codec&lt;T&gt;
 
 ```ts
-const userDecoder2 = fieldsAuto({
-  full_name: string,
-  is_active: boolean,
-  age: optional(number),
-  interests: array(string),
-});
-```
-
-You can even [infer the type from the decoder](#type-inference) instead of writing it manually!
-
-```ts
-type User2 = ReturnType<typeof userDecoder2>;
-```
-
-The above produces this type:
-
-```ts
-type User2 = {
-  full_name: string;
-  is_active: boolean;
-  age?: number;
-  interests: string[];
+type Codec<Decoded> = {
+  decoder: (value: unknown) => Decoded;
+  encoder: (value: Decoded) => unknown;
 };
 ```
 
-## Decoder&lt;T&gt;
-
-```ts
-type Decoder<T> = (value: unknown) => T;
-```
+A codec is an object with a `decoder` field and an `encoder` field. Both are functions.
 
 A decoder is a function that:
 
 - Takes an `unknown` value and refines it to any type you want (`T`).
 - Throws a [DecoderError](#decodererror) otherwise.
 
+An encoder is a function that turns that `T` back to `unknown` again.
+
 That’s it!
 
-tiny-decoders ships with a bunch of decoders, and a few functions to combine decoders. This way you can describe the shape of any data!
+tiny-decoders ships with a bunch of codec, and a few functions to combine codecs. This way you can describe the shape of any data!
+
+This package used to only have decoders. That’s why it’s called tiny-_decoders_ and not tiny-_codecs_.
 
 ### Advanced variant
 
 ```ts
-type Decoder<T, U = unknown> = (value: U) => T;
+type Codec<
+  Decoded,
+  Encoded = unknown,
+  Options extends CodecOptions = {}
+> = Options & {
+  decoder: (value: unknown) => Decoded;
+  encoder: (value: Decoded) => Encoded;
+};
+
+type CodecOptions = {
+  encodedFieldName?: string;
+  optional?: boolean;
+};
 ```
 
-The above is the _full_ definition of a decoder. The input value can be some other type (`U`) than `unknown` if you want.
+The above is the _full_ definition of a codec.
+
+- The encoded type does not _have_ to be `unknown`.
+- There’s some metadata for supporting optional fields and having different object key names in JSON vs TypeScript.
 
 Most of the time you don’t need to think about this, though!
 
-> ℹ️ Some decoders used to support a second `errors` parameter. That is no longer a thing.
+## Codec
 
-## Decoders
-
-Here’s a summary of all decoders (with slightly simplified type annotations):
+Here’s a summary of all codecs (with slightly simplified type annotations):
 
 <table>
 <thead>
 <tr>
-<th>Decoder</th>
+<th>Codec</th>
 <th>Type</th>
 <th>JSON</th>
 <th>TypeScript</th>
@@ -139,30 +147,36 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 </thead>
 <tbody>
 <tr>
+<th><a href="#unknown">unknown</a></th>
+<td><code>Codec&lt;unknown&gt;</code></td>
+<td>anything</td>
+<td><code>unknown</code></td>
+</tr>
+<tr>
 <th><a href="#boolean">boolean</a></th>
-<td><code>Decoder&lt;boolean&gt;</code></td>
+<td><code>Codec&lt;boolean&gt;</code></td>
 <td>boolean</td>
 <td><code>boolean</code></td>
 </tr>
 <tr>
 <th><a href="#number">number</a></th>
-<td><code>Decoder&lt;number&gt;</code></td>
+<td><code>Codec&lt;number&gt;</code></td>
 <td>number</td>
 <td><code>number</code></td>
 </tr>
 <tr>
 <th><a href="#string">string</a></th>
-<td><code>Decoder&lt;string&gt;</code></td>
+<td><code>Codec&lt;string&gt;</code></td>
 <td>string</td>
 <td><code>string</code></td>
 </tr>
 <th><a href="#stringunion">stringUnion</a></th>
-<td><pre>(mapping: {
-  string1: null,
-  string2: null,
-  stringN: null
-}) =&gt;
-  Decoder&lt;
+<td><pre>(variants: [
+  "string1",
+  "string2",
+  "stringN"
+]) =&gt;
+  Codec&lt;
     "string1"
     | "string2"
     | "stringN"
@@ -174,33 +188,26 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 </tr>
 <tr>
 <th><a href="#array">array</a></th>
-<td><pre>(decoder: Decoder&lt;T&gt;) =&gt;
-  Decoder&lt;Array&lt;T&gt;&gt;</pre></td>
+<td><pre>(codec: Codec&lt;T&gt;) =&gt;
+  Codec&lt;Array&lt;T&gt;&gt;</pre></td>
 <td>array</td>
 <td><code>Array&lt;T&gt;</code></td>
 </tr>
 <tr>
 <th><a href="#record">record</a></th>
-<td><pre>(decoder: Decoder&lt;T&gt;) =&gt;
-  Decoder&lt;Record&lt;string, T&gt;&gt;</pre></td>
+<td><pre>(decoder: Codec&lt;T&gt;) =&gt;
+  Codec&lt;Record&lt;string, T&gt;&gt;</pre></td>
 <td>object</td>
 <td><code>Record&lt;string, T&gt;</code></td>
 </tr>
 <tr>
 <th><a href="#fields">fields</a></th>
-<td><pre>(callback: Function) =&gt;
-  Decoder&lt;T&gt;</pre></td>
-<td>object</td>
-<td><code>T</code></td>
-</tr>
-<tr>
-<th><a href="#fieldsauto">fieldsAuto</a></th>
 <td><pre>(mapping: {
-  field1: Decoder&lt;T1&gt;,
-  field2: Decoder&lt;T2&gt;,
-  fieldN: Decoder&lt;TN&gt;
+  field1: Codec&lt;T1&gt;,
+  field2: Codec&lt;T2&gt;,
+  fieldN: Codec&lt;TN&gt;
 }) =&gt;
-  Decoder&lt;{
+  Codec&lt;{
     field1: T1,
     field2: T2,
     fieldN: TN
@@ -215,61 +222,105 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 <tr>
 <th><a href="#fieldsunion">fieldsUnion</a></th>
 <td><pre>(
-  key: string,
-  mapping: {
-    key1: Decoder&lt;T1&gt;,
-    key2: Decoder&lt;T2&gt;,
-    keyN: Decoder&lt;TN&gt;
-  }
+  encodedCommonField: string,
+  callback: (tag: (tagName: string) => Codec<string>) => [
+    {
+      tag1: tag("tag1"),
+      field: Codec<T1["field"]>
+    },
+    {
+      tag2: tag("tag2"),
+      field: Codec<T2["field"]>
+    },
+    {
+      tagN: tag("tagN"),
+      field: Codec<TN["field"]>
+    }
+  ]
 ) =&gt;
-  Decoder&lt;T1 | T2 | TN&gt;</pre></td>
+  Codec&lt;T1 | T2 | TN&gt;</pre></td>
 <td>object</td>
 <td><code>T1 | T2 | TN</code></td>
 </tr>
 <tr>
 <th><a href="#tuple">tuple</a></th>
 <td><pre>(mapping: [
-  Decoder&lt;T1&gt;,
-  Decoder&lt;T2&gt;,
-  Decoder&lt;TN&gt;
+  Codec&lt;T1&gt;,
+  Codec&lt;T2&gt;,
+  Codec&lt;TN&gt;
 ]) =&gt;
-  Decoder&lt;[T1, T2, TN]&gt;</pre></td>
+  Codec&lt;[T1, T2, TN]&gt;</pre></td>
 <td>array</td>
 <td><code>[T1, T2, TN]</code></td>
 </tr>
 <tr>
 <th><a href="#multi">multi</a></th>
-<td><pre>(mapping: Record&lt;string, Decoder&lt;T&gt;&gt;) =&gt;
-  Decoder&lt;T&gt;</pre></td>
+<td><pre>(types: Array<"undefined" | "null" | "boolean" | "number" | "string" | "array" | "object">) =&gt;
+  Codec&lt;T&gt;</pre></td>
 <td>you decide</td>
+<td><code>{ type: "undefined"; value: undefined }
+| { type: "null"; value: null }
+| { type: "boolean"; value: boolean }
+| { type: "number"; value: number }
+| { type: "string"; value: string }
+| { type: "array"; value: Array<unknown> }
+| { type: "object"; value: Record<string, unknown> }
+</code></td>
+</tr>
+<tr>
+<th><a href="#recursive">recursive</a></th>
+<td><pre>(callback: () => Codec&lt;T&gt;) =&gt;
+  Codec&lt;T&gt;</pre></td>
+<td>you choose</td>
 <td><code>T</code></td>
 </tr>
 <tr>
 <th><a href="#optional">optional</a></th>
-<td><pre>(decoder: Decoder&lt;T&gt;) =&gt;
-  Decoder&lt;T | undefined&gt;</pre></td>
+<td><pre>(codec: Codec&lt;T&gt;) =&gt;
+  Codec&lt;T | undefined&gt;</pre></td>
 <td>missing or …</td>
 <td><code>T | undefined</code></td>
 </tr>
 <tr>
 <th><a href="#nullable">nullable</a></th>
-<td><pre>(decoder: Decoder&lt;T&gt;) =&gt;
-  Decoder&lt;T | null&gt;</pre></td>
+<td><pre>(codec: Codec&lt;T&gt;) =&gt;
+  Codec&lt;T | null&gt;</pre></td>
 <td>null or …</td>
 <td><code>T | null</code></td>
 </tr>
 <tr>
 <th><a href="#chain">chain</a></th>
 <td><pre>(
-  decoder: Decoder&lt;T&gt;,
-  next: Decoder&lt;U, T&gt;
+  codec: Codec&lt;T&gt;,
+  transform: {
+    decoder: (value: T) => U;,
+    encoder: (value: U) => T;
+  }
 ) =&gt;
-  Decoder&lt;U&gt;</pre></td>
+  Codec&lt;U&gt;</pre></td>
 <td>n/a</td>
 <td><code>U</code></td>
 </tr>
+<tr>
+<th><a href="#singlefield">singleField</a></th>
+<td><pre>(
+  field: string,
+  codec: Codec&lt;T&gt;
+) =&gt;
+  Codec&lt;T&gt;</pre></td>
+<td>object</td>
+<td><code>T</code></td>
+</tr>
 </tbody>
 </table>
+
+### unknown
+
+```ts
+const unknown: Codec<unknown>;
+```
+
+Decodes any JSON value into a TypeScript `unknown`.
 
 ### boolean
 
@@ -345,79 +396,6 @@ The passed `decoder` is for each value of the object.
 For example, `record(number)` decodes an object where the keys can be anything and the values are numbers (into `Record<string, number>`).
 
 ### fields
-
-```ts
-function fields<T>(
-  callback: (
-    field: <U>(key: string, decoder: Decoder<U>) => U,
-    object: Record<string, unknown>
-  ) => T,
-  {
-    exact = "allow extra",
-    allow = "object",
-  }: {
-    exact?: "allow extra" | "throw";
-    allow?: "array" | "object";
-  } = {}
-): Decoder<T>;
-```
-
-Decodes a JSON object (or array) into any TypeScript you’d like (`T`), usually an object/interface with known fields.
-
-This is the most general function, which you can use for lots of different data. Other functions might be more convenient though.
-
-The type annotation is a bit overwhelming, but using `fields` isn’t super complicated. In a callback, you get a `field` function that you use to pluck out stuff from the JSON object. For example:
-
-```ts
-type User = {
-  age: number;
-  active: boolean;
-  name: string;
-  description?: string;
-  version: 1;
-};
-
-const userDecoder = fields(
-  (field): User => ({
-    // Simple field:
-    age: field("age", number),
-    // Renaming a field:
-    active: field("is_active", boolean),
-    // Combining two fields:
-    name: `${field("first_name", string)} ${field("last_name", string)}`,
-    // Optional field:
-    description: field("description", optional(string)),
-    // Hardcoded field:
-    version: 1,
-  })
-);
-
-// Plucking a single field out of an object:
-const ageDecoder: Decoder<number> = fields((field) => field("age", number));
-```
-
-`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better error messages. The nice thing about `field` is that it does _not_ return a new decoder – but the value of that field! This means that you can do for instance `const type: string = field("type", string)` and then use `type` however you want inside your callback.
-
-`object` is passed in case you need to check stuff like `"my-key" in object`.
-
-Note that if your input object and the decoded object look exactly the same and you don’t need any advanced features it’s often more convenient to use [fieldsAuto](#fieldsauto).
-
-Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see the [tuples example](examples/tuples.test.ts).
-
-The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
-
-- `"allow extra"` (default) allows extra properties on the object (or extra indexes on an array).
-- `"throw"` throws a `DecoderError` for extra properties.
-
-The `allow` option defaults to only allowing JSON objects. Set it to `"array"` if you are decoding an array.
-
-More examples:
-
-- [Extra fields](examples/extra-fields.test.ts).
-- [Renaming fields](examples/renaming-fields.test.ts).
-- [Tuples](examples/tuples.test.ts).
-
-### fieldsAuto
 
 ```ts
 function fieldsAuto<T extends Record<string, unknown>>(
@@ -558,6 +536,10 @@ const idDecoder: Decoder<Id> = multi({
 
 You can return anything from each type callback – the result of the decoder is the union of all of that.
 
+### recursive
+
+TODO: Re-order! Last?
+
 ### optional
 
 ```ts
@@ -598,6 +580,10 @@ const numberSetDecoder: Decoder<Set<number>> = chain(
 ```
 
 See the [chain example](examples/chain.test.ts) for more.
+
+### singleField
+
+TODO: Re-order? After fieldsUnion?
 
 ## DecoderError
 
