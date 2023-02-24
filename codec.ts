@@ -618,6 +618,41 @@ export function multi<
   };
 }
 
+function handleUnknownTag<Decoded, Encoded, Options extends CodecOptions>(
+  codec: Codec<Decoded, Encoded, Options>
+): Codec<Decoded | undefined, Encoded | undefined, Options> {
+  return {
+    ...codec,
+    decoder(value) {
+      try {
+        return codec.decoder(value);
+      } catch (error) {
+        const newError = DecoderError.at(error);
+        if (
+          newError.path.length === 1 &&
+          newError.variant.tag === "unknown fieldsUnion tag"
+        ) {
+          return undefined;
+        }
+        throw newError;
+      }
+    },
+    encoder(value) {
+      return value === undefined ? undefined : codec.encoder(value);
+    },
+  };
+}
+
+type hand = Infer<typeof hand>;
+const hand = handleUnknownTag(
+  fieldsUnion("tag", (tag) => [
+    {
+      tag: tag("one"),
+    },
+  ])
+);
+void hand;
+
 type fu = Infer<typeof fu>;
 const fu = fieldsUnion("type", (tag) => [
   {
