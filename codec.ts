@@ -231,7 +231,7 @@ export function record<DecodedValue, EncodedValue>(
 type FieldsMapping = Record<string, Codec<any, any, CodecOptions>>;
 
 type InferFields<Mapping extends FieldsMapping> = Expand<
-  // eslint-disable-next-line @typescript-eslint/sort-type-union-intersection-members
+  // eslint-disable-next-line @typescript-eslint/sort-type-constituents
   {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? never
