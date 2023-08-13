@@ -1,6 +1,7 @@
 // This file shows how to infer types from decoders.
 
 import { expectType, TypeEqual } from "ts-expect";
+import { expect, test } from "vitest";
 
 import {
   boolean,

@@ -1,6 +1,8 @@
 // This file shows how best to annotate your `fields` and `fieldsAuto` decoders
 // to maximize the help you get from TypeScript.
 
+import { expect, test } from "vitest";
+
 import { Decoder, fields, fieldsAuto, number, string } from "../";
 
 test("type annotations", () => {

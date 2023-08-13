@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import { array, Decoder, fields, multi, record, string } from "../";
 
 test("recursive data structure", () => {
@@ -138,7 +140,7 @@ test("circular objects", () => {
 
   // Calling the decoder would cause infinite recursion!
   // So be careful when working with recursive data!
-  const wouldCauseInfiniteRecursion1: () => Person = jest.fn(() =>
+  const wouldCauseInfiniteRecursion1: () => Person = vi.fn(() =>
     personDecoder(alice),
   );
 

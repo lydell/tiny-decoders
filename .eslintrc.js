@@ -5,7 +5,7 @@ const warn = process.argv.includes("--report-unused-disable-directives")
 
 module.exports = {
   root: true,
-  plugins: ["@typescript-eslint", "simple-import-sort", "jest"],
+  plugins: ["@typescript-eslint", "simple-import-sort", "vitest"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     sourceType: "module",
@@ -202,7 +202,7 @@ module.exports = {
     },
     {
       files: "tests/**/*.ts",
-      extends: ["plugin:jest/recommended", "plugin:jest/style"],
+      extends: "plugin:vitest/recommended",
       parserOptions: {
         tsconfigRootDir: __dirname,
         project: ["./tests/tsconfig.json"],
@@ -210,7 +210,7 @@ module.exports = {
     },
     {
       files: "examples/**/*.ts",
-      extends: ["plugin:jest/recommended", "plugin:jest/style"],
+      extends: "plugin:vitest/recommended",
       parserOptions: {
         tsconfigRootDir: __dirname,
         project: ["./examples/tsconfig.json"],
