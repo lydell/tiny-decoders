@@ -618,138 +618,6 @@ export function multi<
   };
 }
 
-function handleUnknownTag<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>,
-): Codec<Decoded | undefined, Encoded | undefined, Options> {
-  return {
-    ...codec,
-    decoder(value) {
-      try {
-        return codec.decoder(value);
-      } catch (error) {
-        const newError = DecoderError.at(error);
-        if (
-          newError.path.length === 1 &&
-          newError.variant.tag === "unknown fieldsUnion tag"
-        ) {
-          return undefined;
-        }
-        throw newError;
-      }
-    },
-    encoder(value) {
-      return value === undefined ? undefined : codec.encoder(value);
-    },
-  };
-}
-
-type hand = Infer<typeof hand>;
-const hand = handleUnknownTag(
-  fieldsUnion("tag", (tag) => [
-    {
-      tag: tag("one"),
-    },
-  ]),
-);
-void hand;
-
-type fu = Infer<typeof fu>;
-const fu = fieldsUnion("type", (tag) => [
-  {
-    tag: tag("fu"),
-    fullName: named("full_name", string),
-    hmm: named("HMM", optional(string)),
-    flip: optional(named("flip", boolean)),
-  },
-]);
-void fu;
-
-const bar = chain(multi(["number", "string"]), {
-  decoder: (value) => {
-    switch (value.type) {
-      case "number":
-        return value.value.toString();
-      case "string":
-        return value.value;
-    }
-  },
-  encoder: (value) => ({ type: "string" as const, value }),
-});
-void bar;
-type bar = Infer<typeof bar>;
-
-type Result<Value, Err> =
-  | {
-      type: "error";
-      error: Err;
-    }
-  | {
-      type: "ok";
-      value: Value;
-    };
-
-const resultCodec = function <Value, Err>(
-  decodeValue: Codec<Value>,
-  decodeError: Codec<Err>,
-): Codec<Result<Value, Err>> {
-  return fieldsUnion("type", (tag) => [
-    {
-      type: tag("ok"),
-      value: decodeValue,
-    },
-    {
-      type: tag("error"),
-      error: decodeError,
-    },
-  ]);
-};
-
-const foo = resultCodec(number, string);
-void foo;
-type foo = Infer<typeof foo>;
-
-type Dict = { [key: string]: Dict | number };
-
-const dictCodec: Codec<Dict, Record<string, unknown>> = record(
-  chain(multi(["number", "object"]), {
-    decoder: (value) => {
-      switch (value.type) {
-        case "number":
-          return value.value;
-        case "object":
-          return dictCodec.decoder(value.value);
-      }
-    },
-    encoder: (value) => {
-      if (typeof value === "number") {
-        return { type: "number" as const, value };
-      } else {
-        return {
-          type: "object" as const,
-          value: dictCodec.encoder(value),
-        };
-      }
-    },
-  }),
-);
-
-const dictFoo: Codec<Record<string, string>, Record<string, unknown>> = record(
-  string,
-);
-void dictFoo;
-
-const age = named("AGE", optional(number));
-const page = optional(named("PAGE", number));
-
-type fieldsFoo = Infer<typeof fieldsFoo>;
-const fieldsFoo = fields({
-  name: string,
-  age,
-  page,
-  sage: optional(string),
-});
-void fieldsFoo;
-
 export function recursive<Decoded, Encoded>(
   callback: () => Codec<Decoded, Encoded>,
 ): Codec<Decoded, Encoded> {
@@ -762,16 +630,6 @@ export function recursive<Decoded, Encoded>(
     },
   };
 }
-
-type Person = {
-  name: string;
-  friends: Array<Person>;
-};
-
-const personCodec: Codec<Person, Record<string, unknown>> = fields({
-  name: string,
-  friends: array(recursive(() => personCodec)),
-});
 
 export function optional<Decoded, Encoded, Options extends CodecOptions>(
   codec: Codec<Decoded, Encoded, Options>,
@@ -855,20 +713,6 @@ export function chain<
     },
   };
 }
-
-const t1 = optional(string);
-const t2 = named("", string);
-const t3 = named("", optional(string));
-const t4 = optional(named("", string));
-const t5 = nullable(string);
-const t6 = optional(nullable(string));
-const t7 = nullable(optional(string));
-const t8 = chain(nullable(optional(named("", string))), {
-  decoder: (value) => value,
-  encoder: (value) => value,
-});
-const t9 = chain(string, named("", string));
-void [t1, t2, t3, t4, t5, t6, t7, t8, t9];
 
 export function singleField<Decoded, Encoded>(
   field: string,
@@ -1055,7 +899,7 @@ export class DecoderError extends TypeError {
     this.optional = false;
     this.fieldsUnionEncodedCommonField = undefined;
 
-    // For Node.js 14 and 15, which don’t support the `cause` option.
+    // For older environments which don’t support the `cause` option.
     if ("cause" in options && !("cause" in this)) {
       this.cause = cause;
     }
