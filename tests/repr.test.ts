@@ -1,4 +1,5 @@
 import { expectType, TypeEqual } from "ts-expect";
+import { expect, test } from "vitest";
 
 import { repr, ReprOptions } from "../";
 

@@ -1,3 +1,5 @@
+import {expect,test} from "vitest"
+
 import { chain, Decoder, fields, fieldsAuto, number, string } from "..";
 
 test("adding extra fields to records", () => {

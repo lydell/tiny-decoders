@@ -1,4 +1,5 @@
 import { expectType, TypeEqual } from "ts-expect";
+import { describe, expect, test } from "vitest";
 
 import {
   array,
@@ -251,13 +252,13 @@ describe("record", () => {
     ]);
 
     expect(run(decoder, bad)).toMatchInlineSnapshot(
-      `"Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier"`,
+      '"Invalid regular expression: /\\\\d{4}:\\\\d{2/u: Incomplete quantifier"',
     );
 
     expect(run(fieldsAuto({ regexes: decoder }), { regexes: bad }))
       .toMatchInlineSnapshot(`
         At root["regexes"]:
-        Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier
+        Invalid regular expression: /\\d{4}:\\d{2/u: Incomplete quantifier
       `);
   });
 

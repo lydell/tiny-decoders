@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { fieldsAuto, string } from "../";
 
 test("decoding unknown values", () => {
