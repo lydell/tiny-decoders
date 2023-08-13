@@ -6,7 +6,7 @@ export type Codec<
   Decoded,
   Encoded = unknown,
   // eslint-disable-next-line @typescript-eslint/ban-types
-  Options extends CodecOptions = {}
+  Options extends CodecOptions = {},
 > = Options & {
   decoder: (value: unknown) => Decoded;
   encoder: (value: Decoded) => Encoded;
@@ -29,7 +29,7 @@ export type Infer<T extends Codec<any>> = ReturnType<T["decoder"]>;
 
 export function parse<Decoded>(
   codec: Codec<Decoded>,
-  jsonString: string
+  jsonString: string,
 ): Decoded | DecoderError {
   let json: unknown;
   try {
@@ -51,7 +51,7 @@ export function parse<Decoded>(
 
 export function parseUnknown<Decoded>(
   codec: Codec<Decoded>,
-  value: unknown
+  value: unknown,
 ): Decoded | DecoderError {
   try {
     return codec.decoder(value);
@@ -63,14 +63,14 @@ export function parseUnknown<Decoded>(
 export function stringify<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
   value: Decoded,
-  space?: number | string
+  space?: number | string,
 ): string {
   return JSON.stringify(codec.encoder(value), null, space);
 }
 
 export const parseWithoutCodec: (
   text: string,
-  reviver?: (this: unknown, key: string, value: unknown) => unknown
+  reviver?: (this: unknown, key: string, value: unknown) => unknown,
 ) => unknown = JSON.parse;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -79,17 +79,17 @@ export const stringifyWithoutCodec: {
     // eslint-disable-next-line @typescript-eslint/ban-types
     value: Function | symbol | undefined,
     replacer?: Array<number | string> | null,
-    space?: number | string
+    space?: number | string,
   ): undefined;
   (
     value: unknown,
     replacer?: Array<number | string> | null,
-    space?: number | string
+    space?: number | string,
   ): string;
   (
     value: unknown,
     replacer: (this: unknown, key: string, value: unknown) => unknown,
-    space?: number | string
+    space?: number | string,
   ): string | undefined;
 } = JSON.stringify as any;
 
@@ -135,7 +135,7 @@ export const string: Codec<string, string> = {
 export function stringUnion<Variants extends ReadonlyArray<string>>(
   variants: Variants[number] extends never
     ? "stringUnion must have at least one variant"
-    : [...Variants]
+    : [...Variants],
 ): Codec<Variants[number], Variants[number]> {
   return {
     decoder: function stringUnionDecoder(value) {
@@ -168,7 +168,7 @@ function unknownRecord(value: unknown): Record<string, unknown> {
 }
 
 export function array<DecodedItem, EncodedItem>(
-  codec: Codec<DecodedItem, EncodedItem>
+  codec: Codec<DecodedItem, EncodedItem>,
 ): Codec<Array<DecodedItem>, Array<EncodedItem>> {
   return {
     decoder: function arrayDecoder(value) {
@@ -194,7 +194,7 @@ export function array<DecodedItem, EncodedItem>(
 }
 
 export function record<DecodedValue, EncodedValue>(
-  codec: Codec<DecodedValue, EncodedValue>
+  codec: Codec<DecodedValue, EncodedValue>,
 ): Codec<Record<string, DecodedValue>, Record<string, EncodedValue>> {
   return {
     decoder: function recordDecoder(value) {
@@ -245,7 +245,7 @@ type InferFields<Mapping extends FieldsMapping> = Expand<
 
 export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
   mapping: Mapping,
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
 ): Codec<InferFields<Mapping>, Record<string, EncodedFieldValueUnion>> {
   return {
     decoder: function fieldsDecoder(value) {
@@ -286,7 +286,7 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
 
       if (exact === "throw") {
         const unknownFields = Object.keys(object).filter(
-          (key) => !knownFields.has(key)
+          (key) => !knownFields.has(key),
         );
         if (unknownFields.length > 0) {
           throw new DecoderError({
@@ -344,7 +344,7 @@ type TagData = {
 
 export function fieldsUnion<
   Variants extends ReadonlyArray<FieldsMapping>,
-  EncodedFieldValueUnion
+  EncodedFieldValueUnion,
 >(
   encodedCommonField: string,
   callback: Variants[number] extends never
@@ -352,10 +352,10 @@ export function fieldsUnion<
     : (
         tag: <Name extends string>(
           decodedName: Name,
-          encodedName?: string
-        ) => Codec<Name, string>
+          encodedName?: string,
+        ) => Codec<Name, string>,
       ) => [...Variants],
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
 ): Codec<
   InferFieldsUnion<Variants[number]>,
   Record<string, EncodedFieldValueUnion>
@@ -366,7 +366,7 @@ export function fieldsUnion<
 
   function tag<Name extends string>(
     decodedName: Name,
-    encodedName: string = decodedName
+    encodedName: string = decodedName,
   ): TagCodec<Name> {
     return {
       decoder: () => decodedName,
@@ -398,13 +398,13 @@ export function fieldsUnion<
         const data = codec._private as TagData;
         if (data.tag === tagSymbol) {
           const errorPrefix = `Codec.fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
-            key
+            key,
           )}: `;
           if (seenTag !== undefined) {
             throw new Error(
               `${errorPrefix}\`tag()\` was already used on key: ${JSON.stringify(
-                seenTag
-              )})}`
+                seenTag,
+              )})}`,
             );
           }
           seenTag = key;
@@ -413,22 +413,22 @@ export function fieldsUnion<
           } else if (decodedCommonField !== key) {
             throw new Error(
               `${errorPrefix}\`tag()\` was used on another key in a previous variant: ${JSON.stringify(
-                decodedCommonField
-              )})}`
+                decodedCommonField,
+              )})}`,
             );
           }
           if (encoderMap.has(data.decodedName)) {
             throw new Error(
               `${errorPrefix}The decoded variant name was already used in a previous variant: ${JSON.stringify(
-                data.decodedName
-              )}`
+                data.decodedName,
+              )}`,
             );
           }
           if (decoderMap.has(data.encodedName)) {
             throw new Error(
               `${errorPrefix}The encoded variant name was already used in a previous variant: ${JSON.stringify(
-                data.encodedName
-              )}`
+                data.encodedName,
+              )}`,
             );
           }
           const fullCodec: Codec<
@@ -442,7 +442,7 @@ export function fieldsUnion<
     }
     if (seenTag === undefined) {
       throw new Error(
-        `Codec.fieldsUnion: Variant at index ${index}: \`tag()\` was never used on any key.`
+        `Codec.fieldsUnion: Variant at index ${index}: \`tag()\` was never used on any key.`,
       );
     }
   }
@@ -450,7 +450,7 @@ export function fieldsUnion<
   return {
     decoder: function fieldsUnionDecoder(value) {
       const encodedName = singleField(encodedCommonField, string).decoder(
-        value
+        value,
       );
       const decoder = decoderMap.get(encodedName);
       if (decoder === undefined) {
@@ -480,8 +480,8 @@ export function fieldsUnion<
       if (encoder === undefined) {
         throw new Error(
           `Codec.fieldsUnion: Unexpectedly found no encoder for decoded variant name: ${JSON.stringify(
-            decodedName
-          )} at key ${JSON.stringify(decodedCommonField)}`
+            decodedName,
+          )} at key ${JSON.stringify(decodedCommonField)}`,
         );
       }
       return encoder(value);
@@ -492,7 +492,7 @@ export function fieldsUnion<
 // TODO: Good name
 export function named<Decoded, Encoded, Options extends CodecOptions>(
   encodedFieldName: string,
-  codec: Codec<Decoded, Encoded, Options>
+  codec: Codec<Decoded, Encoded, Options>,
 ): Codec<
   Decoded,
   Encoded,
@@ -511,8 +511,8 @@ export function named<Decoded, Encoded, Options extends CodecOptions>(
 
 export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
   mapping: readonly [
-    ...{ [Key in keyof Decoded]: Codec<Decoded[Key], EncodedItem> }
-  ]
+    ...{ [Key in keyof Decoded]: Codec<Decoded[Key], EncodedItem> },
+  ],
 ): Codec<[...Decoded], Array<EncodedItem>> {
   return {
     decoder: function tupleDecoder(value) {
@@ -567,11 +567,11 @@ type Multi<Types> = Types extends any
 export function multi<
   Types extends ReadonlyArray<
     "array" | "boolean" | "null" | "number" | "object" | "string" | "undefined"
-  >
+  >,
 >(
   types: Types[number] extends never
     ? "multi must have at least one type"
-    : [...Types]
+    : [...Types],
 ): Codec<Multi<Types[number]>, Multi<Types[number]>["value"]> {
   return {
     decoder: function multiDecoder(value) {
@@ -619,7 +619,7 @@ export function multi<
 }
 
 function handleUnknownTag<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>
+  codec: Codec<Decoded, Encoded, Options>,
 ): Codec<Decoded | undefined, Encoded | undefined, Options> {
   return {
     ...codec,
@@ -649,7 +649,7 @@ const hand = handleUnknownTag(
     {
       tag: tag("one"),
     },
-  ])
+  ]),
 );
 void hand;
 
@@ -690,7 +690,7 @@ type Result<Value, Err> =
 
 const resultCodec = function <Value, Err>(
   decodeValue: Codec<Value>,
-  decodeError: Codec<Err>
+  decodeError: Codec<Err>,
 ): Codec<Result<Value, Err>> {
   return fieldsUnion("type", (tag) => [
     {
@@ -730,11 +730,11 @@ const dictCodec: Codec<Dict, Record<string, unknown>> = record(
         };
       }
     },
-  })
+  }),
 );
 
 const dictFoo: Codec<Record<string, string>, Record<string, unknown>> = record(
-  string
+  string,
 );
 void dictFoo;
 
@@ -751,7 +751,7 @@ const fieldsFoo = fields({
 void fieldsFoo;
 
 export function recursive<Decoded, Encoded>(
-  callback: () => Codec<Decoded, Encoded>
+  callback: () => Codec<Decoded, Encoded>,
 ): Codec<Decoded, Encoded> {
   return {
     decoder: function lazyDecoder(value) {
@@ -774,7 +774,7 @@ const personCodec: Codec<Person, Record<string, unknown>> = fields({
 });
 
 export function optional<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>
+  codec: Codec<Decoded, Encoded, Options>,
 ): Codec<
   Decoded | undefined,
   Encoded | undefined,
@@ -809,7 +809,7 @@ export function optional<Decoded, Encoded, Options extends CodecOptions>(
 }
 
 export function nullable<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>
+  codec: Codec<Decoded, Encoded, Options>,
 ): Codec<Decoded | null, Encoded | null, Options> {
   return {
     ...codec,
@@ -837,13 +837,13 @@ export function chain<
   Decoded,
   Encoded,
   Options extends CodecOptions,
-  NewDecoded
+  NewDecoded,
 >(
   codec: Codec<Decoded, Encoded, Options>,
   transform: {
     decoder: (value: Decoded) => NewDecoded;
     encoder: (value: NewDecoded) => Decoded;
-  }
+  },
 ): Codec<NewDecoded, Encoded, Options> {
   return {
     ...codec,
@@ -872,7 +872,7 @@ void [t1, t2, t3, t4, t5, t6, t7, t8, t9];
 
 export function singleField<Decoded, Encoded>(
   field: string,
-  codec: Codec<Decoded, Encoded>
+  codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded, Record<string, Encoded>> {
   return chain(fields({ [field]: codec }), {
     decoder: (value) => value[field],
@@ -932,7 +932,7 @@ export type DecoderErrorVariant =
 
 function formatDecoderErrorVariant(
   variant: DecoderErrorVariant,
-  options: ReprOptions = {}
+  options: ReprOptions = {},
 ): string {
   const formatGot = (value: unknown): string => {
     const formatted = repr(value, options);
@@ -973,23 +973,23 @@ function formatDecoderErrorVariant(
 
     case "unknown fieldsUnion tag":
       return `Expected one of these tags: ${stringList(
-        variant.knownTags
+        variant.knownTags,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "unknown stringUnion variant":
       return `Expected one of these variants: ${stringList(
-        variant.knownVariants
+        variant.knownVariants,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "missing field": {
       const { maxObjectChildren = MAX_OBJECT_CHILDREN_DEFAULT } = options;
       const keys = Object.keys(variant.got);
       return `Expected an object with a field called: ${JSON.stringify(
-        variant.field
+        variant.field,
       )}\nGot: ${formatGot(variant.got)}${
         keys.length > maxObjectChildren
           ? `\nMore fields: ${untrustedStringList(
-              keys.slice(maxObjectChildren)
+              keys.slice(maxObjectChildren),
             )}`
           : ""
       }`;
@@ -997,7 +997,7 @@ function formatDecoderErrorVariant(
 
     case "exact fields":
       return `Expected only these fields: ${stringList(
-        variant.knownFields
+        variant.knownFields,
       )}\nFound extra fields: ${untrustedStringList(variant.got)}`;
 
     case "tuple size":
@@ -1033,7 +1033,7 @@ export class DecoderError extends TypeError {
   constructor(
     options:
       | { message: string; value: unknown; key?: Key; cause?: unknown }
-      | (DecoderErrorVariant & { key?: Key; cause?: unknown })
+      | (DecoderErrorVariant & { key?: Key; cause?: unknown }),
   ) {
     const { key, cause, ...params } = options;
     const variant: DecoderErrorVariant =
@@ -1045,9 +1045,9 @@ export class DecoderError extends TypeError {
         variant,
         // Default to sensitive so accidental uncaught errors don’t leak
         // anything. Explicit `.format()` defaults to non-sensitive.
-        { sensitive: true }
+        { sensitive: true },
       )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`,
-      "cause" in options ? { cause } : {}
+      "cause" in options ? { cause } : {},
     );
     this.path = key === undefined ? [] : [key];
     this.variant = variant;
@@ -1087,7 +1087,7 @@ export class DecoderError extends TypeError {
       this.fieldsUnionEncodedCommonField === undefined
         ? ""
         : ` (for ${JSON.stringify(
-            this.fieldsUnionEncodedCommonField.key
+            this.fieldsUnionEncodedCommonField.key,
           )}: ${JSON.stringify(this.fieldsUnionEncodedCommonField.value)})`;
     const variant = formatDecoderErrorVariant(this.variant, options);
     return `At root${path}${nullableString}${optionalString}${fieldsUnionString}:\n${variant}`;
@@ -1114,7 +1114,7 @@ export function repr(
     maxObjectChildren = MAX_OBJECT_CHILDREN_DEFAULT,
     maxLength = 100,
     sensitive = false,
-  }: ReprOptions = {}
+  }: ReprOptions = {},
 ): string {
   return reprHelper(
     value,
@@ -1127,7 +1127,7 @@ export function repr(
       sensitive,
     },
     0,
-    []
+    [],
   );
 }
 
@@ -1135,7 +1135,7 @@ function reprHelper(
   value: unknown,
   options: Required<ReprOptions>,
   level: number,
-  seen: Array<unknown>
+  seen: Array<unknown>,
 ): string {
   const { indent, maxLength, sensitive } = options;
   const type = typeof value;
@@ -1196,7 +1196,7 @@ function reprHelper(
       }
 
       return `[\n${indent.repeat(level + 1)}${items.join(
-        `,\n${indent.repeat(level + 1)}`
+        `,\n${indent.repeat(level + 1)}`,
       )}\n${indent.repeat(level)}]`;
     }
 
@@ -1239,7 +1239,7 @@ function reprHelper(
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);
 
       return `${prefix}{\n${indent.repeat(level + 1)}${items.join(
-        `,\n${indent.repeat(level + 1)}`
+        `,\n${indent.repeat(level + 1)}`,
       )}\n${indent.repeat(level)}}`;
     }
 

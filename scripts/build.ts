@@ -36,7 +36,7 @@ for (const { src, dest = src, transform } of FILES_TO_COPY) {
   if (transform !== undefined) {
     fs.writeFileSync(
       path.join(BUILD, dest),
-      transform(fs.readFileSync(path.join(DIR, src), "utf8"))
+      transform(fs.readFileSync(path.join(DIR, src), "utf8")),
     );
   } else {
     fs.copyFileSync(path.join(DIR, src), path.join(BUILD, dest));
@@ -56,12 +56,12 @@ childProcess.spawnSync(
   {
     shell: true,
     stdio: "inherit",
-  }
+  },
 );
 
 fs.renameSync(
   path.join(MODULE_BUILD, "index.js"),
-  path.join(BUILD, "index.mjs")
+  path.join(BUILD, "index.mjs"),
 );
 
 if (fs.rmSync !== undefined) {

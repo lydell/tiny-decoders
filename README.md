@@ -113,7 +113,7 @@ This package used to only have decoders. That’s why it’s called tiny-_decode
 type Codec<
   Decoded,
   Encoded = unknown,
-  Options extends CodecOptions = {}
+  Options extends CodecOptions = {},
 > = Options & {
   decoder: (value: unknown) => Decoded;
   encoder: (value: Decoded) => Encoded;
@@ -350,7 +350,7 @@ Decodes a JSON string into a TypeScript `string`.
 
 ```ts
 function stringUnion<T extends Record<string, unknown>>(
-  mapping: T
+  mapping: T,
 ): Decoder<keyof T>;
 ```
 
@@ -441,7 +441,7 @@ type Values<T> = T[keyof T];
 
 function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   key: string,
-  mapping: T
+  mapping: T,
 ): Decoder<
   Values<{ [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }>
 >;
@@ -479,7 +479,7 @@ See also the [renaming union field example](examples/renaming-union-field.test.t
 
 ```ts
 function tuple<T extends ReadonlyArray<unknown>>(
-  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
+  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }],
 ): Decoder<[...T]>;
 ```
 
@@ -505,7 +505,7 @@ function multi<
   T4 = never,
   T5 = never,
   T6 = never,
-  T7 = never
+  T7 = never,
 >(mapping: {
   undefined?: Decoder<T1, undefined>;
   null?: Decoder<T2, null>;
@@ -575,7 +575,7 @@ Example:
 ```ts
 const numberSetDecoder: Decoder<Set<number>> = chain(
   array(number),
-  (arr) => new Set(arr)
+  (arr) => new Set(arr),
 );
 ```
 
@@ -647,7 +647,7 @@ class DecoderError extends TypeError {
   constructor(
     params:
       | { message: string; value: unknown; key?: Key }
-      | (DecoderErrorVariant & { key?: Key })
+      | (DecoderErrorVariant & { key?: Key }),
   );
 
   static MISSING_VALUE: symbol;
@@ -703,7 +703,7 @@ const decoder: Decoder<Array<[RegExp, number]>> = Decode.chain(
       } catch (error) {
         throw Decode.DecoderError.at(error, key);
       }
-    })
+    }),
 );
 ```
 
@@ -741,7 +741,7 @@ function repr(
     maxLength = 100,
     recurseMaxLength = 20,
     sensitive = false,
-  }: ReprOptions = {}
+  }: ReprOptions = {},
 ): string;
 ```
 
@@ -808,7 +808,7 @@ const personDecoder = fields(
   (field): Person => ({
     name: field("name", string),
     age: field("age", optional(number)),
-  })
+  }),
 );
 
 // Annotate the generic.
@@ -886,7 +886,7 @@ This decoder would ignore its input and always “succeed” with a given value.
 ```ts
 export function either<T, U>(
   decoder1: Decoder<T>,
-  decoder2: Decoder<U>
+  decoder2: Decoder<U>,
 ): Decoder<T | U>;
 ```
 
