@@ -1,33 +1,26 @@
-import {expect,test} from "vitest"
+import { expect, test } from "vitest";
 
 import {
   array,
   boolean,
-  Decoder,
+  Codec,
   DecoderError,
   fields,
-  fieldsAuto,
   number,
   optional,
+  parseUnknown,
   repr,
   ReprOptions,
   string,
 } from "..";
 
 function run<T>(
-  decoder: Decoder<T>,
+  codec: Codec<T>,
   value: unknown,
   options?: ReprOptions,
 ): T | string {
-  try {
-    return decoder(value);
-  } catch (error) {
-    return error instanceof DecoderError
-      ? error.format(options)
-      : error instanceof Error
-      ? error.message
-      : `Unknown error: ${repr(error)}`;
-  }
+  const result = parseUnknown(codec, value);
+  return result instanceof DecoderError ? result.format(options) : result;
 }
 
 expect.addSnapshotSerializer({

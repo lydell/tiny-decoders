@@ -1,6 +1,15 @@
 import { expect, test, vi } from "vitest";
 
-import { array, Decoder, fields, multi, record, string } from "../";
+import {
+  array,
+  chain,
+  Codec,
+  fields,
+  multi,
+  record,
+  recursive,
+  string,
+} from "../";
 
 test("recursive data structure", () => {
   // Consider this recursive data structure:
@@ -9,24 +18,34 @@ test("recursive data structure", () => {
     friends: Array<Person>;
   };
 
-  // When using `fields` there won’t be any trouble decoding it:
-  const personDecoder1 = fields(
-    (field): Person => ({
-      name: field("name", string),
-      friends: field("friends", array(personDecoder1)),
-    }),
-  );
-
-  // But when using `fieldsAuto` you’d run into problems.
-  // This wouldn’t work to decode it, because we’re trying to use
-  // `personDecoder` in the definition of `personDecoder` itself.
+  // The following wouldn’t work to decode it, because we’re trying to use
+  // `personCodec` in the definition of `personCodec` itself.
   // So, use `fields` if you need recursion.
   /*
-  const personDecoder2 = fieldsAuto<Person>({
+  const personCodecFail: Codec<Person> = fields({
     name: string,
-    friends: array(personDecoder2), // ReferenceError: Cannot access 'personDecoder2' before initialization
+    friends: array(personCodec2), // ReferenceError: Cannot access 'personCodec2' before initialization
   });
-  */
+  /**/
+
+  // `recursive` to the rescue! It uses an anonymous function to avoid the reference problem.
+  // All it does is call that function later to get the actual codec.
+  const personCodec1: Codec<Person> = fields({
+    name: string,
+    friends: array(recursive(() => personCodec1)),
+  });
+
+  // You can put the `recursive` at any level, it doesn’t matter:
+  const personCodec2: Codec<Person> = fields({
+    name: string,
+    friends: recursive(() => array(personCodec2)),
+  });
+  const personCodec3: Codec<Person> = recursive(() =>
+    fields({
+      name: string,
+      friends: array(personCodec3),
+    }),
+  );
 
   const data: unknown = {
     name: "John",
@@ -47,7 +66,7 @@ test("recursive data structure", () => {
     ],
   };
 
-  expect(personDecoder1(data)).toMatchInlineSnapshot(`
+  expect(personCodec1.decoder(data)).toMatchInlineSnapshot(`
     {
       "friends": [
         {
@@ -67,23 +86,40 @@ test("recursive data structure", () => {
       "name": "John",
     }
   `);
+
+  expect(personCodec2.decoder(data)).toStrictEqual(personCodec1.decoder(data));
+  expect(personCodec3.decoder(data)).toStrictEqual(personCodec1.decoder(data));
 });
 
-test("recurse non-record", () => {
+test("recurse a dictionary", () => {
   type Dict = { [key: string]: Dict | number };
 
-  const dictDecoder: Decoder<Dict> = record(
-    multi({
-      number: (value) => value,
-      // The trick here is to use a seemingly useless arrow function to delay
-      // the reference to `dictDecoder`.
-      object: (value) => dictDecoder(value),
-      // Writing just `object: dictDecoder` would result in an error:
-      // ReferenceError: Cannot access 'dictDecoder' before initialization
+  // In this case we have anonymous functions anyway in `chain`, so there’s
+  // no need for `recursive`.
+  const dictCodec: Codec<Dict, Record<string, unknown>> = record(
+    chain(multi(["number", "object"]), {
+      decoder: (value) => {
+        switch (value.type) {
+          case "number":
+            return value.value;
+          case "object":
+            return dictCodec.decoder(value.value);
+        }
+      },
+      encoder: (value) => {
+        if (typeof value === "number") {
+          return { type: "number", value };
+        } else {
+          return {
+            type: "object",
+            value: dictCodec.encoder(value),
+          };
+        }
+      },
     }),
   );
 
-  const data: unknown = {
+  const data = {
     t: {
       i: {
         n: {
@@ -95,19 +131,8 @@ test("recurse non-record", () => {
     },
   };
 
-  expect(dictDecoder(data)).toMatchInlineSnapshot(`
-    {
-      "t": {
-        "i": {
-          "e": 3,
-          "n": {
-            "t": 2,
-            "y": 1,
-          },
-        },
-      },
-    }
-  `);
+  expect(dictCodec.decoder(data)).toStrictEqual(data);
+  expect(dictCodec.encoder(data)).toStrictEqual(data);
 });
 
 test("circular objects", () => {
@@ -118,12 +143,10 @@ test("circular objects", () => {
     likes: Person;
   };
 
-  const personDecoder = fields(
-    (field): Person => ({
-      name: field("name", string),
-      likes: field("likes", personDecoder),
-    }),
-  );
+  const personCodec: Codec<Person> = fields({
+    name: string,
+    likes: recursive(() => personCodec),
+  });
 
   const alice: Record<string, unknown> = {
     name: "Alice",
@@ -141,7 +164,7 @@ test("circular objects", () => {
   // Calling the decoder would cause infinite recursion!
   // So be careful when working with recursive data!
   const wouldCauseInfiniteRecursion1: () => Person = vi.fn(() =>
-    personDecoder(alice),
+    personCodec.decoder(alice),
   );
 
   expect(wouldCauseInfiniteRecursion1).not.toHaveBeenCalled();

@@ -693,9 +693,9 @@ export function nullable<Decoded, Encoded, Options extends CodecOptions>(
 
 export function chain<
   const Decoded,
-  const Encoded,
-  const Options extends CodecOptions,
-  const NewDecoded,
+  Encoded,
+  Options extends CodecOptions,
+  NewDecoded,
 >(
   codec: Codec<Decoded, Encoded, Options>,
   transform: {

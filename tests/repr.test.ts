@@ -63,8 +63,8 @@ test("string", () => {
   expect(repr("0")).toMatchInlineSnapshot(`"0"`);
   expect(repr("string")).toMatchInlineSnapshot(`"string"`);
   expect(repr('"quotes"')).toMatchInlineSnapshot(`"\\"quotes\\""`);
-  expect(repr(" \t\r\n\u2028\u2029\f\v")).toMatchInlineSnapshot(
-    `" \\t\\r\\n  \\f\\u000b"`,
+  expect(repr(" \t\r\n\u2028\u2029\f\v")).toBe(
+    `" \\t\\r\\n\u2028\u2029\\f\\u000b"`,
   );
   expect(repr("Iñtërnâtiônàlizætiøn☃💩")).toMatchInlineSnapshot(
     `"Iñtërnâtiônàlizætiøn☃💩"`,
@@ -172,8 +172,8 @@ test("array", () => {
   expect(
     repr([1, 2, 3, 4, 5, 6, 7], { maxArrayChildren: 3 }),
   ).toMatchInlineSnapshot(`[1, 2, 3, (4 more)]`);
-  expect(repr([1], { recurse: false })).toMatchInlineSnapshot(`Array(1)`);
-  expect(repr([1, 2, 3], { recurse: false })).toMatchInlineSnapshot(`Array(3)`);
+  expect(repr([1], { depth: 0 })).toMatchInlineSnapshot(`Array(1)`);
+  expect(repr([1, 2, 3], { depth: 0 })).toMatchInlineSnapshot(`Array(3)`);
   expect(
     repr(
       // eslint-disable-next-line no-sparse-arrays
@@ -201,9 +201,9 @@ test("array", () => {
   ).toMatchInlineSnapshot(
     `[undefined, <empty>, null, true, NaN, "a somewha…ng string", Symbol(sym…scription), function "functionW…tLongName", /a somewha…g regex/gm, Date, Error, String, [], {}, Array(1), Object(1), Point(2)]`,
   );
-  expect(
-    repr(["a short string"], { recurseMaxLength: 5 }),
-  ).toMatchInlineSnapshot(`["a…g"]`);
+  expect(repr(["a short string"], { maxLength: 5 })).toMatchInlineSnapshot(
+    `["a…g"]`,
+  );
 });
 
 test("object", () => {
@@ -222,7 +222,7 @@ test("object", () => {
   expect(
     repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { maxObjectChildren: 1 }),
   ).toMatchInlineSnapshot(`{"a": 1, (4 more)}`);
-  expect(repr({ a: 1, b: 2, c: 3 }, { recurse: false })).toMatchInlineSnapshot(
+  expect(repr({ a: 1, b: 2, c: 3 }, { depth: 0 })).toMatchInlineSnapshot(
     `Object(3)`,
   );
   expect(
@@ -252,7 +252,7 @@ test("object", () => {
     `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "a somewha…ng string", "f": Symbol(sym…scription), "g": function "functionW…tLongName", "h": /a somewha…g regex/gm, "i": Date, "j": Error, "k": String, "l": [], "m": {}, "o": Array(1), "p": Object(1), "r": Point(2), "a somewha… key name": 1}`,
   );
   expect(
-    repr({ "a short key": "a short string" }, { recurseMaxLength: 5 }),
+    repr({ "a short key": "a short string" }, { maxLength: 5 }),
   ).toMatchInlineSnapshot(`{"a…y": "a…g"}`);
   expect(repr({ '"), "key": "other value"': 1 })).toMatchInlineSnapshot(
     `{"\\"), \\"ke…r value\\"": 1}`,
@@ -333,7 +333,7 @@ test("sensitive output", () => {
 
   expect(sensitive([])).toMatchInlineSnapshot(`[]`);
   expect(sensitive([1])).toMatchInlineSnapshot(`[number]`);
-  expect(sensitive([1], { recurse: false })).toMatchInlineSnapshot(`Array(1)`);
+  expect(sensitive([1], { depth: 0 })).toMatchInlineSnapshot(`Array(1)`);
   expect(
     sensitive(
       // eslint-disable-next-line no-sparse-arrays
@@ -364,9 +364,7 @@ test("sensitive output", () => {
 
   expect(sensitive({})).toMatchInlineSnapshot(`{}`);
   expect(sensitive({ a: 1 })).toMatchInlineSnapshot(`{"a": number}`);
-  expect(sensitive({ a: 1 }, { recurse: false })).toMatchInlineSnapshot(
-    `Object(1)`,
-  );
+  expect(sensitive({ a: 1 }, { depth: 0 })).toMatchInlineSnapshot(`Object(1)`);
   expect(
     sensitive(
       {

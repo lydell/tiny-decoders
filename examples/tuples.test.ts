@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { chain, Decoder, fields, fieldsAuto, number, string, tuple } from "../";
+import { chain, Codec, fields, number, string, tuple } from "../";
 
 test("decoding tuples", () => {
   type PointTuple = [number, number];
@@ -8,42 +8,30 @@ test("decoding tuples", () => {
   const data: unknown = [50, 325];
 
   // If you want a quick way to decode the above into `[number, number]`, use `tuple`.
-  const pointTupleDecoder1 = tuple<PointTuple>([number, number]);
-  expect(pointTupleDecoder1(data)).toMatchInlineSnapshot(`
+  const pointTupleCodec1: Codec<PointTuple> = tuple([number, number]);
+  expect(pointTupleCodec1.decoder(data)).toMatchInlineSnapshot(`
     [
       50,
       325,
     ]
   `);
 
-  // If you’d rather produce an object like the following, use `fields`.
+  // If you’d rather produce an object like the following, use `tuple` with `chain`.
   type Point = {
     x: number;
     y: number;
   };
-  const pointDecoder1 = fields(
-    (field): Point => ({
-      x: field("0", number),
-      y: field("1", number),
-    }),
-    { allow: "array" },
-  );
-  expect(pointDecoder1(data)).toMatchInlineSnapshot(`
-    {
-      "x": 50,
-      "y": 325,
-    }
-  `);
 
-  // Or use `tuple` with `chain`.
-  const pointDecoder2: Decoder<Point> = chain(
-    tuple([number, number]),
-    ([x, y]) => ({
-      x,
-      y,
-    }),
-  );
-  expect(pointDecoder2(data)).toEqual(pointDecoder1(data));
+  const pointCodec = chain(tuple([number, number]), {
+    decoder: ([x, y]) => ({ x, y }),
+    encoder: ({ x, y }) => [x, y],
+  });
+  const expected: Point = {
+    x: 50,
+    y: 325,
+  };
+  expect(pointCodec.decoder(data)).toStrictEqual(expected);
+  expect(pointCodec.encoder(expected)).toStrictEqual(data);
 
   // `tuple` works with any number of values. Here’s an example with four values:
   expect(tuple([number, number, number, number])([1, 2, 3, 4]))
