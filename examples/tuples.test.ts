@@ -22,9 +22,10 @@ test("decoding tuples", () => {
     y: number;
   };
 
-  const pointCodec = chain(tuple([number, number]), {
+  const t = tuple([number, number]);
+  const pointCodec = chain(t, {
     decoder: ([x, y]) => ({ x, y }),
-    encoder: ({ x, y }) => [x, y],
+    encoder: ({ x, y }) => [x, y] as const,
   });
   const expected: Point = {
     x: 50,
@@ -34,7 +35,7 @@ test("decoding tuples", () => {
   expect(pointCodec.encoder(expected)).toStrictEqual(data);
 
   // `tuple` works with any number of values. Here’s an example with four values:
-  expect(tuple([number, number, number, number])([1, 2, 3, 4]))
+  expect(tuple([number, number, number, number]).decoder([1, 2, 3, 4]))
     .toMatchInlineSnapshot(`
       [
         1,
@@ -45,16 +46,17 @@ test("decoding tuples", () => {
     `);
 
   // But in such cases it’s probably nicer to switch to an object:
-  const longTupleDecoder = fields(
-    (field) => ({
-      firstName: field("0", string),
-      lastName: field("1", string),
-      age: field("2", number),
-      description: field("3", string),
+  const longTupleCodec = chain(tuple([string, string, number, string]), {
+    decoder: ([firstName, lastName, age, description]) => ({
+      firstName,
+      lastName,
+      age,
+      description,
     }),
-    { allow: "array" },
-  );
-  expect(longTupleDecoder(["John", "Doe", 30, "Likes swimming."]))
+    encoder: ({ firstName, lastName, age, description }) =>
+      [firstName, lastName, age, description] as const,
+  });
+  expect(longTupleCodec.decoder(["John", "Doe", 30, "Likes swimming."]))
     .toMatchInlineSnapshot(`
       {
         "age": 30,
@@ -66,23 +68,18 @@ test("decoding tuples", () => {
 
   // Finally, you can of course decode an object to a tuple as well:
   const obj: unknown = { x: 1, y: 2 };
-  const pointTupleDecoder2 = fields(
-    (field): PointTuple => [field("x", number), field("y", number)],
-  );
-  expect(pointTupleDecoder2(obj)).toMatchInlineSnapshot(`
-    [
-      1,
-      2,
-    ]
-  `);
-
-  // Or with `fieldsAuto` and `chain`:
-  const pointTupleDecoder3: Decoder<PointTuple> = chain(
-    fieldsAuto({
+  const pointTupleDecoder2: Codec<PointTuple> = chain(
+    fields({
       x: number,
       y: number,
     }),
-    ({ x, y }) => [x, y],
+    {
+      decoder: ({ x, y }) => [x, y],
+      encoder: ([x, y]) => ({ x, y }),
+    },
   );
-  expect(pointTupleDecoder3(obj)).toEqual(pointTupleDecoder2(obj));
+
+  const expected2: PointTuple = [1, 2];
+  expect(pointTupleDecoder2.decoder(obj)).toStrictEqual(expected2);
+  expect(pointTupleDecoder2.encoder(expected2)).toStrictEqual(obj);
 });

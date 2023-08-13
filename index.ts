@@ -12,7 +12,7 @@ export type Codec<
   encoder: (value: Decoded) => Encoded;
 };
 
-type CodecOptions = {
+export type CodecOptions = {
   encodedFieldName?: string;
   optional?: boolean;
 };
@@ -700,7 +700,7 @@ export function chain<
   codec: Codec<Decoded, Encoded, Options>,
   transform: {
     decoder: (value: Decoded) => NewDecoded;
-    encoder: (value: NewDecoded) => Decoded;
+    encoder: (value: NewDecoded) => Readonly<Decoded>;
   },
 ): Codec<NewDecoded, Encoded, Options> {
   return {
@@ -1099,3 +1099,38 @@ function truncate(str: string, maxLength: number): string {
     ? str
     : `${str.slice(0, half)}…${str.slice(-half)}`;
 }
+
+function handleUnknownTag<Decoded, Encoded, Options extends CodecOptions>(
+  codec: Codec<Decoded, Encoded, Options>,
+): Codec<Decoded | undefined, Encoded | undefined, Options> {
+  return {
+    ...codec,
+    decoder(value) {
+      try {
+        return codec.decoder(value);
+      } catch (error) {
+        const newError = DecoderError.at(error);
+        if (
+          newError.path.length === 1 &&
+          newError.variant.tag === "unknown fieldsUnion tag"
+        ) {
+          return undefined;
+        }
+        throw newError;
+      }
+    },
+    encoder(value) {
+      return value === undefined ? undefined : codec.encoder(value);
+    },
+  };
+}
+
+type hand = Infer<typeof hand>;
+const hand = handleUnknownTag(
+  fieldsUnion("tag", (tag) => [
+    {
+      tag: tag("one"),
+    },
+  ]),
+);
+void hand;

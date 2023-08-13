@@ -848,51 +848,21 @@ See the [type inference example](examples/type-inference.test.ts) for more detai
 
 Here are some decoders I’ve left out. They are rarely needed or not needed at all, and/or too trivial to be included in a decoding library _for the minimalist._
 
-### lazy
-
-```ts
-export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
-  return function lazyDecoder(value: unknown): T {
-    return callback()(value);
-  };
-```
-
-There used to be a `lazy` function. It was used for recursive structures, but when using [fields](#fields) or [multi](#multi) you don’t need it. See the [recursive example](examples/recursive.test.ts) for more information.
-
-### unknown
-
-```ts
-export function unknown(value: unknown): unknown {
-  return value;
-}
-```
-
-This decoder would turn any JSON value into TypeScript’s `unknown`. I rarely need that. When I do, there are other ways of achieving it – the `unknown` function above is just the identity function. See the [unknown example](examples/unknown.test.ts) for more details.
-
 ### succeed
 
-```ts
-export function succeed<T>(value: T): Decoder<T> {
-  return function succeedDecoder() {
-    return value;
-  };
-}
-```
-
-This decoder would ignore its input and always “succeed” with a given value. This can be useful when using [fieldsAuto](#fieldsauto) inside [fieldsUnion](#fieldsunion). But I’m not sure if `succeed("Square")` is any more clear than `() => "Square" as const`. Some languages call this function `always` or `const`.
+A `succeed` _decoder_ would ignore its input and always “succeed” with a given value. But what is the reasonable _encoder?_ Return the same value? But that means that decoding followed by encoding “invents” a new value that wasn’t there from the start. That may or may not be what you want, but can also be surprising. An encoder in this case could also return `undefined` or `null`, but how to choose? It might be unexpected that the encoder adds a field set to `undefined` or `null` as well. I think it usually makes more sense to use `chain` to define how to “add and remove” some hard coded value.
 
 ### either
 
-```ts
-export function either<T, U>(
-  decoder1: Decoder<T>,
-  decoder2: Decoder<U>,
-): Decoder<T | U>;
-```
+An `either` decoder would take two decoders, and try the first one. If it fails, go on and try the second one. If that also fails, present both errors.
 
-This decoder would try `decoder1` first. If it fails, go on and try `decoder2`. If that fails, present both errors. I consider this a blunt tool.
+The problems here are:
+
+1. It would complicate the [DecoderError](#decodererror) type and the error messages. Without `either`, since there’s never a need to present something like “decoding failed in the following 2 ways: …”.
+
+2. What to do for the encoder? The `either` function wouldn’t know which codec’s encoder to use.
+
+I consider `either` a blunt tool.
 
 - If you want either a string or a number, use [multi](#multi). This let’s you switch between any JSON types.
-- For objects that can be decoded in different ways, use [fieldsUnion](#fieldsunion). If that’s not possible, use [fields](#fields) and look for the field(s) that tell which variant you’ve got. Then run the appropriate decoder for the rest of the object.
-
-The above approaches result in a much simpler [DecoderError](#decodererror) type, and also results in much better error messages, since there’s never a need to present something like “decoding failed in the following 2 ways: …”
+- For objects that can be decoded in different ways, use [fieldsUnion](#fieldsunion). If that’s not possible, see the [backwards compatibility example](examples/backwards-compatibility.test.ts) for how to deal with complicated formats.
