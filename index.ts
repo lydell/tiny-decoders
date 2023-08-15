@@ -4,12 +4,11 @@
 
 export type Codec<
   Decoded,
-  Encoded = unknown,
   // eslint-disable-next-line @typescript-eslint/ban-types
   Options extends CodecOptions = {},
 > = Options & {
   decoder: (value: unknown) => Decoded;
-  encoder: (value: Decoded) => Encoded;
+  encoder: (value: Decoded) => unknown;
 };
 
 export type CodecOptions = {
@@ -60,8 +59,8 @@ export function parseUnknown<Decoded>(
   }
 }
 
-export function stringify<Decoded, Encoded>(
-  codec: Codec<Decoded, Encoded>,
+export function stringify<Decoded>(
+  codec: Codec<Decoded>,
   value: Decoded,
   space?: number | string,
 ): string {
@@ -102,7 +101,7 @@ export const unknown: Codec<unknown> = {
   encoder: identity,
 };
 
-export const boolean: Codec<boolean, boolean> = {
+export const boolean: Codec<boolean> = {
   decoder: function booleanDecoder(value) {
     if (typeof value !== "boolean") {
       throw new DecoderError({ tag: "boolean", got: value });
@@ -112,7 +111,7 @@ export const boolean: Codec<boolean, boolean> = {
   encoder: identity,
 };
 
-export const number: Codec<number, number> = {
+export const number: Codec<number> = {
   decoder: function numberDecoder(value) {
     if (typeof value !== "number") {
       throw new DecoderError({ tag: "number", got: value });
@@ -122,7 +121,7 @@ export const number: Codec<number, number> = {
   encoder: identity,
 };
 
-export const string: Codec<string, string> = {
+export const string: Codec<string> = {
   decoder: function stringDecoder(value) {
     if (typeof value !== "string") {
       throw new DecoderError({ tag: "string", got: value });
@@ -136,7 +135,7 @@ export function stringUnion<const Variants extends ReadonlyArray<string>>(
   variants: Variants[number] extends never
     ? "stringUnion must have at least one variant"
     : readonly [...Variants],
-): Codec<Variants[number], Variants[number]> {
+): Codec<Variants[number]> {
   return {
     decoder: function stringUnionDecoder(value) {
       const str = string.decoder(value);
@@ -167,9 +166,9 @@ function unknownRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function array<DecodedItem, EncodedItem>(
-  codec: Codec<DecodedItem, EncodedItem>,
-): Codec<Array<DecodedItem>, Array<EncodedItem>> {
+export function array<DecodedItem>(
+  codec: Codec<DecodedItem>,
+): Codec<Array<DecodedItem>> {
   return {
     decoder: function arrayDecoder(value) {
       const arr = unknownArray(value);
@@ -193,9 +192,9 @@ export function array<DecodedItem, EncodedItem>(
   };
 }
 
-export function record<DecodedValue, EncodedValue>(
-  codec: Codec<DecodedValue, EncodedValue>,
-): Codec<Record<string, DecodedValue>, Record<string, EncodedValue>> {
+export function record<DecodedValue>(
+  codec: Codec<DecodedValue>,
+): Codec<Record<string, DecodedValue>> {
   return {
     decoder: function recordDecoder(value) {
       const object = unknownRecord(value);
@@ -216,7 +215,7 @@ export function record<DecodedValue, EncodedValue>(
       return result;
     },
     encoder: function recordEncoder(object) {
-      const result: Record<string, EncodedValue> = {};
+      const result: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(object)) {
         if (key === "__proto__") {
           continue;
@@ -228,7 +227,7 @@ export function record<DecodedValue, EncodedValue>(
   };
 }
 
-type FieldsMapping = Record<string, Codec<any, any, CodecOptions>>;
+type FieldsMapping = Record<string, Codec<any, CodecOptions>>;
 
 type InferFields<Mapping extends FieldsMapping> = Expand<
   // eslint-disable-next-line @typescript-eslint/sort-type-constituents
@@ -243,10 +242,10 @@ type InferFields<Mapping extends FieldsMapping> = Expand<
   }
 >;
 
-export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
+export function fields<Mapping extends FieldsMapping>(
   mapping: Mapping,
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
-): Codec<InferFields<Mapping>, Record<string, EncodedFieldValueUnion>> {
+): Codec<InferFields<Mapping>> {
   return {
     decoder: function fieldsDecoder(value) {
       const object = unknownRecord(value);
@@ -300,7 +299,7 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
       return result as InferFields<Mapping>;
     },
     encoder: function fieldsEncoder(object) {
-      const result: Record<string, EncodedFieldValueUnion> = {};
+      const result: Record<string, unknown> = {};
       for (const key of Object.keys(mapping)) {
         if (key === "__proto__") {
           continue;
@@ -315,7 +314,7 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
         }
         const value = object[key as keyof InferFields<Mapping>];
         if (!isOptional || value !== undefined) {
-          result[field] = encoder(value) as EncodedFieldValueUnion;
+          result[field] = encoder(value);
         }
       }
       return result;
@@ -330,7 +329,6 @@ const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
 
 type TagCodec<Name extends string> = Codec<
   Name,
-  string,
   { encodedFieldName: string }
 > & {
   _private: TagData;
@@ -342,10 +340,7 @@ type TagData = {
   encodedName: string;
 };
 
-export function fieldsUnion<
-  Variants extends ReadonlyArray<FieldsMapping>,
-  EncodedFieldValueUnion,
->(
+export function fieldsUnion<Variants extends ReadonlyArray<FieldsMapping>>(
   encodedCommonField: string,
   callback: Variants[number] extends never
     ? "fieldsUnion must have at least one variant"
@@ -353,13 +348,10 @@ export function fieldsUnion<
         tag: <Name extends string>(
           decodedName: Name,
           encodedName?: string,
-        ) => Codec<Name, string>,
+        ) => Codec<Name>,
       ) => [...Variants],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
-): Codec<
-  InferFieldsUnion<Variants[number]>,
-  Record<string, EncodedFieldValueUnion>
-> {
+): Codec<InferFieldsUnion<Variants[number]>> {
   if (encodedCommonField === "__proto__") {
     throw new Error("fieldsUnion: commonField cannot be __proto__");
   }
@@ -382,7 +374,7 @@ export function fieldsUnion<
 
   const variants = (callback as (tag_: typeof tag) => [...Variants])(tag);
 
-  type VariantCodec = Codec<any, Record<string, EncodedFieldValueUnion>>;
+  type VariantCodec = Codec<any>;
   const decoderMap = new Map<string, VariantCodec["decoder"]>(); // encodedName -> decoder
   const encoderMap = new Map<string, VariantCodec["encoder"]>(); // decodedName -> encoder
 
@@ -431,10 +423,10 @@ export function fieldsUnion<
               )}`,
             );
           }
-          const fullCodec: Codec<
-            InferFields<Variants[number]>,
-            Record<string, EncodedFieldValueUnion>
-          > = fields(variant, { exact });
+          const fullCodec: Codec<InferFields<Variants[number]>> = fields(
+            variant,
+            { exact },
+          );
           decoderMap.set(data.encodedName, fullCodec.decoder);
           encoderMap.set(data.decodedName, fullCodec.encoder);
         }
@@ -490,30 +482,20 @@ export function fieldsUnion<
 }
 
 // TODO: Good name
-export function named<Decoded, Encoded, Options extends CodecOptions>(
+export function named<Decoded, Options extends CodecOptions>(
   encodedFieldName: string,
-  codec: Codec<Decoded, Encoded, Options>,
-): Codec<
-  Decoded,
-  Encoded,
-  MergeOptions<Options, { encodedFieldName: string }>
-> {
+  codec: Codec<Decoded, Options>,
+): Codec<Decoded, MergeOptions<Options, { encodedFieldName: string }>> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
     encodedFieldName,
-  } as Codec<
-    Decoded,
-    Encoded,
-    MergeOptions<Options, { encodedFieldName: string }>
-  >;
+  } as Codec<Decoded, MergeOptions<Options, { encodedFieldName: string }>>;
 }
 
-export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
-  mapping: readonly [
-    ...{ [Key in keyof Decoded]: Codec<Decoded[Key], EncodedItem> },
-  ],
-): Codec<[...Decoded], Array<EncodedItem>> {
+export function tuple<Decoded extends ReadonlyArray<unknown>>(
+  mapping: readonly [...{ [Key in keyof Decoded]: Codec<Decoded[Key]> }],
+): Codec<[...Decoded]> {
   return {
     decoder: function tupleDecoder(value) {
       const arr = unknownArray(value);
@@ -572,7 +554,7 @@ export function multi<
   types: Types[number] extends never
     ? "multi must have at least one type"
     : [...Types],
-): Codec<Multi<Types[number]>, Multi<Types[number]>["value"]> {
+): Codec<Multi<Types[number]>> {
   return {
     decoder: function multiDecoder(value) {
       if (value === undefined) {
@@ -618,9 +600,9 @@ export function multi<
   };
 }
 
-export function recursive<Decoded, Encoded>(
-  callback: () => Codec<Decoded, Encoded>,
-): Codec<Decoded, Encoded> {
+export function recursive<Decoded>(
+  callback: () => Codec<Decoded>,
+): Codec<Decoded> {
   return {
     decoder: function lazyDecoder(value) {
       return callback().decoder(value);
@@ -631,13 +613,9 @@ export function recursive<Decoded, Encoded>(
   };
 }
 
-export function optional<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>,
-): Codec<
-  Decoded | undefined,
-  Encoded | undefined,
-  MergeOptions<Options, { optional: true }>
-> {
+export function optional<Decoded, Options extends CodecOptions>(
+  codec: Codec<Decoded, Options>,
+): Codec<Decoded | undefined, MergeOptions<Options, { optional: true }>> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
@@ -659,16 +637,12 @@ export function optional<Decoded, Encoded, Options extends CodecOptions>(
     encoder: function undefinedOrEncoder(value) {
       return value === undefined ? undefined : codec.encoder(value);
     },
-  } as Codec<
-    Decoded | undefined,
-    Encoded | undefined,
-    MergeOptions<Options, { optional: true }>
-  >;
+  } as Codec<Decoded | undefined, MergeOptions<Options, { optional: true }>>;
 }
 
-export function nullable<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>,
-): Codec<Decoded | null, Encoded | null, Options> {
+export function nullable<Decoded, Options extends CodecOptions>(
+  codec: Codec<Decoded, Options>,
+): Codec<Decoded | null, Options> {
   return {
     ...codec,
     decoder: function nullOrDecoder(value) {
@@ -691,18 +665,13 @@ export function nullable<Decoded, Encoded, Options extends CodecOptions>(
   };
 }
 
-export function chain<
-  const Decoded,
-  Encoded,
-  Options extends CodecOptions,
-  NewDecoded,
->(
-  codec: Codec<Decoded, Encoded, Options>,
+export function chain<const Decoded, Options extends CodecOptions, NewDecoded>(
+  codec: Codec<Decoded, Options>,
   transform: {
     decoder: (value: Decoded) => NewDecoded;
     encoder: (value: NewDecoded) => Readonly<Decoded>;
   },
-): Codec<NewDecoded, Encoded, Options> {
+): Codec<NewDecoded, Options> {
   return {
     ...codec,
     decoder: function chainDecoder(value) {
@@ -714,10 +683,10 @@ export function chain<
   };
 }
 
-export function singleField<Decoded, Encoded>(
+export function singleField<Decoded>(
   field: string,
-  codec: Codec<Decoded, Encoded>,
-): Codec<Decoded, Record<string, Encoded>> {
+  codec: Codec<Decoded>,
+): Codec<Decoded> {
   return chain(fields({ [field]: codec }), {
     decoder: (value) => value[field],
     encoder: (value) => ({ [field]: value }),
