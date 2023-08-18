@@ -266,7 +266,10 @@ export function fields<Mapping extends FieldsMapping>(
           continue;
         }
         knownFields.add(field);
-        if (!(field in object) && !isOptional) {
+        if (!(field in object)) {
+          if (isOptional) {
+            continue;
+          }
           throw new DecoderError({
             tag: "missing field",
             field,
@@ -275,9 +278,7 @@ export function fields<Mapping extends FieldsMapping>(
         }
         try {
           const decoded: unknown = decoder(object[field]);
-          if (!isOptional || decoded !== undefined) {
-            result[key] = decoded;
-          }
+          result[key] = decoded;
         } catch (error) {
           throw DecoderError.at(error, key);
         }
@@ -309,13 +310,11 @@ export function fields<Mapping extends FieldsMapping>(
           encodedFieldName: field = key,
           optional: isOptional = false,
         } = mapping[key];
-        if (field === "__proto__") {
+        if (field === "__proto__" || (isOptional && !(key in object))) {
           continue;
         }
         const value = object[key as keyof InferFields<Mapping>];
-        if (!isOptional || value !== undefined) {
-          result[field] = encoder(value);
-        }
+        result[field] = encoder(value);
       }
       return result;
     },
