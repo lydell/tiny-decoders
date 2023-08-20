@@ -614,11 +614,19 @@ export function recursive<Decoded>(
 
 export function optional<Decoded, Options extends CodecOptions>(
   codec: Codec<Decoded, Options>,
-): Codec<Decoded | undefined, MergeOptions<Options, { optional: true }>> {
+): Codec<Decoded, MergeOptions<Options, { optional: true }>> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
     optional: true,
+  } as Codec<Decoded, MergeOptions<Options, { optional: true }>>;
+}
+
+export function undefinable<Decoded, Options extends CodecOptions>(
+  codec: Codec<Decoded, Options>,
+): Codec<Decoded | undefined, Options> {
+  return {
+    ...codec,
     decoder: function undefinedOrDecoder(value) {
       if (value === undefined) {
         return undefined;
@@ -636,7 +644,7 @@ export function optional<Decoded, Options extends CodecOptions>(
     encoder: function undefinedOrEncoder(value) {
       return value === undefined ? undefined : codec.encoder(value);
     },
-  } as Codec<Decoded | undefined, MergeOptions<Options, { optional: true }>>;
+  };
 }
 
 export function nullable<Decoded, Options extends CodecOptions>(
@@ -886,8 +894,8 @@ export class DecoderError extends TypeError {
       tag: "custom",
       message: error instanceof Error ? error.message : String(error),
       got: DecoderError.MISSING_VALUE,
-      key,
       cause: error,
+      ...(key === undefined ? {} : { key }),
     });
   }
 
