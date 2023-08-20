@@ -346,23 +346,35 @@ describe("fields", () => {
         }),
       ).toStrictEqual({ one: "a", two: true });
       expect(
-        run(fields({ one: string, two: boolean }, { exact: "allow extra" }), {
-          one: "a",
-          two: true,
-          three: 3,
-          four: {},
-        }),
+        run(
+          fields(
+            { one: string, two: boolean },
+            { disallowExtraFields: "allow extra" },
+          ),
+          {
+            one: "a",
+            two: true,
+            three: 3,
+            four: {},
+          },
+        ),
       ).toStrictEqual({ one: "a", two: true });
     });
 
     test("throw on excess properties", () => {
       expect(
-        run(fields({ one: string, two: boolean }, { exact: "throw" }), {
-          one: "a",
-          two: true,
-          three: 3,
-          four: {},
-        }),
+        run(
+          fields(
+            { one: string, two: boolean },
+            { disallowExtraFields: "throw" },
+          ),
+          {
+            one: "a",
+            two: true,
+            three: 3,
+            four: {},
+          },
+        ),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "one", "two"
@@ -373,7 +385,10 @@ describe("fields", () => {
     test("large number of excess properties", () => {
       expect(
         run(
-          fields({ "1": boolean, "2": boolean }, { exact: "throw" }),
+          fields(
+            { "1": boolean, "2": boolean },
+            { disallowExtraFields: "throw" },
+          ),
           Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false])),
         ),
       ).toMatchInlineSnapshot(`
@@ -397,7 +412,7 @@ describe("fields", () => {
   });
 
   test("empty object", () => {
-    const codec = fields({}, { exact: "throw" });
+    const codec = fields({}, { disallowExtraFields: "throw" });
     expect(codec.decoder({})).toStrictEqual({});
     expect(codec.encoder({})).toStrictEqual({});
     expect(codec.encoder({ a: 1 })).toStrictEqual({});

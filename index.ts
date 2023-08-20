@@ -316,8 +316,7 @@ type InferEncodedFields<Mapping extends FieldsMapping> = Expand<
 
 export function fields<Mapping extends FieldsMapping>(
   mapping: Mapping,
-  // TODO: Rename "throw"
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+  { disallowExtraFields = false }: { disallowExtraFields?: boolean } = {},
 ): Codec<InferFields<Mapping>, InferEncodedFields<Mapping>> {
   return {
     decoder: (value) => {
@@ -368,7 +367,7 @@ export function fields<Mapping extends FieldsMapping>(
         }
       }
 
-      if (exact === "throw") {
+      if (disallowExtraFields) {
         const unknownFields = Object.keys(object).filter(
           (key) => !knownFields.has(key),
         );
@@ -433,7 +432,7 @@ export function fieldsUnion<
     ? "fieldsUnion variants must have a field in common, and their encoded field names must be the same"
     : DecodedCommonField,
   variants: [...Variants],
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+  { disallowExtraFields = false }: { disallowExtraFields?: boolean } = {},
 ): Codec<
   InferFieldsUnion<Variants[number]>,
   InferEncodedFieldsUnion<Variants[number]>
@@ -465,7 +464,7 @@ export function fieldsUnion<
     const fullCodec: Codec<
       InferFields<Variants[number]>,
       InferEncodedFields<Variants[number]>
-    > = fields(variant, { exact });
+    > = fields(variant, { disallowExtraFields });
     decoderMap.set(codec.tag.encoded, fullCodec.decoder);
     encoderMap.set(codec.tag.decoded, fullCodec.encoder);
   }
