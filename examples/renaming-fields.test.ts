@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { boolean, Codec, fields, named, number, string } from "../";
+import { boolean, Codec, field, fields, number, string } from "../";
 
 test("renaming fields", () => {
   type UserSnakeCase = {
@@ -44,10 +44,10 @@ test("renaming fields", () => {
   // If you want to rename some fields, use the `named` function. This means having to
   // duplicate some field names, but it’s not so bad.
   const userCamelCaseCodec: Codec<UserCamelCase> = fields({
-    firstName: named("first_name", string),
-    lastName: named("last_name", string),
-    age: named("age", number),
-    active: named("active", boolean),
+    firstName: field("first_name", string),
+    lastName: field("last_name", string),
+    age: field("age", number),
+    active: field("active", boolean),
   });
 
   const expected: UserCamelCase = {

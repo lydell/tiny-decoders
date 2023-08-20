@@ -284,25 +284,25 @@ export function fields<Mapping extends FieldsMapping>(
         }
         const {
           decoder,
-          encodedFieldName: field = key,
+          encodedFieldName = key,
           optional: isOptional = false,
         } = mapping[key];
-        if (field === "__proto__") {
+        if (encodedFieldName === "__proto__") {
           continue;
         }
-        knownFields.add(field);
-        if (!(field in object)) {
+        knownFields.add(encodedFieldName);
+        if (!(encodedFieldName in object)) {
           if (isOptional) {
             continue;
           }
           throw new DecoderError({
             tag: "missing field",
-            field,
+            field: encodedFieldName,
             got: object,
           });
         }
         try {
-          const decoded: unknown = decoder(object[field]);
+          const decoded: unknown = decoder(object[encodedFieldName]);
           result[key] = decoded;
         } catch (error) {
           throw DecoderError.at(error, key);
@@ -332,14 +332,17 @@ export function fields<Mapping extends FieldsMapping>(
         }
         const {
           encoder,
-          encodedFieldName: field = key,
+          encodedFieldName = key,
           optional: isOptional = false,
         } = mapping[key];
-        if (field === "__proto__" || (isOptional && !(key in object))) {
+        if (
+          encodedFieldName === "__proto__" ||
+          (isOptional && !(key in object))
+        ) {
           continue;
         }
         const value = object[key as keyof InferFields<Mapping>];
-        result[field] = encoder(value);
+        result[encodedFieldName] = encoder(value);
       }
       return result as InferEncodedFields<Mapping>;
     },
@@ -459,8 +462,7 @@ export function fieldsUnion<
   };
 }
 
-// TODO: Good name
-export function named<
+export function field<
   Decoded,
   Encoded,
   EncodedFieldName extends string,
@@ -688,12 +690,12 @@ export function chain<const Decoded, Encoded, NewDecoded>(
 }
 
 export function singleField<Decoded, Encoded>(
-  field: string,
+  fieldName: string,
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded, Record<string, Encoded>> {
-  return chain(fields({ [field]: codec }), {
-    decoder: (value) => value[field],
-    encoder: (value) => ({ [field]: value }),
+  return chain(fields({ [fieldName]: codec }), {
+    decoder: (value) => value[fieldName],
+    encoder: (value) => ({ [fieldName]: value }),
   });
 }
 

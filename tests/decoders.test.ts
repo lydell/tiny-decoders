@@ -11,7 +11,7 @@ import {
   fieldsUnion,
   Infer,
   multi,
-  named,
+  field,
   nullable,
   number,
   optional,
@@ -479,8 +479,8 @@ describe("fieldsUnion", () => {
       },
       {
         tag: tag("Rectangle"),
-        width: named("width_px", number),
-        height: named("height_px", number),
+        width: field("width_px", number),
+        height: field("height_px", number),
       },
     ]);
 
