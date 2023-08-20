@@ -546,6 +546,45 @@ export function field<
   >;
 }
 
+export function tag<const Decoded extends string>(
+  decoded: Decoded,
+): Codec<Decoded, Decoded, { tag: { decoded: string; encoded: string } }>;
+
+export function tag<const Decoded extends string, const Encoded extends string>(
+  decoded: Decoded,
+  encoded: Encoded,
+): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }>;
+
+export function tag<const Decoded extends string, const Encoded extends string>(
+  decoded: Decoded,
+  encoded: Encoded = decoded as unknown as Encoded,
+): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
+  return {
+    decoder: (value) => {
+      const strResult = string.decoder(value);
+      if (strResult.tag === "DecoderError") {
+        return strResult;
+      }
+      const str = strResult.value;
+      return str === encoded
+        ? { tag: "Valid", value: decoded }
+        : {
+            tag: "DecoderError",
+            errors: [
+              {
+                tag: "wrong tag",
+                expected: encoded,
+                got: str,
+                path: [],
+              },
+            ],
+          };
+    },
+    encoder: () => encoded,
+    tag: { decoded, encoded },
+  };
+}
+
 export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
   mapping: readonly [
     ...{ [Key in keyof Decoded]: Codec<Decoded[Key], EncodedItem> },
@@ -789,45 +828,6 @@ export function singleField<Decoded, Encoded>(
     decoder: (value) => value[fieldName],
     encoder: (value) => ({ [fieldName]: value }),
   });
-}
-
-export function tag<const Decoded extends string>(
-  decoded: Decoded,
-): Codec<Decoded, Decoded, { tag: { decoded: string; encoded: string } }>;
-
-export function tag<const Decoded extends string, const Encoded extends string>(
-  decoded: Decoded,
-  encoded: Encoded,
-): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }>;
-
-export function tag<const Decoded extends string, const Encoded extends string>(
-  decoded: Decoded,
-  encoded: Encoded = decoded as unknown as Encoded,
-): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
-  return {
-    decoder: (value) => {
-      const strResult = string.decoder(value);
-      if (strResult.tag === "DecoderError") {
-        return strResult;
-      }
-      const str = strResult.value;
-      return str === encoded
-        ? { tag: "Valid", value: decoded }
-        : {
-            tag: "DecoderError",
-            errors: [
-              {
-                tag: "wrong tag",
-                expected: encoded,
-                got: str,
-                path: [],
-              },
-            ],
-          };
-    },
-    encoder: () => encoded,
-    tag: { decoded, encoded },
-  };
 }
 
 type Key = number | string;
