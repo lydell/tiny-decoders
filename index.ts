@@ -6,61 +6,73 @@ export type Codec<
   Decoded,
   Encoded = unknown,
   // eslint-disable-next-line @typescript-eslint/ban-types
-  Options extends CodecOptions = {},
-> = Options & {
-  decoder: (value: unknown) => Decoded;
+  Meta extends CodecMeta = {},
+> = Meta & {
+  decoder: (value: unknown) => DecoderResult<Decoded>;
   encoder: (value: Decoded) => Encoded;
 };
 
-export type CodecOptions = {
+export type CodecMeta = {
   encodedFieldName?: string;
   optional?: boolean;
   tag?: { decoded: string; encoded: string } | undefined;
 };
 
-type MergeOptions<A extends CodecOptions, B extends CodecOptions> = Expand<
-  A & B
->;
+export type DecoderResult<Decoded> =
+  | {
+      tag: "DecoderError";
+      errors: [DecoderError, ...Array<DecoderError>];
+    }
+  | {
+      tag: "Valid";
+      value: Decoded;
+    };
+
+type MergeMeta<A extends CodecMeta, B extends CodecMeta> = Expand<A & B>;
 
 // Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
 // https://stackoverflow.com/a/57683652/2010616
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
-export type Infer<T extends Codec<any>> = ReturnType<T["decoder"]>;
+export type Infer<T extends Codec<any>> = Extract<
+  ReturnType<T["decoder"]>,
+  { tag: "Valid" }
+>["value"];
 
 export type InferEncoded<T extends Codec<any>> = ReturnType<T["encoder"]>;
+
+function isNonEmptyArray<T>(arr: Array<T>): arr is [T, ...Array<T>] {
+  return arr.length >= 1;
+}
+
+export function mapNonEmptyArray<T, U>(
+  arr: [T, ...Array<T>],
+  f: (item: T, index: number) => U,
+): [U, ...Array<U>] {
+  return arr.map(f) as [U, ...Array<U>];
+}
 
 export function parse<Decoded>(
   codec: Codec<Decoded>,
   jsonString: string,
-): Decoded | DecoderError {
+): DecoderResult<Decoded> {
   let json: unknown;
   try {
     json = JSON.parse(jsonString);
   } catch (error) {
-    return new DecoderError({
-      tag: "custom",
-      message: error instanceof Error ? error.message : String(error),
-      got: jsonString,
-      cause: error,
-    });
+    return {
+      tag: "DecoderError",
+      errors: [
+        new DecoderError({
+          tag: "custom",
+          message: error instanceof Error ? error.message : String(error),
+          got: jsonString,
+          cause: error,
+        }),
+      ],
+    };
   }
-  try {
-    return codec.decoder(json);
-  } catch (error) {
-    return DecoderError.at(error);
-  }
-}
-
-export function parseUnknown<Decoded>(
-  codec: Codec<Decoded>,
-  value: unknown,
-): Decoded | DecoderError {
-  try {
-    return codec.decoder(value);
-  } catch (error) {
-    return DecoderError.at(error);
-  }
+  return codec.decoder(json);
 }
 
 export function stringify<Decoded, Encoded>(
@@ -101,36 +113,44 @@ function identity<T>(value: T): T {
 }
 
 export const unknown: Codec<unknown> = {
-  decoder: identity,
+  decoder: function unknownDecoder(value) {
+    return { tag: "Valid", value };
+  },
   encoder: identity,
 };
 
 export const boolean: Codec<boolean, boolean> = {
   decoder: function booleanDecoder(value) {
-    if (typeof value !== "boolean") {
-      throw new DecoderError({ tag: "boolean", got: value });
-    }
-    return value;
+    return typeof value === "boolean"
+      ? { tag: "Valid", value }
+      : {
+          tag: "DecoderError",
+          errors: [new DecoderError({ tag: "boolean", got: value })],
+        };
   },
   encoder: identity,
 };
 
 export const number: Codec<number, number> = {
   decoder: function numberDecoder(value) {
-    if (typeof value !== "number") {
-      throw new DecoderError({ tag: "number", got: value });
-    }
-    return value;
+    return typeof value === "number"
+      ? { tag: "Valid", value }
+      : {
+          tag: "DecoderError",
+          errors: [new DecoderError({ tag: "number", got: value })],
+        };
   },
   encoder: identity,
 };
 
 export const string: Codec<string, string> = {
   decoder: function stringDecoder(value) {
-    if (typeof value !== "string") {
-      throw new DecoderError({ tag: "string", got: value });
-    }
-    return value;
+    return typeof value === "string"
+      ? { tag: "Valid", value }
+      : {
+          tag: "DecoderError",
+          errors: [new DecoderError({ tag: "string", got: value })],
+        };
   },
   encoder: identity,
 };
@@ -142,32 +162,44 @@ export function stringUnion<const Variants extends ReadonlyArray<string>>(
 ): Codec<Variants[number], Variants[number]> {
   return {
     decoder: function stringUnionDecoder(value) {
-      const str = string.decoder(value);
-      if (!variants.includes(str)) {
-        throw new DecoderError({
-          tag: "unknown stringUnion variant",
-          knownVariants: variants as Array<string>,
-          got: str,
-        });
+      const stringResult = string.decoder(value);
+      if (stringResult.tag === "DecoderError") {
+        return stringResult;
       }
-      return str;
+      const str = stringResult.value;
+      return variants.includes(str)
+        ? { tag: "Valid", value: str }
+        : {
+            tag: "DecoderError",
+            errors: [
+              new DecoderError({
+                tag: "unknown stringUnion variant",
+                knownVariants: variants as Array<string>,
+                got: str,
+              }),
+            ],
+          };
     },
     encoder: identity,
   };
 }
 
-function unknownArray(value: unknown): Array<unknown> {
-  if (!Array.isArray(value)) {
-    throw new DecoderError({ tag: "array", got: value });
-  }
-  return value;
+function unknownArray(value: unknown): DecoderResult<Array<unknown>> {
+  return Array.isArray(value)
+    ? { tag: "Valid", value }
+    : {
+        tag: "DecoderError",
+        errors: [new DecoderError({ tag: "array", got: value })],
+      };
 }
 
-function unknownRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new DecoderError({ tag: "object", got: value });
-  }
-  return value as Record<string, unknown>;
+function unknownRecord(value: unknown): DecoderResult<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? { tag: "Valid", value: value as Record<string, unknown> }
+    : {
+        tag: "DecoderError",
+        errors: [new DecoderError({ tag: "object", got: value })],
+      };
 }
 
 export function array<DecodedItem, EncodedItem>(
@@ -175,16 +207,29 @@ export function array<DecodedItem, EncodedItem>(
 ): Codec<Array<DecodedItem>, Array<EncodedItem>> {
   return {
     decoder: function arrayDecoder(value) {
-      const arr = unknownArray(value);
+      const arrResult = unknownArray(value);
+      if (arrResult.tag === "DecoderError") {
+        return arrResult;
+      }
+      const arr = arrResult.value;
       const result = [];
+      const errors = [];
       for (let index = 0; index < arr.length; index++) {
-        try {
-          result.push(codec.decoder(arr[index]));
-        } catch (error) {
-          throw DecoderError.at(error, index);
+        const decoderResult = codec.decoder(arr[index]);
+        switch (decoderResult.tag) {
+          case "DecoderError":
+            for (const error of decoderResult.errors) {
+              errors.push(DecoderError.at(error, index));
+            }
+            break;
+          case "Valid":
+            result.push(decoderResult.value);
+            break;
         }
       }
-      return result;
+      return isNonEmptyArray(errors)
+        ? { tag: "DecoderError", errors }
+        : { tag: "Valid", value: result };
     },
     encoder: function arrayEncoder(arr) {
       const result = [];
@@ -201,22 +246,35 @@ export function record<DecodedValue, EncodedValue>(
 ): Codec<Record<string, DecodedValue>, Record<string, EncodedValue>> {
   return {
     decoder: function recordDecoder(value) {
-      const object = unknownRecord(value);
+      const objectResult = unknownRecord(value);
+      if (objectResult.tag === "DecoderError") {
+        return objectResult;
+      }
+      const object = objectResult.value;
       const keys = Object.keys(object);
       const result: Record<string, DecodedValue> = {};
+      const errors = [];
 
       for (const key of keys) {
         if (key === "__proto__") {
           continue;
         }
-        try {
-          result[key] = codec.decoder(object[key]);
-        } catch (error) {
-          throw DecoderError.at(error, key);
+        const decoderResult = codec.decoder(object[key]);
+        switch (decoderResult.tag) {
+          case "DecoderError":
+            for (const error of decoderResult.errors) {
+              errors.push(DecoderError.at(error, key));
+            }
+            break;
+          case "Valid":
+            result[key] = decoderResult.value;
+            break;
         }
       }
 
-      return result;
+      return isNonEmptyArray(errors)
+        ? { tag: "DecoderError", errors }
+        : { tag: "Valid", value: result };
     },
     encoder: function recordEncoder(object) {
       const result: Record<string, EncodedValue> = {};
@@ -231,7 +289,7 @@ export function record<DecodedValue, EncodedValue>(
   };
 }
 
-type FieldsMapping = Record<string, Codec<any, any, CodecOptions>>;
+type FieldsMapping = Record<string, Codec<any, any, CodecMeta>>;
 
 type InferFields<Mapping extends FieldsMapping> = Expand<
   // eslint-disable-next-line @typescript-eslint/sort-type-constituents
@@ -269,14 +327,20 @@ type InferEncodedFields<Mapping extends FieldsMapping> = Expand<
 
 export function fields<Mapping extends FieldsMapping>(
   mapping: Mapping,
+  // TODO: Rename "throw"
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
 ): Codec<InferFields<Mapping>, InferEncodedFields<Mapping>> {
   return {
     decoder: function fieldsDecoder(value) {
-      const object = unknownRecord(value);
+      const objectResult = unknownRecord(value);
+      if (objectResult.tag === "DecoderError") {
+        return objectResult;
+      }
+      const object = objectResult.value;
       const keys = Object.keys(mapping);
       const knownFields = new Set<string>();
       const result: Record<string, unknown> = {};
+      const errors = [];
 
       for (const key of keys) {
         if (key === "__proto__") {
@@ -292,20 +356,27 @@ export function fields<Mapping extends FieldsMapping>(
         }
         knownFields.add(encodedFieldName);
         if (!(encodedFieldName in object)) {
-          if (isOptional) {
-            continue;
+          if (!isOptional) {
+            errors.push(
+              new DecoderError({
+                tag: "missing field",
+                field: encodedFieldName,
+                got: object,
+              }),
+            );
           }
-          throw new DecoderError({
-            tag: "missing field",
-            field: encodedFieldName,
-            got: object,
-          });
+          continue;
         }
-        try {
-          const decoded: unknown = decoder(object[encodedFieldName]);
-          result[key] = decoded;
-        } catch (error) {
-          throw DecoderError.at(error, key);
+        const decoderResult = decoder(object[encodedFieldName]);
+        switch (decoderResult.tag) {
+          case "DecoderError":
+            for (const error of decoderResult.errors) {
+              errors.push(DecoderError.at(error, key));
+            }
+            break;
+          case "Valid":
+            result[key] = decoderResult.value;
+            break;
         }
       }
 
@@ -314,15 +385,19 @@ export function fields<Mapping extends FieldsMapping>(
           (key) => !knownFields.has(key),
         );
         if (unknownFields.length > 0) {
-          throw new DecoderError({
-            tag: "exact fields",
-            knownFields: Array.from(knownFields),
-            got: unknownFields,
-          });
+          errors.push(
+            new DecoderError({
+              tag: "exact fields",
+              knownFields: Array.from(knownFields),
+              got: unknownFields,
+            }),
+          );
         }
       }
 
-      return result as InferFields<Mapping>;
+      return isNonEmptyArray(errors)
+        ? { tag: "DecoderError", errors }
+        : { tag: "Valid", value: result as InferFields<Mapping> };
     },
     encoder: function fieldsEncoder(object) {
       const result: Record<string, unknown> = {};
@@ -362,7 +437,7 @@ export function fieldsUnion<
       DecodedCommonField,
       Codec<any, any, { tag: { decoded: string; encoded: string } }>
     > &
-      Record<string, Codec<any, any, CodecOptions>>
+      Record<string, Codec<any, any, CodecMeta>>
   >,
 >(
   decodedCommonField: Variants[number] extends never
@@ -420,29 +495,46 @@ export function fieldsUnion<
 
   return {
     decoder: function fieldsUnionDecoder(value) {
-      const encodedName = singleField(encodedCommonField, string).decoder(
+      const encodedNameResult = singleField(encodedCommonField, string).decoder(
         value,
       );
+      if (encodedNameResult.tag === "DecoderError") {
+        return encodedNameResult;
+      }
+      const encodedName = encodedNameResult.value;
       const decoder = decoderMap.get(encodedName);
       if (decoder === undefined) {
-        throw new DecoderError({
-          tag: "unknown fieldsUnion tag",
-          knownTags: Array.from(decoderMap.keys()),
-          got: encodedName,
-          key: encodedCommonField,
-        });
+        return {
+          tag: "DecoderError",
+          errors: [
+            new DecoderError({
+              tag: "unknown fieldsUnion tag",
+              knownTags: Array.from(decoderMap.keys()),
+              got: encodedName,
+              key: encodedCommonField,
+            }),
+          ],
+        };
       }
-      try {
-        return decoder(value) as InferFieldsUnion<Variants[number]>;
-      } catch (error) {
-        const newError = DecoderError.at(error);
-        if (newError.path.length === 0) {
-          newError.fieldsUnionEncodedCommonField = {
-            key: encodedCommonField,
-            value: encodedName,
+      const decoderResult = decoder(value);
+      switch (decoderResult.tag) {
+        case "DecoderError": {
+          return {
+            tag: "DecoderError",
+            errors: mapNonEmptyArray(decoderResult.errors, (error) => {
+              const newError = DecoderError.at(error);
+              if (newError.path.length === 0) {
+                newError.fieldsUnionEncodedCommonField = {
+                  key: encodedCommonField,
+                  value: encodedName,
+                };
+              }
+              return newError;
+            }),
           };
         }
-        throw newError;
+        case "Valid":
+          return decoderResult;
       }
     },
     encoder: function fieldsUnionEncoder(value) {
@@ -466,14 +558,14 @@ export function field<
   Decoded,
   Encoded,
   EncodedFieldName extends string,
-  Options extends CodecOptions,
+  Meta extends CodecMeta,
 >(
   encodedFieldName: EncodedFieldName,
-  codec: Codec<Decoded, Encoded, Options>,
+  codec: Codec<Decoded, Encoded, Meta>,
 ): Codec<
   Decoded,
   Encoded,
-  MergeOptions<Options, { encodedFieldName: EncodedFieldName }>
+  MergeMeta<Meta, { encodedFieldName: EncodedFieldName }>
 > {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
@@ -482,7 +574,7 @@ export function field<
   } as Codec<
     Decoded,
     Encoded,
-    MergeOptions<Options, { encodedFieldName: EncodedFieldName }>
+    MergeMeta<Meta, { encodedFieldName: EncodedFieldName }>
   >;
 }
 
@@ -493,24 +585,42 @@ export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
 ): Codec<[...Decoded], Array<EncodedItem>> {
   return {
     decoder: function tupleDecoder(value) {
-      const arr = unknownArray(value);
+      const arrResult = unknownArray(value);
+      if (arrResult.tag === "DecoderError") {
+        return arrResult;
+      }
+      const arr = arrResult.value;
       if (arr.length !== mapping.length) {
-        throw new DecoderError({
-          tag: "tuple size",
-          expected: mapping.length,
-          got: arr.length,
-        });
+        return {
+          tag: "DecoderError",
+          errors: [
+            new DecoderError({
+              tag: "tuple size",
+              expected: mapping.length,
+              got: arr.length,
+            }),
+          ],
+        };
       }
       const result = [];
+      const errors = [];
       for (let index = 0; index < arr.length; index++) {
-        try {
-          const { decoder } = mapping[index];
-          result.push(decoder(arr[index]));
-        } catch (error) {
-          throw DecoderError.at(error, index);
+        const { decoder } = mapping[index];
+        const decoderResult = decoder(arr[index]);
+        switch (decoderResult.tag) {
+          case "DecoderError":
+            for (const error of decoderResult.errors) {
+              errors.push(DecoderError.at(error, index));
+            }
+            break;
+          case "Valid":
+            result.push(decoderResult.value);
+            break;
         }
       }
-      return result as [...Decoded];
+      return isNonEmptyArray(errors)
+        ? { tag: "DecoderError", errors }
+        : { tag: "Valid", value: result as [...Decoded] };
     },
     encoder: function tupleEncoder(value) {
       const result = [];
@@ -554,40 +664,68 @@ export function multi<
     decoder: function multiDecoder(value) {
       if (value === undefined) {
         if (types.includes("undefined")) {
-          return { type: "undefined", value } as unknown as Multi<
-            Types[number]
-          >;
+          return {
+            tag: "Valid",
+            value: { type: "undefined", value } as unknown as Multi<
+              Types[number]
+            >,
+          };
         }
       } else if (value === null) {
         if (types.includes("null")) {
-          return { type: "null", value } as unknown as Multi<Types[number]>;
+          return {
+            tag: "Valid",
+            value: { type: "null", value } as unknown as Multi<Types[number]>,
+          };
         }
       } else if (typeof value === "boolean") {
         if (types.includes("boolean")) {
-          return { type: "boolean", value } as unknown as Multi<Types[number]>;
+          return {
+            tag: "Valid",
+            value: { type: "boolean", value } as unknown as Multi<
+              Types[number]
+            >,
+          };
         }
       } else if (typeof value === "number") {
         if (types.includes("number")) {
-          return { type: "number", value } as unknown as Multi<Types[number]>;
+          return {
+            tag: "Valid",
+            value: { type: "number", value } as unknown as Multi<Types[number]>,
+          };
         }
       } else if (typeof value === "string") {
         if (types.includes("string")) {
-          return { type: "string", value } as unknown as Multi<Types[number]>;
+          return {
+            tag: "Valid",
+            value: { type: "string", value } as unknown as Multi<Types[number]>,
+          };
         }
       } else if (Array.isArray(value)) {
         if (types.includes("array")) {
-          return { type: "array", value } as unknown as Multi<Types[number]>;
+          return {
+            tag: "Valid",
+            value: { type: "array", value } as unknown as Multi<Types[number]>,
+          };
         }
       } else {
         if (types.includes("object")) {
-          return { type: "object", value } as unknown as Multi<Types[number]>;
+          return {
+            tag: "Valid",
+            value: { type: "object", value } as unknown as Multi<Types[number]>,
+          };
         }
       }
-      throw new DecoderError({
-        tag: "unknown multi type",
-        knownTypes: types as Array<"undefined">, // Type checking hack.
-        got: value,
-      });
+      return {
+        tag: "DecoderError",
+        errors: [
+          new DecoderError({
+            tag: "unknown multi type",
+            knownTypes: types as Array<"undefined">, // Type checking hack.
+            got: value,
+          }),
+        ],
+      };
     },
     encoder: function multiEncoder(value) {
       return value.value;
@@ -608,20 +746,20 @@ export function recursive<Decoded, Encoded>(
   };
 }
 
-export function optional<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>,
+export function optional<Decoded, Encoded, Meta extends CodecMeta>(
+  codec: Codec<Decoded, Encoded, Meta>,
 ): Codec<
   Decoded,
   Encoded,
-  // @ts-expect-error TypeScript does not like `Omit` on `Options` for
+  // @ts-expect-error TypeScript does not like `Omit` on `Meta` for
   // some reason, but it still works.
-  MergeOptions<Omit<Options, "tag">, { optional: true }>
+  MergeMeta<Omit<Meta, "tag">, { optional: true }>
 > {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
     optional: true,
-  } as Codec<Decoded, Encoded, MergeOptions<Options, { optional: true }>>;
+  } as Codec<Decoded, Encoded, MergeMeta<Meta, { optional: true }>>;
 }
 
 export function undefinable<Decoded, Encoded>(
@@ -630,16 +768,24 @@ export function undefinable<Decoded, Encoded>(
   return {
     decoder: function undefinedOrDecoder(value) {
       if (value === undefined) {
-        return undefined;
+        return { tag: "Valid", value: undefined };
       }
-      try {
-        return codec.decoder(value);
-      } catch (error) {
-        const newError = DecoderError.at(error);
-        if (newError.path.length === 0) {
-          newError.optional = true;
+      const decoderResult = codec.decoder(value);
+      switch (decoderResult.tag) {
+        case "DecoderError": {
+          return {
+            tag: "DecoderError",
+            errors: mapNonEmptyArray(decoderResult.errors, (error) => {
+              const newError = DecoderError.at(error);
+              if (newError.path.length === 0) {
+                newError.optional = true;
+              }
+              return newError;
+            }),
+          };
         }
-        throw newError;
+        case "Valid":
+          return decoderResult;
       }
     },
     encoder: function undefinedOrEncoder(value) {
@@ -654,16 +800,24 @@ export function nullable<Decoded, Encoded>(
   return {
     decoder: function nullOrDecoder(value) {
       if (value === null) {
-        return null;
+        return { tag: "Valid", value: null };
       }
-      try {
-        return codec.decoder(value);
-      } catch (error) {
-        const newError = DecoderError.at(error);
-        if (newError.path.length === 0) {
-          newError.optional = true;
+      const decoderResult = codec.decoder(value);
+      switch (decoderResult.tag) {
+        case "DecoderError": {
+          return {
+            tag: "DecoderError",
+            errors: mapNonEmptyArray(decoderResult.errors, (error) => {
+              const newError = DecoderError.at(error);
+              if (newError.path.length === 0) {
+                newError.optional = true;
+              }
+              return newError;
+            }),
+          };
         }
-        throw newError;
+        case "Valid":
+          return decoderResult;
       }
     },
     encoder: function nullOrEncoder(value) {
@@ -672,16 +826,37 @@ export function nullable<Decoded, Encoded>(
   };
 }
 
-export function chain<const Decoded, Encoded, NewDecoded>(
+export function map<const Decoded, Encoded, NewDecoded>(
   codec: Codec<Decoded, Encoded>,
   transform: {
     decoder: (value: Decoded) => NewDecoded;
     encoder: (value: NewDecoded) => Readonly<Decoded>;
   },
 ): Codec<NewDecoded, Encoded> {
+  return andThen(codec, {
+    decoder: function mapDecoder(value) {
+      return { tag: "Valid", value: transform.decoder(value) };
+    },
+    encoder: transform.encoder,
+  });
+}
+
+export function andThen<const Decoded, Encoded, NewDecoded>(
+  codec: Codec<Decoded, Encoded>,
+  transform: {
+    decoder: (value: Decoded) => DecoderResult<NewDecoded>;
+    encoder: (value: NewDecoded) => Readonly<Decoded>;
+  },
+): Codec<NewDecoded, Encoded> {
   return {
-    decoder: function chainDecoder(value) {
-      return transform.decoder(codec.decoder(value));
+    decoder: function andThenDecoder(value) {
+      const decoderResult = codec.decoder(value);
+      switch (decoderResult.tag) {
+        case "DecoderError":
+          return decoderResult;
+        case "Valid":
+          return transform.decoder(decoderResult.value);
+      }
     },
     encoder: function chainEncoder(value) {
       return codec.encoder(transform.encoder(value));
@@ -693,7 +868,7 @@ export function singleField<Decoded, Encoded>(
   fieldName: string,
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded, Record<string, Encoded>> {
-  return chain(fields({ [fieldName]: codec }), {
+  return map(fields({ [fieldName]: codec }), {
     decoder: (value) => value[fieldName],
     encoder: (value) => ({ [fieldName]: value }),
   });
@@ -714,15 +889,23 @@ export function tag<const Decoded extends string, const Encoded extends string>(
 ): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
   return {
     decoder: function stringUnionDecoder(value) {
-      const str = string.decoder(value);
-      if (str !== encoded) {
-        throw new DecoderError({
-          tag: "wrong tag",
-          expected: encoded,
-          got: str,
-        });
+      const strResult = string.decoder(value);
+      if (strResult.tag === "DecoderError") {
+        return strResult;
       }
-      return decoded;
+      const str = strResult.value;
+      return str === encoded
+        ? { tag: "Valid", value: decoded }
+        : {
+            tag: "DecoderError",
+            errors: [
+              new DecoderError({
+                tag: "wrong tag",
+                expected: encoded,
+                got: str,
+              }),
+            ],
+          };
     },
     encoder: () => encoded,
     tag: { decoded, encoded },

@@ -7,7 +7,7 @@ import {
   boolean,
   chain,
   Codec,
-  CodecOptions,
+  CodecMeta,
   DecoderError,
   fields,
   fieldsUnion,
@@ -103,7 +103,7 @@ test("looking for a field that differs", () => {
 });
 
 test("ignoring unknown tags in fieldsUnion", () => {
-  function ignoreUnknownTag<Decoded, Encoded, Options extends CodecOptions>(
+  function ignoreUnknownTag<Decoded, Encoded, Options extends CodecMeta>(
     codec: Codec<Decoded, Encoded, Options>,
   ): Codec<Decoded | undefined, Encoded | undefined, Options> {
     return {
