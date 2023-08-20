@@ -45,13 +45,6 @@ function isNonEmptyArray<T>(arr: Array<T>): arr is [T, ...Array<T>] {
   return arr.length >= 1;
 }
 
-export function mapNonEmptyArray<T, U>(
-  arr: [T, ...Array<T>],
-  f: (item: T, index: number) => U,
-): [U, ...Array<U>] {
-  return arr.map(f) as [U, ...Array<U>];
-}
-
 export function parse<Decoded>(
   codec: Codec<Decoded>,
   jsonString: string,
@@ -63,12 +56,12 @@ export function parse<Decoded>(
     return {
       tag: "DecoderError",
       errors: [
-        new DecoderError({
+        {
           tag: "custom",
           message: error instanceof Error ? error.message : String(error),
           got: jsonString,
-          cause: error,
-        }),
+          path: [],
+        },
       ],
     };
   }
@@ -125,7 +118,7 @@ export const boolean: Codec<boolean, boolean> = {
       ? { tag: "Valid", value }
       : {
           tag: "DecoderError",
-          errors: [new DecoderError({ tag: "boolean", got: value })],
+          errors: [{ tag: "boolean", got: value, path: [] }],
         };
   },
   encoder: identity,
@@ -137,7 +130,7 @@ export const number: Codec<number, number> = {
       ? { tag: "Valid", value }
       : {
           tag: "DecoderError",
-          errors: [new DecoderError({ tag: "number", got: value })],
+          errors: [{ tag: "number", got: value, path: [] }],
         };
   },
   encoder: identity,
@@ -149,7 +142,7 @@ export const string: Codec<string, string> = {
       ? { tag: "Valid", value }
       : {
           tag: "DecoderError",
-          errors: [new DecoderError({ tag: "string", got: value })],
+          errors: [{ tag: "string", got: value, path: [] }],
         };
   },
   encoder: identity,
@@ -172,11 +165,12 @@ export function stringUnion<const Variants extends ReadonlyArray<string>>(
         : {
             tag: "DecoderError",
             errors: [
-              new DecoderError({
+              {
                 tag: "unknown stringUnion variant",
                 knownVariants: variants as Array<string>,
                 got: str,
-              }),
+                path: [],
+              },
             ],
           };
     },
@@ -189,7 +183,7 @@ function unknownArray(value: unknown): DecoderResult<Array<unknown>> {
     ? { tag: "Valid", value }
     : {
         tag: "DecoderError",
-        errors: [new DecoderError({ tag: "array", got: value })],
+        errors: [{ tag: "array", got: value, path: [] }],
       };
 }
 
@@ -198,7 +192,7 @@ function unknownRecord(value: unknown): DecoderResult<Record<string, unknown>> {
     ? { tag: "Valid", value: value as Record<string, unknown> }
     : {
         tag: "DecoderError",
-        errors: [new DecoderError({ tag: "object", got: value })],
+        errors: [{ tag: "object", got: value, path: [] }],
       };
 }
 
@@ -213,13 +207,13 @@ export function array<DecodedItem, EncodedItem>(
       }
       const arr = arrResult.value;
       const result = [];
-      const errors = [];
+      const errors: Array<DecoderError> = [];
       for (let index = 0; index < arr.length; index++) {
         const decoderResult = codec.decoder(arr[index]);
         switch (decoderResult.tag) {
           case "DecoderError":
             for (const error of decoderResult.errors) {
-              errors.push(DecoderError.at(error, index));
+              errors.push({ ...error, path: [index, ...error.path] });
             }
             break;
           case "Valid":
@@ -253,7 +247,7 @@ export function record<DecodedValue, EncodedValue>(
       const object = objectResult.value;
       const keys = Object.keys(object);
       const result: Record<string, DecodedValue> = {};
-      const errors = [];
+      const errors: Array<DecoderError> = [];
 
       for (const key of keys) {
         if (key === "__proto__") {
@@ -263,7 +257,7 @@ export function record<DecodedValue, EncodedValue>(
         switch (decoderResult.tag) {
           case "DecoderError":
             for (const error of decoderResult.errors) {
-              errors.push(DecoderError.at(error, key));
+              errors.push({ ...error, path: [key, ...error.path] });
             }
             break;
           case "Valid":
@@ -340,7 +334,7 @@ export function fields<Mapping extends FieldsMapping>(
       const keys = Object.keys(mapping);
       const knownFields = new Set<string>();
       const result: Record<string, unknown> = {};
-      const errors = [];
+      const errors: Array<DecoderError> = [];
 
       for (const key of keys) {
         if (key === "__proto__") {
@@ -357,13 +351,12 @@ export function fields<Mapping extends FieldsMapping>(
         knownFields.add(encodedFieldName);
         if (!(encodedFieldName in object)) {
           if (!isOptional) {
-            errors.push(
-              new DecoderError({
-                tag: "missing field",
-                field: encodedFieldName,
-                got: object,
-              }),
-            );
+            errors.push({
+              tag: "missing field",
+              field: encodedFieldName,
+              got: object,
+              path: [],
+            });
           }
           continue;
         }
@@ -371,7 +364,7 @@ export function fields<Mapping extends FieldsMapping>(
         switch (decoderResult.tag) {
           case "DecoderError":
             for (const error of decoderResult.errors) {
-              errors.push(DecoderError.at(error, key));
+              errors.push({ ...error, path: [key, ...error.path] });
             }
             break;
           case "Valid":
@@ -385,13 +378,12 @@ export function fields<Mapping extends FieldsMapping>(
           (key) => !knownFields.has(key),
         );
         if (unknownFields.length > 0) {
-          errors.push(
-            new DecoderError({
-              tag: "exact fields",
-              knownFields: Array.from(knownFields),
-              got: unknownFields,
-            }),
-          );
+          errors.push({
+            tag: "exact fields",
+            knownFields: Array.from(knownFields),
+            got: unknownFields,
+            path: [],
+          });
         }
       }
 
@@ -507,35 +499,16 @@ export function fieldsUnion<
         return {
           tag: "DecoderError",
           errors: [
-            new DecoderError({
+            {
               tag: "unknown fieldsUnion tag",
               knownTags: Array.from(decoderMap.keys()),
               got: encodedName,
-              key: encodedCommonField,
-            }),
+              path: [encodedCommonField],
+            },
           ],
         };
       }
-      const decoderResult = decoder(value);
-      switch (decoderResult.tag) {
-        case "DecoderError": {
-          return {
-            tag: "DecoderError",
-            errors: mapNonEmptyArray(decoderResult.errors, (error) => {
-              const newError = DecoderError.at(error);
-              if (newError.path.length === 0) {
-                newError.fieldsUnionEncodedCommonField = {
-                  key: encodedCommonField,
-                  value: encodedName,
-                };
-              }
-              return newError;
-            }),
-          };
-        }
-        case "Valid":
-          return decoderResult;
-      }
+      return decoder(value);
     },
     encoder: function fieldsUnionEncoder(value) {
       const decodedName = (value as Record<number | string | symbol, string>)[
@@ -594,23 +567,24 @@ export function tuple<Decoded extends ReadonlyArray<unknown>, EncodedItem>(
         return {
           tag: "DecoderError",
           errors: [
-            new DecoderError({
+            {
               tag: "tuple size",
               expected: mapping.length,
               got: arr.length,
-            }),
+              path: [],
+            },
           ],
         };
       }
       const result = [];
-      const errors = [];
+      const errors: Array<DecoderError> = [];
       for (let index = 0; index < arr.length; index++) {
         const { decoder } = mapping[index];
         const decoderResult = decoder(arr[index]);
         switch (decoderResult.tag) {
           case "DecoderError":
             for (const error of decoderResult.errors) {
-              errors.push(DecoderError.at(error, index));
+              errors.push({ ...error, path: [index, ...error.path] });
             }
             break;
           case "Valid":
@@ -719,11 +693,12 @@ export function multi<
       return {
         tag: "DecoderError",
         errors: [
-          new DecoderError({
+          {
             tag: "unknown multi type",
             knownTypes: types as Array<"undefined">, // Type checking hack.
             got: value,
-          }),
+            path: [],
+          },
         ],
       };
     },
@@ -765,26 +740,9 @@ export function orUndefined<Decoded, Encoded>(
 ): Codec<Decoded | undefined, Encoded | undefined> {
   return {
     decoder: function orUndefinedDecoder(value) {
-      if (value === undefined) {
-        return { tag: "Valid", value: undefined };
-      }
-      const decoderResult = codec.decoder(value);
-      switch (decoderResult.tag) {
-        case "DecoderError": {
-          return {
-            tag: "DecoderError",
-            errors: mapNonEmptyArray(decoderResult.errors, (error) => {
-              const newError = DecoderError.at(error);
-              if (newError.path.length === 0) {
-                newError.optional = true;
-              }
-              return newError;
-            }),
-          };
-        }
-        case "Valid":
-          return decoderResult;
-      }
+      return value === undefined
+        ? { tag: "Valid", value: undefined }
+        : codec.decoder(value);
     },
     encoder: function orUndefinedEncoder(value) {
       return value === undefined ? undefined : codec.encoder(value);
@@ -797,26 +755,9 @@ export function orNull<Decoded, Encoded>(
 ): Codec<Decoded | null, Encoded | null> {
   return {
     decoder: function orNullDecoder(value) {
-      if (value === null) {
-        return { tag: "Valid", value: null };
-      }
-      const decoderResult = codec.decoder(value);
-      switch (decoderResult.tag) {
-        case "DecoderError": {
-          return {
-            tag: "DecoderError",
-            errors: mapNonEmptyArray(decoderResult.errors, (error) => {
-              const newError = DecoderError.at(error);
-              if (newError.path.length === 0) {
-                newError.optional = true;
-              }
-              return newError;
-            }),
-          };
-        }
-        case "Valid":
-          return decoderResult;
-      }
+      return value === null
+        ? { tag: "Valid", value: null }
+        : codec.decoder(value);
     },
     encoder: function orNullEncoder(value) {
       return value === null ? null : codec.encoder(value);
@@ -897,11 +838,12 @@ export function tag<const Decoded extends string, const Encoded extends string>(
         : {
             tag: "DecoderError",
             errors: [
-              new DecoderError({
+              {
                 tag: "wrong tag",
                 expected: encoded,
                 got: str,
-              }),
+                path: [],
+              },
             ],
           };
     },
@@ -912,7 +854,11 @@ export function tag<const Decoded extends string, const Encoded extends string>(
   };
 }
 
-export type DecoderErrorVariant =
+type Key = number | string;
+
+export type DecoderError = {
+  path: Array<Key>;
+} & (
   | {
       tag: "custom";
       message: string;
@@ -965,10 +911,24 @@ export type DecoderErrorVariant =
   | { tag: "boolean"; got: unknown }
   | { tag: "number"; got: unknown }
   | { tag: "object"; got: unknown }
-  | { tag: "string"; got: unknown };
+  | { tag: "string"; got: unknown }
+);
+
+export function formatAll(
+  errors: [DecoderError, ...Array<DecoderError>],
+  options?: ReprOptions,
+): string {
+  return errors.map((error) => format(error, options)).join("\n\n");
+}
+
+export function format(error: DecoderError, options?: ReprOptions): string {
+  const path = error.path.map((part) => `[${JSON.stringify(part)}]`).join("");
+  const variant = formatDecoderErrorVariant(error, options);
+  return `At root${path}:\n${variant}`;
+}
 
 function formatDecoderErrorVariant(
-  variant: DecoderErrorVariant,
+  variant: DecoderError,
   options: ReprOptions = {},
 ): string {
   const formatGot = (value: unknown): string => {
@@ -986,20 +946,15 @@ function formatDecoderErrorVariant(
   const untrustedStringList = (strings: Array<string>): string =>
     formatGot(strings).replace(/^\[|\]$/g, "");
 
-  const got = (message: string, value: unknown): string =>
-    value === DecoderError.MISSING_VALUE
-      ? message
-      : `${message}\nGot: ${formatGot(value)}`;
-
   switch (variant.tag) {
     case "boolean":
     case "number":
     case "string":
-      return got(`Expected a ${variant.tag}`, variant.got);
+      return `Expected a ${variant.tag}\nGot: ${formatGot(variant.got)}`;
 
     case "array":
     case "object":
-      return got(`Expected an ${variant.tag}`, variant.got);
+      return `Expected an ${variant.tag}\nGot: ${formatGot(variant.got)}`;
 
     case "unknown multi type":
       return `Expected one of these types: ${
@@ -1046,93 +1001,7 @@ function formatDecoderErrorVariant(
       return `Expected ${variant.expected} items\nGot: ${variant.got}`;
 
     case "custom":
-      return got(variant.message, variant.got);
-  }
-}
-
-type Key = number | string;
-
-export class DecoderError extends TypeError {
-  path: Array<Key>;
-
-  variant: DecoderErrorVariant;
-
-  nullable: boolean;
-
-  optional: boolean;
-
-  fieldsUnionEncodedCommonField:
-    | {
-        key: string;
-        value: string;
-      }
-    | undefined;
-
-  // Unnecessary if using `"lib": ["ES2022"]` in tsconfig.json.
-  // For those who don’t, this allows `.cause` to be used anyway.
-  override cause?: unknown;
-
-  constructor(
-    options:
-      | { message: string; value: unknown; key?: Key; cause?: unknown }
-      | (DecoderErrorVariant & { key?: Key; cause?: unknown }),
-  ) {
-    const { key, cause, ...params } = options;
-    const variant: DecoderErrorVariant =
-      "tag" in params
-        ? params
-        : { tag: "custom", message: params.message, got: params.value };
-    super(
-      `${formatDecoderErrorVariant(
-        variant,
-        // Default to sensitive so accidental uncaught errors don’t leak
-        // anything. Explicit `.format()` defaults to non-sensitive.
-        { sensitive: true },
-      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`,
-      "cause" in options ? { cause } : {},
-    );
-    this.path = key === undefined ? [] : [key];
-    this.variant = variant;
-    this.nullable = false;
-    this.optional = false;
-    this.fieldsUnionEncodedCommonField = undefined;
-
-    // For older environments which don’t support the `cause` option.
-    if ("cause" in options && !("cause" in this)) {
-      this.cause = cause;
-    }
-  }
-
-  static MISSING_VALUE = Symbol("DecoderError.MISSING_VALUE");
-
-  static at(error: unknown, key?: Key): DecoderError {
-    if (error instanceof DecoderError) {
-      if (key !== undefined) {
-        error.path.unshift(key);
-      }
-      return error;
-    }
-    return new DecoderError({
-      tag: "custom",
-      message: error instanceof Error ? error.message : String(error),
-      got: DecoderError.MISSING_VALUE,
-      cause: error,
-      ...(key === undefined ? {} : { key }),
-    });
-  }
-
-  format(options?: ReprOptions): string {
-    const path = this.path.map((part) => `[${JSON.stringify(part)}]`).join("");
-    const nullableString = this.nullable ? " (nullable)" : "";
-    const optionalString = this.optional ? " (optional)" : "";
-    const fieldsUnionString =
-      this.fieldsUnionEncodedCommonField === undefined
-        ? ""
-        : ` (for ${JSON.stringify(
-            this.fieldsUnionEncodedCommonField.key,
-          )}: ${JSON.stringify(this.fieldsUnionEncodedCommonField.value)})`;
-    const variant = formatDecoderErrorVariant(this.variant, options);
-    return `At root${path}${nullableString}${optionalString}${fieldsUnionString}:\n${variant}`;
+      return `${variant.message}\n${formatGot(variant.got)}`;
   }
 }
 
