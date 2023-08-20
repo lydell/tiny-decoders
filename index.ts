@@ -762,11 +762,11 @@ export function optional<Decoded, Encoded, Meta extends CodecMeta>(
   } as Codec<Decoded, Encoded, MergeMeta<Meta, { optional: true }>>;
 }
 
-export function undefinable<Decoded, Encoded>(
+export function orUndefined<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded | undefined, Encoded | undefined> {
   return {
-    decoder: function undefinedOrDecoder(value) {
+    decoder: function orUndefinedDecoder(value) {
       if (value === undefined) {
         return { tag: "Valid", value: undefined };
       }
@@ -788,17 +788,17 @@ export function undefinable<Decoded, Encoded>(
           return decoderResult;
       }
     },
-    encoder: function undefinedOrEncoder(value) {
+    encoder: function orUndefinedEncoder(value) {
       return value === undefined ? undefined : codec.encoder(value);
     },
   };
 }
 
-export function nullable<Decoded, Encoded>(
+export function orNull<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded | null, Encoded | null> {
   return {
-    decoder: function nullOrDecoder(value) {
+    decoder: function orNullDecoder(value) {
       if (value === null) {
         return { tag: "Valid", value: null };
       }
@@ -820,7 +820,7 @@ export function nullable<Decoded, Encoded>(
           return decoderResult;
       }
     },
-    encoder: function nullOrEncoder(value) {
+    encoder: function orNullEncoder(value) {
       return value === null ? null : codec.encoder(value);
     },
   };
