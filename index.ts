@@ -748,18 +748,16 @@ export function recursive<Decoded, Encoded>(
 
 export function optional<Decoded, Encoded, Meta extends CodecMeta>(
   codec: Codec<Decoded, Encoded, Meta>,
-): Codec<
-  Decoded,
-  Encoded,
-  // @ts-expect-error TypeScript does not like `Omit` on `Meta` for
-  // some reason, but it still works.
-  MergeMeta<Omit<Meta, "tag">, { optional: true }>
-> {
+): Omit<Codec<Decoded, Encoded, MergeMeta<Meta, { optional: true }>>, "tag"> {
+  const { tag: _tag, ...rest } = codec;
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
-    ...codec,
+    ...rest,
     optional: true,
-  } as Codec<Decoded, Encoded, MergeMeta<Meta, { optional: true }>>;
+  } as Omit<
+    Codec<Decoded, Encoded, MergeMeta<Meta, { optional: true }>>,
+    "tag"
+  >;
 }
 
 export function orUndefined<Decoded, Encoded>(
