@@ -976,7 +976,7 @@ function formatDecoderErrorVariant(
       return `Expected ${variant.expected} items\nGot: ${variant.got}`;
 
     case "custom":
-      return `${variant.message}\n${formatGot(variant.got)}`;
+      return `${variant.message}\nGot: ${formatGot(variant.got)}`;
   }
 }
 
