@@ -15,6 +15,7 @@ export type Codec<
 export type CodecOptions = {
   encodedFieldName?: string;
   optional?: boolean;
+  tag?: { decoded: string; encoded: string } | undefined;
 };
 
 type MergeOptions<A extends CodecOptions, B extends CodecOptions> = Expand<
@@ -26,6 +27,8 @@ type MergeOptions<A extends CodecOptions, B extends CodecOptions> = Expand<
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 export type Infer<T extends Codec<any>> = ReturnType<T["decoder"]>;
+
+export type InferEncoded<T extends Codec<any>> = ReturnType<T["encoder"]>;
 
 export function parse<Decoded>(
   codec: Codec<Decoded>,
@@ -243,10 +246,31 @@ type InferFields<Mapping extends FieldsMapping> = Expand<
   }
 >;
 
-export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
+type InferEncodedFields<Mapping extends FieldsMapping> = Expand<
+  // eslint-disable-next-line @typescript-eslint/sort-type-constituents
+  {
+    [Key in keyof Mapping as Mapping[Key] extends { optional: true }
+      ? never
+      : Mapping[Key] extends { encodedFieldName: infer Name }
+      ? Name extends string
+        ? Name
+        : Key
+      : Key]: InferEncoded<Mapping[Key]>;
+  } & {
+    [Key in keyof Mapping as Mapping[Key] extends { optional: true }
+      ? Mapping[Key] extends { encodedFieldName: infer Name }
+        ? Name extends string
+          ? Name
+          : Key
+        : Key
+      : never]?: InferEncoded<Mapping[Key]>;
+  }
+>;
+
+export function fields<Mapping extends FieldsMapping>(
   mapping: Mapping,
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
-): Codec<InferFields<Mapping>, Record<string, EncodedFieldValueUnion>> {
+): Codec<InferFields<Mapping>, InferEncodedFields<Mapping>> {
   return {
     decoder: function fieldsDecoder(value) {
       const object = unknownRecord(value);
@@ -301,7 +325,7 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
       return result as InferFields<Mapping>;
     },
     encoder: function fieldsEncoder(object) {
-      const result: Record<string, EncodedFieldValueUnion> = {};
+      const result: Record<string, unknown> = {};
       for (const key of Object.keys(mapping)) {
         if (key === "__proto__") {
           continue;
@@ -315,9 +339,9 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
           continue;
         }
         const value = object[key as keyof InferFields<Mapping>];
-        result[field] = encoder(value) as EncodedFieldValueUnion;
+        result[field] = encoder(value);
       }
-      return result;
+      return result as InferEncodedFields<Mapping>;
     },
   };
 }
@@ -325,126 +349,71 @@ export function fields<Mapping extends FieldsMapping, EncodedFieldValueUnion>(
 type InferFieldsUnion<MappingsUnion extends FieldsMapping> =
   MappingsUnion extends any ? InferFields<MappingsUnion> : never;
 
-const tagSymbol: unique symbol = Symbol("fieldsUnion tag");
-
-type TagCodec<Name extends string> = Codec<
-  Name,
-  string,
-  { encodedFieldName: string }
-> & {
-  _private: TagData;
-};
-
-type TagData = {
-  tag: typeof tagSymbol;
-  decodedName: string;
-  encodedName: string;
-};
+type InferEncodedFieldsUnion<MappingsUnion extends FieldsMapping> =
+  MappingsUnion extends any ? InferEncodedFields<MappingsUnion> : never;
 
 export function fieldsUnion<
-  Variants extends ReadonlyArray<FieldsMapping>,
-  EncodedFieldValueUnion,
+  DecodedCommonField extends keyof Variants[number],
+  Variants extends ReadonlyArray<
+    Record<
+      DecodedCommonField,
+      Codec<any, any, { tag: { decoded: string; encoded: string } }>
+    > &
+      Record<string, Codec<any, any, CodecOptions>>
+  >,
 >(
-  encodedCommonField: string,
-  callback: Variants[number] extends never
+  decodedCommonField: Variants[number] extends never
     ? "fieldsUnion must have at least one variant"
-    : (
-        tag: <Name extends string>(
-          decodedName: Name,
-          encodedName?: string,
-        ) => Codec<Name, string>,
-      ) => [...Variants],
+    : keyof InferEncodedFieldsUnion<Variants[number]> extends never
+    ? "fieldsUnion variants must have a field in common, and their encoded field names must be the same"
+    : DecodedCommonField,
+  variants: [...Variants],
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
 ): Codec<
   InferFieldsUnion<Variants[number]>,
-  Record<string, EncodedFieldValueUnion>
+  InferEncodedFieldsUnion<Variants[number]>
 > {
-  if (encodedCommonField === "__proto__") {
+  if (decodedCommonField === "__proto__") {
     throw new Error("fieldsUnion: commonField cannot be __proto__");
   }
 
-  function tag<Name extends string>(
-    decodedName: Name,
-    encodedName: string = decodedName,
-  ): TagCodec<Name> {
-    return {
-      decoder: () => decodedName,
-      encoder: () => encodedName,
-      encodedFieldName: encodedCommonField,
-      _private: {
-        tag: tagSymbol,
-        decodedName,
-        encodedName,
-      },
-    };
-  }
-
-  const variants = (callback as (tag_: typeof tag) => [...Variants])(tag);
-
-  type VariantCodec = Codec<any, Record<string, EncodedFieldValueUnion>>;
+  type VariantCodec = Codec<any, any>;
   const decoderMap = new Map<string, VariantCodec["decoder"]>(); // encodedName -> decoder
   const encoderMap = new Map<string, VariantCodec["encoder"]>(); // decodedName -> encoder
 
-  let decodedCommonField: string | undefined = undefined;
+  let maybeEncodedCommonField: number | string | symbol | undefined = undefined;
 
   for (const [index, variant] of variants.entries()) {
-    let seenTag: string | undefined = undefined;
-    for (const [key, codec] of Object.entries(variant)) {
-      if (key === "__proto__") {
-        continue;
-      }
-      if ("_private" in codec) {
-        const data = codec._private as TagData;
-        if (data.tag === tagSymbol) {
-          const errorPrefix = `Codec.fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
-            key,
-          )}: `;
-          if (seenTag !== undefined) {
-            throw new Error(
-              `${errorPrefix}\`tag()\` was already used on key: ${JSON.stringify(
-                seenTag,
-              )})}`,
-            );
-          }
-          seenTag = key;
-          if (decodedCommonField === undefined) {
-            decodedCommonField = key;
-          } else if (decodedCommonField !== key) {
-            throw new Error(
-              `${errorPrefix}\`tag()\` was used on another key in a previous variant: ${JSON.stringify(
-                decodedCommonField,
-              )})}`,
-            );
-          }
-          if (encoderMap.has(data.decodedName)) {
-            throw new Error(
-              `${errorPrefix}The decoded variant name was already used in a previous variant: ${JSON.stringify(
-                data.decodedName,
-              )}`,
-            );
-          }
-          if (decoderMap.has(data.encodedName)) {
-            throw new Error(
-              `${errorPrefix}The encoded variant name was already used in a previous variant: ${JSON.stringify(
-                data.encodedName,
-              )}`,
-            );
-          }
-          const fullCodec: Codec<
-            InferFields<Variants[number]>,
-            Record<string, EncodedFieldValueUnion>
-          > = fields(variant, { exact });
-          decoderMap.set(data.encodedName, fullCodec.decoder);
-          encoderMap.set(data.decodedName, fullCodec.encoder);
-        }
-      }
-    }
-    if (seenTag === undefined) {
+    const codec = variant[decodedCommonField];
+    const { encodedFieldName = decodedCommonField } = codec;
+    if (maybeEncodedCommonField === undefined) {
+      maybeEncodedCommonField = encodedFieldName;
+    } else if (maybeEncodedCommonField !== encodedFieldName) {
       throw new Error(
-        `Codec.fieldsUnion: Variant at index ${index}: \`tag()\` was never used on any key.`,
+        `Codec.fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
+          decodedCommonField,
+        )}: Got a different encoded field name (${JSON.stringify(
+          encodedFieldName,
+        )}) than before (${JSON.stringify(maybeEncodedCommonField)}).`,
       );
     }
+    const fullCodec: Codec<
+      InferFields<Variants[number]>,
+      InferEncodedFields<Variants[number]>
+    > = fields(variant, { exact });
+    decoderMap.set(codec.tag.encoded, fullCodec.decoder);
+    encoderMap.set(codec.tag.decoded, fullCodec.encoder);
   }
+
+  if (typeof maybeEncodedCommonField !== "string") {
+    throw new Error(
+      `Codec.fieldsUnion: Got unusable encoded common field: ${repr(
+        maybeEncodedCommonField,
+      )}`,
+    );
+  }
+
+  const encodedCommonField = maybeEncodedCommonField;
 
   return {
     decoder: function fieldsUnionDecoder(value) {
@@ -474,7 +443,9 @@ export function fieldsUnion<
       }
     },
     encoder: function fieldsUnionEncoder(value) {
-      const decodedName = value[decodedCommonField as string] as string;
+      const decodedName = (value as Record<number | string | symbol, string>)[
+        decodedCommonField
+      ];
       const encoder = encoderMap.get(decodedName);
       if (encoder === undefined) {
         throw new Error(
@@ -483,19 +454,24 @@ export function fieldsUnion<
           )} at key ${JSON.stringify(decodedCommonField)}`,
         );
       }
-      return encoder(value);
+      return encoder(value) as InferEncodedFieldsUnion<Variants[number]>;
     },
   };
 }
 
 // TODO: Good name
-export function named<Decoded, Encoded, Options extends CodecOptions>(
-  encodedFieldName: string,
+export function named<
+  Decoded,
+  Encoded,
+  EncodedFieldName extends string,
+  Options extends CodecOptions,
+>(
+  encodedFieldName: EncodedFieldName,
   codec: Codec<Decoded, Encoded, Options>,
 ): Codec<
   Decoded,
   Encoded,
-  MergeOptions<Options, { encodedFieldName: string }>
+  MergeOptions<Options, { encodedFieldName: EncodedFieldName }>
 > {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
@@ -504,7 +480,7 @@ export function named<Decoded, Encoded, Options extends CodecOptions>(
   } as Codec<
     Decoded,
     Encoded,
-    MergeOptions<Options, { encodedFieldName: string }>
+    MergeOptions<Options, { encodedFieldName: EncodedFieldName }>
   >;
 }
 
@@ -632,7 +608,13 @@ export function recursive<Decoded, Encoded>(
 
 export function optional<Decoded, Encoded, Options extends CodecOptions>(
   codec: Codec<Decoded, Encoded, Options>,
-): Codec<Decoded, Encoded, MergeOptions<Options, { optional: true }>> {
+): Codec<
+  Decoded,
+  Encoded,
+  // @ts-expect-error TypeScript does not like `Omit` on `Options` for
+  // some reason, but it still works.
+  MergeOptions<Omit<Options, "tag">, { optional: true }>
+> {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return {
     ...codec,
@@ -640,11 +622,10 @@ export function optional<Decoded, Encoded, Options extends CodecOptions>(
   } as Codec<Decoded, Encoded, MergeOptions<Options, { optional: true }>>;
 }
 
-export function undefinable<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>,
-): Codec<Decoded | undefined, Encoded | undefined, Options> {
+export function undefinable<Decoded, Encoded>(
+  codec: Codec<Decoded, Encoded>,
+): Codec<Decoded | undefined, Encoded | undefined> {
   return {
-    ...codec,
     decoder: function undefinedOrDecoder(value) {
       if (value === undefined) {
         return undefined;
@@ -665,11 +646,10 @@ export function undefinable<Decoded, Encoded, Options extends CodecOptions>(
   };
 }
 
-export function nullable<Decoded, Encoded, Options extends CodecOptions>(
-  codec: Codec<Decoded, Encoded, Options>,
-): Codec<Decoded | null, Encoded | null, Options> {
+export function nullable<Decoded, Encoded>(
+  codec: Codec<Decoded, Encoded>,
+): Codec<Decoded | null, Encoded | null> {
   return {
-    ...codec,
     decoder: function nullOrDecoder(value) {
       if (value === null) {
         return null;
@@ -690,20 +670,14 @@ export function nullable<Decoded, Encoded, Options extends CodecOptions>(
   };
 }
 
-export function chain<
-  const Decoded,
-  Encoded,
-  Options extends CodecOptions,
-  NewDecoded,
->(
-  codec: Codec<Decoded, Encoded, Options>,
+export function chain<const Decoded, Encoded, NewDecoded>(
+  codec: Codec<Decoded, Encoded>,
   transform: {
     decoder: (value: Decoded) => NewDecoded;
     encoder: (value: NewDecoded) => Readonly<Decoded>;
   },
-): Codec<NewDecoded, Encoded, Options> {
+): Codec<NewDecoded, Encoded> {
   return {
-    ...codec,
     decoder: function chainDecoder(value) {
       return transform.decoder(codec.decoder(value));
     },
@@ -721,6 +695,36 @@ export function singleField<Decoded, Encoded>(
     decoder: (value) => value[field],
     encoder: (value) => ({ [field]: value }),
   });
+}
+
+export function tag<const Decoded extends string>(
+  decoded: Decoded,
+): Codec<Decoded, Decoded, { tag: { decoded: string; encoded: string } }>;
+
+export function tag<const Decoded extends string, const Encoded extends string>(
+  decoded: Decoded,
+  encoded: Encoded,
+): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }>;
+
+export function tag<const Decoded extends string, const Encoded extends string>(
+  decoded: Decoded,
+  encoded: Encoded = decoded as unknown as Encoded,
+): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
+  return {
+    decoder: function stringUnionDecoder(value) {
+      const str = string.decoder(value);
+      if (str !== encoded) {
+        throw new DecoderError({
+          tag: "wrong tag",
+          expected: encoded,
+          got: str,
+        });
+      }
+      return decoded;
+    },
+    encoder: () => encoded,
+    tag: { decoded, encoded },
+  };
 }
 
 export type DecoderErrorVariant =
@@ -765,6 +769,11 @@ export type DecoderErrorVariant =
   | {
       tag: "unknown stringUnion variant";
       knownVariants: Array<string>;
+      got: string;
+    }
+  | {
+      tag: "wrong tag";
+      expected: string;
       got: string;
     }
   | { tag: "array"; got: unknown }
@@ -822,6 +831,11 @@ function formatDecoderErrorVariant(
     case "unknown stringUnion variant":
       return `Expected one of these variants: ${stringList(
         variant.knownVariants,
+      )}\nGot: ${formatGot(variant.got)}`;
+
+    case "wrong tag":
+      return `Expected this string: ${JSON.stringify(
+        variant.expected,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "missing field": {
