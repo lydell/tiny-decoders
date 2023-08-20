@@ -737,10 +737,10 @@ export function recursive<Decoded, Encoded>(
   callback: () => Codec<Decoded, Encoded>,
 ): Codec<Decoded, Encoded> {
   return {
-    decoder: function lazyDecoder(value) {
+    decoder: function recursiveDecoder(value) {
       return callback().decoder(value);
     },
-    encoder: function lazyEncoder(value) {
+    encoder: function recursiveEncoder(value) {
       return callback().encoder(value);
     },
   };
@@ -886,7 +886,7 @@ export function tag<const Decoded extends string, const Encoded extends string>(
   encoded: Encoded = decoded as unknown as Encoded,
 ): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
   return {
-    decoder: function stringUnionDecoder(value) {
+    decoder: function tagDecoder(value) {
       const strResult = string.decoder(value);
       if (strResult.tag === "DecoderError") {
         return strResult;
@@ -905,7 +905,9 @@ export function tag<const Decoded extends string, const Encoded extends string>(
             ],
           };
     },
-    encoder: () => encoded,
+    encoder: function tagEncoder() {
+      return encoded;
+    },
     tag: { decoded, encoded },
   };
 }
