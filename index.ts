@@ -762,7 +762,7 @@ export function optional<Decoded, Encoded, Meta extends CodecMeta>(
   >;
 }
 
-export function orUndefined<Decoded, Encoded>(
+export function undefinedOr<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded | undefined, Encoded | undefined> {
   return {
@@ -775,7 +775,7 @@ export function orUndefined<Decoded, Encoded>(
   };
 }
 
-export function orNull<Decoded, Encoded>(
+export function nullOr<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded | null, Encoded | null> {
   return {

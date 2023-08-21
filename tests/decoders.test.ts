@@ -12,7 +12,7 @@ import {
   Infer,
   multi,
   field,
-  orNull,
+  nullOr,
   number,
   optional,
   parse,
@@ -1049,7 +1049,7 @@ describe("optional", () => {
 
 describe("nullable", () => {
   test("nullable string", () => {
-    const codec = orNull(string);
+    const codec = nullOr(string);
 
     expectType<TypeEqual<Infer<typeof codec>, string | null>>(true);
 
@@ -1067,7 +1067,7 @@ describe("nullable", () => {
   });
 
   test("with default", () => {
-    const codec = chain(orNull(string), {
+    const codec = chain(nullOr(string), {
       decoder: (value) => value ?? "def",
       encoder: (value) => value,
     });
@@ -1084,7 +1084,7 @@ describe("nullable", () => {
   });
 
   test("with other type default", () => {
-    const codec = chain(orNull(string), {
+    const codec = chain(nullOr(string), {
       decoder: (value) => value ?? 0,
       encoder: (value) => (value === 0 ? null : value),
     });
@@ -1099,7 +1099,7 @@ describe("nullable", () => {
   });
 
   test("with undefined instead of null", () => {
-    const codec = chain(orNull(string), {
+    const codec = chain(nullOr(string), {
       decoder: (value) => value ?? undefined,
       encoder: (value) => value ?? null,
     });
@@ -1117,7 +1117,7 @@ describe("nullable", () => {
     type Person = Infer<typeof personCodec>;
     const personCodec = fields({
       name: string,
-      age: orNull(number),
+      age: nullOr(number),
     });
 
     expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
@@ -1186,12 +1186,12 @@ describe("nullable", () => {
       },
     };
 
-    expect(run(orNull(codec), 1)).toMatchInlineSnapshot(`
+    expect(run(nullOr(codec), 1)).toMatchInlineSnapshot(`
       At root (nullable):
       Fail decoder
     `);
 
-    expect(run(orNull(codec2), 1)).toMatchInlineSnapshot(`
+    expect(run(nullOr(codec2), 1)).toMatchInlineSnapshot(`
       At root (nullable):
       Fail decoder
       Got: 1
@@ -1200,7 +1200,7 @@ describe("nullable", () => {
 
   test("nullable higher up the chain makes no difference", () => {
     const codec = fields({
-      test: orNull(fields({ inner: string })),
+      test: nullOr(fields({ inner: string })),
     });
 
     expect(run(codec, { test: 1 })).toMatchInlineSnapshot(`
@@ -1217,7 +1217,7 @@ describe("nullable", () => {
   });
 
   test("optional and nullable", () => {
-    const decoder = optional(orNull(orNull(optional(string))));
+    const decoder = optional(nullOr(nullOr(optional(string))));
 
     expect(run(decoder, 1)).toMatchInlineSnapshot(`
       At root (nullable) (optional):
