@@ -792,13 +792,13 @@ export function map<const Decoded, Encoded, NewDecoded>(
     encoder: (value: NewDecoded) => Readonly<Decoded>;
   },
 ): Codec<NewDecoded, Encoded> {
-  return andThen(codec, {
+  return flatMap(codec, {
     decoder: (value) => ({ tag: "Valid", value: transform.decoder(value) }),
     encoder: transform.encoder,
   });
 }
 
-export function andThen<const Decoded, Encoded, NewDecoded>(
+export function flatMap<const Decoded, Encoded, NewDecoded>(
   codec: Codec<Decoded, Encoded>,
   transform: {
     decoder: (value: Decoded) => DecoderResult<NewDecoded>;
