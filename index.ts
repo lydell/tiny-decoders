@@ -766,10 +766,31 @@ export function undefinedOr<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded | undefined, Encoded | undefined> {
   return {
-    decoder: (value) =>
-      value === undefined
-        ? { tag: "Valid", value: undefined }
-        : codec.decoder(value),
+    decoder: (value) => {
+      if (value === undefined) {
+        return { tag: "Valid", value: undefined };
+      }
+      const decoderResult = codec.decoder(value);
+      switch (decoderResult.tag) {
+        case "DecoderError":
+          return {
+            tag: "DecoderError",
+            errors: decoderResult.errors.map((error) =>
+              error.path.length === 0
+                ? {
+                    ...error,
+                    orExpected:
+                      error.orExpected === "null"
+                        ? "null or undefined"
+                        : "undefined",
+                  }
+                : error,
+            ) as [DecoderError, ...Array<DecoderError>],
+          };
+        case "Valid":
+          return decoderResult;
+      }
+    },
     encoder: (value) =>
       value === undefined ? undefined : codec.encoder(value),
   };
@@ -779,8 +800,31 @@ export function nullOr<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded | null, Encoded | null> {
   return {
-    decoder: (value) =>
-      value === null ? { tag: "Valid", value: null } : codec.decoder(value),
+    decoder: (value) => {
+      if (value === null) {
+        return { tag: "Valid", value: null };
+      }
+      const decoderResult = codec.decoder(value);
+      switch (decoderResult.tag) {
+        case "DecoderError":
+          return {
+            tag: "DecoderError",
+            errors: decoderResult.errors.map((error) =>
+              error.path.length === 0
+                ? {
+                    ...error,
+                    orExpected:
+                      error.orExpected === "undefined"
+                        ? "null or undefined"
+                        : "null",
+                  }
+                : error,
+            ) as [DecoderError, ...Array<DecoderError>],
+          };
+        case "Valid":
+          return decoderResult;
+      }
+    },
     encoder: (value) => (value === null ? null : codec.encoder(value)),
   };
 }
@@ -833,6 +877,7 @@ type Key = number | string;
 
 export type DecoderError = {
   path: Array<Key>;
+  orExpected?: "null or undefined" | "null" | "undefined";
 } & (
   | {
       tag: "custom";
@@ -899,7 +944,9 @@ export function formatAll(
 export function format(error: DecoderError, options?: ReprOptions): string {
   const path = error.path.map((part) => `[${JSON.stringify(part)}]`).join("");
   const variant = formatDecoderErrorVariant(error, options);
-  return `At root${path}:\n${variant}`;
+  const orExpected =
+    error.orExpected === undefined ? "" : `\nOr expected: ${error.orExpected}`;
+  return `At root${path}:\n${variant}${orExpected}`;
 }
 
 function formatDecoderErrorVariant(
