@@ -4,19 +4,21 @@ import { describe, expect, test } from "vitest";
 import {
   array,
   boolean,
-  chain,
   Codec,
   DecoderError,
+  DecoderResult,
+  field,
   fields,
   fieldsUnion,
+  flatMap,
+  formatAll,
   Infer,
+  map,
   multi,
-  field,
   nullOr,
   number,
   optional,
   parse,
-  parseUnknown,
   parseWithoutCodec,
   record,
   recursive,
@@ -25,13 +27,20 @@ import {
   stringify,
   stringifyWithoutCodec,
   stringUnion,
+  tag,
   tuple,
+  undefinedOr,
   unknown,
 } from "..";
 
 function run<T>(codec: Codec<T>, value: unknown): T | string {
-  const result = parseUnknown(codec, value);
-  return result instanceof DecoderError ? result.format() : result;
+  const result = codec.decoder(value);
+  switch (result.tag) {
+    case "DecoderError":
+      return formatAll(result.errors);
+    case "Valid":
+      return result.value;
+  }
 }
 
 expect.addSnapshotSerializer({
@@ -47,7 +56,7 @@ test("boolean", () => {
   expect(boolean.encoder(true)).toBe(true);
   expect(boolean.encoder(false)).toBe(false);
 
-  expectType<boolean>(boolean.decoder(true));
+  expectType<DecoderResult<boolean>>(boolean.decoder(true));
   expectType<boolean>(boolean.encoder(true));
 
   expect(run(boolean, 0)).toMatchInlineSnapshot(`
@@ -70,7 +79,7 @@ test("number", () => {
   expect(number.encoder(Infinity)).toMatchInlineSnapshot(`Infinity`);
   expect(number.encoder(-Infinity)).toMatchInlineSnapshot(`-Infinity`);
 
-  expectType<number>(number.decoder(0));
+  expectType<DecoderResult<number>>(number.decoder(0));
   expectType<number>(number.encoder(0));
 
   expect(run(number, undefined)).toMatchInlineSnapshot(`
@@ -87,7 +96,7 @@ test("string", () => {
   expect(string.encoder("")).toBe("");
   expect(string.encoder("string")).toBe("string");
 
-  expectType<string>(string.decoder(""));
+  expectType<DecoderResult<string>>(string.decoder(""));
   expectType<string>(string.encoder(""));
 
   expect(run(string, Symbol("desc"))).toMatchInlineSnapshot(`
@@ -119,7 +128,7 @@ describe("stringUnion", () => {
     expect(colorCodec.encoder("green")).toBe("green");
     expect(colorCodec.encoder("blue")).toBe("blue");
 
-    expectType<Color>(colorCodec.decoder("red"));
+    expectType<DecoderResult<Color>>(colorCodec.decoder("red"));
     expectType<Color>(colorCodec.encoder("red"));
     // @ts-expect-error Passed object instead of array.
     stringUnion({ one: null, two: null });
@@ -159,7 +168,7 @@ describe("array", () => {
     const bitsCodec = array(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Bits, Array<"0" | "1">>>(true);
-    expectType<Bits>(bitsCodec.decoder([]));
+    expectType<DecoderResult<Bits>>(bitsCodec.decoder([]));
     expectType<Bits>(bitsCodec.encoder([]));
     // @ts-expect-error Type '"nope"' is not assignable to type '"0" | "1"'.
     bitsCodec.encoder(["nope"]);
@@ -207,7 +216,7 @@ describe("record", () => {
     const registersCodec = record(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Registers, Record<string, "0" | "1">>>(true);
-    expectType<Registers>(registersCodec.decoder({}));
+    expectType<DecoderResult<Registers>>(registersCodec.decoder({}));
     expectType<Registers>(registersCodec.encoder({}));
     // @ts-expect-error Type '"nope"' is not assignable to type '"0" | "1"'.
     registersCodec.encoder({ a: "nope" });
@@ -248,21 +257,38 @@ describe("record", () => {
   });
 
   test("keys to regex", () => {
-    const codec = chain(record(string), {
-      decoder: (items) =>
-        Object.entries(items).map(
-          ([key, value]) => [RegExp(key, "u"), value] as const,
-        ),
+    const codec = flatMap(record(string), {
+      decoder: (items) => {
+        const result: Array<[RegExp, string]> = [];
+        const errors: Array<DecoderError> = [];
+        for (const [key, value] of Object.entries(items)) {
+          try {
+            result.push([RegExp(key, "u"), value]);
+          } catch (error) {
+            errors.push({
+              tag: "custom",
+              message: error instanceof Error ? error.message : String(error),
+              got: key,
+              path: [key],
+            });
+          }
+        }
+        const [firstError, ...restErrors] = errors;
+        return firstError === undefined
+          ? { tag: "Valid", value: result }
+          : {
+              tag: "DecoderError",
+              errors: [firstError, ...restErrors],
+            };
+      },
       encoder: (items) =>
         Object.fromEntries(items.map(([key, value]) => [key.source, value])),
     });
 
-    expectType<
-      TypeEqual<Infer<typeof codec>, Array<readonly [RegExp, string]>>
-    >(true);
+    expectType<TypeEqual<Infer<typeof codec>, Array<[RegExp, string]>>>(true);
 
     const good = { "\\d{4}:\\d{2}": "Year/month", ".*": "Rest" };
-    const bad = { "\\d{4}:\\d{2": "Year/month", ".*": "Rest" };
+    const bad = { "\\d{4}:\\d{2": "Year/month", "*": "Rest" };
 
     expect(run(codec, good)).toStrictEqual([
       [/\d{4}:\d{2}/u, "Year/month"],
@@ -299,7 +325,9 @@ describe("fields", () => {
     });
 
     expectType<TypeEqual<Person, { id: number; firstName: string }>>(true);
-    expectType<Person>(personCodec.decoder({ id: 1, firstName: "John" }));
+    expectType<DecoderResult<Person>>(
+      personCodec.decoder({ id: 1, firstName: "John" }),
+    );
     expectType<Record<string, unknown>>(
       personCodec.encoder({ id: 1, firstName: "John" }),
     );
@@ -347,10 +375,7 @@ describe("fields", () => {
       ).toStrictEqual({ one: "a", two: true });
       expect(
         run(
-          fields(
-            { one: string, two: boolean },
-            { disallowExtraFields: "allow extra" },
-          ),
+          fields({ one: string, two: boolean }, { disallowExtraFields: false }),
           {
             one: "a",
             two: true,
@@ -364,10 +389,7 @@ describe("fields", () => {
     test("throw on excess properties", () => {
       expect(
         run(
-          fields(
-            { one: string, two: boolean },
-            { disallowExtraFields: "throw" },
-          ),
+          fields({ one: string, two: boolean }, { disallowExtraFields: true }),
           {
             one: "a",
             two: true,
@@ -385,10 +407,7 @@ describe("fields", () => {
     test("large number of excess properties", () => {
       expect(
         run(
-          fields(
-            { "1": boolean, "2": boolean },
-            { disallowExtraFields: "throw" },
-          ),
+          fields({ "1": boolean, "2": boolean }, { disallowExtraFields: true }),
           Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false])),
         ),
       ).toMatchInlineSnapshot(`
@@ -412,7 +431,7 @@ describe("fields", () => {
   });
 
   test("empty object", () => {
-    const codec = fields({}, { disallowExtraFields: "throw" });
+    const codec = fields({}, { disallowExtraFields: true });
     expect(codec.decoder({})).toStrictEqual({});
     expect(codec.encoder({})).toStrictEqual({});
     expect(codec.encoder({ a: 1 })).toStrictEqual({});
@@ -440,7 +459,7 @@ describe("fields", () => {
       }
     }
 
-    const codec = chain(
+    const codec = map(
       fields({
         first_name: string,
         last_name: string,
@@ -452,12 +471,18 @@ describe("fields", () => {
         encoder: (object) => ({
           first_name: object.firstName,
           last_name: object.lastName,
-          age: object.age,
+          ...(object.age === undefined ? {} : { age: object.age }),
         }),
       },
     );
 
-    const person = codec.decoder({ first_name: "John", last_name: "Doe" });
+    const result = codec.decoder({ first_name: "John", last_name: "Doe" });
+
+    if (result.tag === "DecoderError") {
+      throw new Error(formatAll(result.errors));
+    }
+
+    const person = result.value;
 
     if (person.firstName !== "John") {
       // @ts-expect-error Object is possibly 'undefined'.
@@ -487,7 +512,7 @@ describe("fields", () => {
 describe("fieldsUnion", () => {
   test("basic", () => {
     type Shape = Infer<typeof shapeCodec>;
-    const shapeCodec = fieldsUnion("tag", (tag) => [
+    const shapeCodec = fieldsUnion("tag", [
       {
         tag: tag("Circle"),
         radius: number,
@@ -506,7 +531,9 @@ describe("fieldsUnion", () => {
         | { tag: "Rectangle"; width: number; height: number }
       >
     >(true);
-    expectType<Shape>(shapeCodec.decoder({ tag: "Circle", radius: 5 }));
+    expectType<DecoderResult<Shape>>(
+      shapeCodec.decoder({ tag: "Circle", radius: 5 }),
+    );
     expectType<Record<string, unknown>>(
       shapeCodec.encoder({ tag: "Circle", radius: 5 }),
     );
@@ -534,12 +561,8 @@ describe("fieldsUnion", () => {
         Got: "Square"
       `);
 
-    expect(
-      run(
-        fieldsUnion("0", (tag) => [{ a: tag("0") }]),
-        ["a"],
-      ),
-    ).toMatchInlineSnapshot(`
+    expect(run(fieldsUnion("0", [{ "0": tag("a") }]), ["a"]))
+      .toMatchInlineSnapshot(`
       At root:
       Expected an object
       Got: ["a"]
@@ -548,17 +571,17 @@ describe("fieldsUnion", () => {
 
   test("__proto__ is not allowed as the common field", () => {
     expect(() =>
-      fieldsUnion("__proto__", (tag) => [{ tag: tag("one") }]),
+      fieldsUnion("__proto__", [{ __proto__: tag("one") }]),
     ).toThrowErrorMatchingInlineSnapshot(
       '"fieldsUnion: commonField cannot be __proto__"',
     );
   });
 
   test("empty array is not allowed", () => {
-    // @ts-expect-error Argument of type '() => []' is not assignable to parameter of type '"fieldsUnion must have at least one variant"'.
-    const emptyCodec = fieldsUnion("tag", () => []);
-    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '(tag: <Name extends string>(decodedName: Name, encodedName?: string | undefined) => { decoder: (value: unknown) => Name; encoder: (value: Name) => string; }) => FieldsMapping[]'.
-    fieldsUnion("tag", "fieldsUnion must have at least one variant");
+    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["fieldsUnion must have at least one variant"]'.
+    const emptyCodec = fieldsUnion("tag", []);
+    // @ts-expect-error Type 'undefined' is not assignable to type 'never'.
+    fieldsUnion(["fieldsUnion must have at least one variant", undefined], []);
     expect(run(emptyCodec, { tag: "test" })).toMatchInlineSnapshot(`
       At root["tag"]:
       Expected one of these tags: (none)
@@ -578,7 +601,7 @@ describe("tuple", () => {
     const codec = tuple([]);
 
     expectType<TypeEqual<Type, []>>(true);
-    expectType<Type>(codec.decoder([]));
+    expectType<DecoderResult<Type>>(codec.decoder([]));
     expectType<Array<unknown>>(codec.encoder([]));
 
     expect(codec.decoder([])).toStrictEqual([]);
@@ -598,7 +621,7 @@ describe("tuple", () => {
     const codec = tuple([number]);
 
     expectType<TypeEqual<Type, [number]>>(true);
-    expectType<Type>(codec.decoder([1]));
+    expectType<DecoderResult<Type>>(codec.decoder([1]));
     expectType<Array<unknown>>(codec.encoder([1]));
     // @ts-expect-error Argument of type '[]' is not assignable to parameter of type '[number]'.
     codec.encoder([]);
@@ -626,7 +649,7 @@ describe("tuple", () => {
     const codec = tuple([number, string]);
 
     expectType<TypeEqual<Type, [number, string]>>(true);
-    expectType<Type>(codec.decoder([1, "a"]));
+    expectType<DecoderResult<Type>>(codec.decoder([1, "a"]));
     expectType<Array<unknown>>(codec.encoder([1, "a"]));
     // @ts-expect-error Argument of type '[]' is not assignable to parameter of type '[number, string]'.
     codec.encoder([]);
@@ -664,7 +687,7 @@ describe("tuple", () => {
     const codec = tuple([number, string, boolean]);
 
     expectType<TypeEqual<Type, [number, string, boolean]>>(true);
-    expectType<Type>(codec.decoder([1, "a", true]));
+    expectType<DecoderResult<Type>>(codec.decoder([1, "a", true]));
     expectType<Array<unknown>>(codec.encoder([1, "a", true]));
     // @ts-expect-error Argument of type '[]' is not assignable to parameter of type '[number, string, boolean]'.
     codec.encoder([]);
@@ -698,7 +721,7 @@ describe("tuple", () => {
     const codec = tuple([number, string, boolean, number]);
 
     expectType<TypeEqual<Type, [number, string, boolean, number]>>(true);
-    expectType<Type>(codec.decoder([1, "a", true, 2]));
+    expectType<DecoderResult<Type>>(codec.decoder([1, "a", true, 2]));
     expectType<Array<unknown>>(codec.encoder([1, "a", true, 2]));
     // @ts-expect-error Argument of type '[]' is not assignable to parameter of type '[number, string, boolean, number]'.
     codec.encoder([]);
@@ -757,7 +780,7 @@ describe("multi", () => {
         { type: "number"; value: number } | { type: "string"; value: string }
       >
     >(true);
-    expectType<Id>(idCodec.decoder("123"));
+    expectType<DecoderResult<Id>>(idCodec.decoder("123"));
     expectType<number | string>(
       idCodec.encoder({ type: "string", value: "123" }),
     );
@@ -785,7 +808,7 @@ describe("multi", () => {
 
   test("basic – variation", () => {
     type Id = Infer<typeof idCodec>;
-    const idCodec = chain(multi(["string", "number"]), {
+    const idCodec = map(multi(["string", "number"]), {
       decoder: (value) => {
         switch (value.type) {
           case "string":
@@ -798,7 +821,7 @@ describe("multi", () => {
     });
 
     expectType<TypeEqual<Id, string>>(true);
-    expectType<Id>(idCodec.decoder("123"));
+    expectType<DecoderResult<Id>>(idCodec.decoder("123"));
     expectType<number | string>(idCodec.encoder("123"));
 
     expect(idCodec.decoder("123")).toBe("123");
@@ -901,8 +924,74 @@ describe("multi", () => {
 });
 
 describe("optional", () => {
-  test("optional string", () => {
+  test("optional does not allow undefined", () => {
     const codec = optional(string);
+
+    expectType<TypeEqual<Infer<typeof codec>, string>>(true);
+
+    expect(codec.decoder("a")).toBe("a");
+    expect(run(codec, undefined)).toMatchInlineSnapshot();
+
+    expect(codec.encoder("a")).toBe("a");
+    // @ts-expect-error Argument of type 'undefined' is not assignable to parameter of type 'string'.
+    codec.encoder(undefined);
+
+    expect(run(codec, null)).toMatchInlineSnapshot(`
+      At root (optional):
+      Expected a string
+      Got: null
+    `);
+  });
+
+  test("optional field", () => {
+    type Person = Infer<typeof personCodec>;
+    const personCodec = fields({
+      name: string,
+      age: optional(number),
+    });
+
+    expectType<TypeEqual<Person, { name: string; age?: number }>>(true);
+
+    expect(personCodec.decoder({ name: "John" })).toStrictEqual({
+      name: "John",
+    });
+
+    expect(
+      run(personCodec, { name: "John", age: undefined }),
+    ).toMatchInlineSnapshot();
+
+    expect(personCodec.decoder({ name: "John", age: 45 })).toStrictEqual({
+      name: "John",
+      age: 45,
+    });
+
+    expect(personCodec.encoder({ name: "John" })).toStrictEqual({
+      name: "John",
+    });
+
+    // @ts-expect-error Type 'undefined' is not assignable to type 'number'.
+    personCodec.encoder({ name: "John", age: undefined });
+
+    expect(personCodec.encoder({ name: "John", age: 45 })).toStrictEqual({
+      name: "John",
+      age: 45,
+    });
+
+    expect(run(personCodec, { name: "John", age: "old" }))
+      .toMatchInlineSnapshot(`
+        At root["age"] (optional):
+        Expected a number
+        Got: "old"
+      `);
+
+    const person: Person = { name: "John" };
+    void person;
+  });
+});
+
+describe("undefinedOr", () => {
+  test("undefined or string", () => {
+    const codec = undefinedOr(string);
 
     expectType<TypeEqual<Infer<typeof codec>, string | undefined>>(true);
 
@@ -920,7 +1009,7 @@ describe("optional", () => {
   });
 
   test("with default", () => {
-    const codec = chain(optional(string), {
+    const codec = map(undefinedOr(string), {
       decoder: (value = "def") => value,
       encoder: (value) => value,
     });
@@ -937,7 +1026,7 @@ describe("optional", () => {
   });
 
   test("with other type default", () => {
-    const codec = chain(optional(string), {
+    const codec = map(undefinedOr(string), {
       decoder: (value) => value ?? 0,
       encoder: (value) => (value === 0 ? undefined : value),
     });
@@ -951,14 +1040,16 @@ describe("optional", () => {
     expect(codec.encoder("a")).toBe("a");
   });
 
-  test("optional field", () => {
+  test("undefined for field", () => {
     type Person = Infer<typeof personCodec>;
     const personCodec = fields({
       name: string,
-      age: optional(number),
+      age: undefinedOr(number),
     });
 
-    expectType<TypeEqual<Person, { name: string; age?: number }>>(true);
+    expectType<TypeEqual<Person, { name: string; age: number | undefined }>>(
+      true,
+    );
 
     expect(personCodec.decoder({ name: "John" })).toStrictEqual({
       name: "John",
@@ -971,10 +1062,6 @@ describe("optional", () => {
     expect(personCodec.decoder({ name: "John", age: 45 })).toStrictEqual({
       name: "John",
       age: 45,
-    });
-
-    expect(personCodec.encoder({ name: "John" })).toStrictEqual({
-      name: "John",
     });
 
     expect(personCodec.encoder({ name: "John", age: undefined })).toStrictEqual(
@@ -993,62 +1080,14 @@ describe("optional", () => {
         Got: "old"
       `);
 
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | undefined; }'.
     const person: Person = { name: "John" };
     void person;
   });
-
-  test("optional custom codec", () => {
-    const codec = {
-      decoder(): never {
-        throw new Error("Fail decoder");
-      },
-      encoder(): never {
-        throw new Error("Fail encoder");
-      },
-    };
-
-    const codec2 = {
-      decoder(): never {
-        throw new DecoderError({ message: "Fail decoder", value: 1 });
-      },
-      encoder(): never {
-        throw new DecoderError({ message: "Fail encoder", value: 1 });
-      },
-    };
-
-    expect(run(optional(codec), 1)).toMatchInlineSnapshot(`
-      At root (optional):
-      Fail decoder
-    `);
-
-    expect(run(optional(codec2), 1)).toMatchInlineSnapshot(`
-      At root (optional):
-      Fail decoder
-      Got: 1
-    `);
-  });
-
-  test("optional higher up the chain makes no difference", () => {
-    const codec = fields({
-      test: optional(fields({ inner: string })),
-    });
-
-    expect(run(codec, { test: 1 })).toMatchInlineSnapshot(`
-      At root["test"] (optional):
-      Expected an object
-      Got: 1
-    `);
-
-    expect(run(codec, { test: { inner: 1 } })).toMatchInlineSnapshot(`
-      At root["test"]["inner"]:
-      Expected a string
-      Got: 1
-    `);
-  });
 });
 
-describe("nullable", () => {
-  test("nullable string", () => {
+describe("nullOr", () => {
+  test("null or string", () => {
     const codec = nullOr(string);
 
     expectType<TypeEqual<Infer<typeof codec>, string | null>>(true);
@@ -1067,7 +1106,7 @@ describe("nullable", () => {
   });
 
   test("with default", () => {
-    const codec = chain(nullOr(string), {
+    const codec = map(nullOr(string), {
       decoder: (value) => value ?? "def",
       encoder: (value) => value,
     });
@@ -1084,7 +1123,7 @@ describe("nullable", () => {
   });
 
   test("with other type default", () => {
-    const codec = chain(nullOr(string), {
+    const codec = map(nullOr(string), {
       decoder: (value) => value ?? 0,
       encoder: (value) => (value === 0 ? null : value),
     });
@@ -1099,7 +1138,7 @@ describe("nullable", () => {
   });
 
   test("with undefined instead of null", () => {
-    const codec = chain(nullOr(string), {
+    const codec = map(nullOr(string), {
       decoder: (value) => value ?? undefined,
       encoder: (value) => value ?? null,
     });
@@ -1113,7 +1152,7 @@ describe("nullable", () => {
     expect(codec.encoder("a")).toBe("a");
   });
 
-  test("nullable field", () => {
+  test("null for field", () => {
     type Person = Infer<typeof personCodec>;
     const personCodec = fields({
       name: string,
@@ -1167,57 +1206,8 @@ describe("nullable", () => {
     void person;
   });
 
-  test("nullable custom codec", () => {
-    const codec = {
-      decoder(): never {
-        throw new Error("Fail decoder");
-      },
-      encoder(): never {
-        throw new Error("Fail encoder");
-      },
-    };
-
-    const codec2 = {
-      decoder(): never {
-        throw new DecoderError({ message: "Fail decoder", value: 1 });
-      },
-      encoder(): never {
-        throw new DecoderError({ message: "Fail encoder", value: 1 });
-      },
-    };
-
-    expect(run(nullOr(codec), 1)).toMatchInlineSnapshot(`
-      At root (nullable):
-      Fail decoder
-    `);
-
-    expect(run(nullOr(codec2), 1)).toMatchInlineSnapshot(`
-      At root (nullable):
-      Fail decoder
-      Got: 1
-    `);
-  });
-
-  test("nullable higher up the chain makes no difference", () => {
-    const codec = fields({
-      test: nullOr(fields({ inner: string })),
-    });
-
-    expect(run(codec, { test: 1 })).toMatchInlineSnapshot(`
-      At root["test"] (nullable):
-      Expected an object
-      Got: 1
-    `);
-
-    expect(run(codec, { test: { inner: 1 } })).toMatchInlineSnapshot(`
-      At root["test"]["inner"]:
-      Expected a string
-      Got: 1
-    `);
-  });
-
-  test("optional and nullable", () => {
-    const decoder = optional(nullOr(nullOr(optional(string))));
+  test("undefined or nullable or string", () => {
+    const decoder = undefinedOr(nullOr(nullOr(undefinedOr(string))));
 
     expect(run(decoder, 1)).toMatchInlineSnapshot(`
       At root (nullable) (optional):
@@ -1227,19 +1217,19 @@ describe("nullable", () => {
   });
 });
 
-describe("chain", () => {
-  // @ts-expect-error Argument of type '{ decoder: (value: unknown) => string; encoder: (value: string) => string; }' is not assignable to parameter of type '{ decoder: (value: number) => string; encoder: (value: string) => number; }'.
-  chain(number, string);
+describe("map", () => {
+  // @ts-expect-error Argument of type '{ decoder: (value: unknown) => DecoderResult<string>; encoder: (value: string) => string; }' is not assignable to parameter of type '{ decoder: (value: number) => string; encoder: (value: string) => number; }'.
+  map(number, string);
 
   test("round", () => {
-    const codec = chain(number, { decoder: Math.round, encoder: Math.round });
+    const codec = map(number, { decoder: Math.round, encoder: Math.round });
 
     expect(codec.decoder(4.9)).toBe(5);
     expect(codec.encoder(4.9)).toBe(5);
   });
 
   test("Set", () => {
-    const codec = chain(array(number), {
+    const codec = map(array(number), {
       decoder: (arr) => new Set(arr),
       encoder: Array.from,
     });

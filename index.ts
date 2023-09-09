@@ -427,9 +427,12 @@ export function fieldsUnion<
   >,
 >(
   decodedCommonField: Variants[number] extends never
-    ? "fieldsUnion must have at least one variant"
+    ? ["fieldsUnion must have at least one variant", never]
     : keyof InferEncodedFieldsUnion<Variants[number]> extends never
-    ? "fieldsUnion variants must have a field in common, and their encoded field names must be the same"
+    ? [
+        "fieldsUnion variants must have a field in common, and their encoded field names must be the same",
+        never,
+      ]
     : DecodedCommonField,
   variants: [...Variants],
   { disallowExtraFields = false }: { disallowExtraFields?: boolean } = {},
@@ -448,8 +451,9 @@ export function fieldsUnion<
   let maybeEncodedCommonField: number | string | symbol | undefined = undefined;
 
   for (const [index, variant] of variants.entries()) {
-    const codec = variant[decodedCommonField];
-    const { encodedFieldName = decodedCommonField } = codec;
+    const codec = variant[decodedCommonField as DecodedCommonField];
+    const { encodedFieldName = decodedCommonField as DecodedCommonField } =
+      codec;
     if (maybeEncodedCommonField === undefined) {
       maybeEncodedCommonField = encodedFieldName;
     } else if (maybeEncodedCommonField !== encodedFieldName) {
@@ -506,7 +510,7 @@ export function fieldsUnion<
     },
     encoder: (value) => {
       const decodedName = (value as Record<number | string | symbol, string>)[
-        decodedCommonField
+        decodedCommonField as DecodedCommonField
       ];
       const encoder = encoderMap.get(decodedName);
       if (encoder === undefined) {
