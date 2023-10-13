@@ -39,12 +39,17 @@ export function string(value: unknown): string {
 
 export function stringUnion<T extends ReadonlyArray<string>>(
   variants: T[number] extends never
-    ? "stringUnion must have at least one variant"
+    ? ["stringUnion must have at least one variant", never]
+    : string extends T[number]
+    ? [
+        "stringUnion variants must have a more specific type than string (maybe you need to add `as const`?)",
+        never
+      ]
     : readonly [...T]
 ): Decoder<T[number]> {
   return function stringUnionDecoder(value: unknown): T[number] {
     const str = string(value);
-    if (!variants.includes(str)) {
+    if (!(variants as unknown as T[number]).includes(str)) {
       throw new DecoderError({
         tag: "unknown stringUnion variant",
         knownVariants: variants as Array<string>,
