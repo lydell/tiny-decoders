@@ -157,11 +157,11 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 <td><code>string</code></td>
 </tr>
 <th><a href="#stringunion">stringUnion</a></th>
-<td><pre>(mapping: {
-  string1: null,
-  string2: null,
-  stringN: null
-}) =&gt;
+<td><pre>(variants: [
+  "string1",
+  "string2",
+  "stringN"
+]) =&gt;
   Decoder&lt;
     "string1"
     | "string2"
@@ -298,26 +298,23 @@ Decodes a JSON string into a TypeScript `string`.
 ### stringUnion
 
 ```ts
-function stringUnion<T extends Record<string, unknown>>(
-  mapping: T
-): Decoder<keyof T>;
+function stringUnion<T extends ReadonlyArray<string>>(
+  variants: T
+): Decoder<T[number]>;
 ```
 
 Decodes a set of specific JSON strings into a TypeScript union of those strings.
 
-The `mapping` is an object where the keys are the strings you want. The keys must be strings (not numbers) and you must provide at least one key.
+The `variants` is an array of the strings you want. You must provide at least one variant.
 
-The values in the object can be anything – they don’t matter. The convention is to use `null` as values. If you already have an object with the correct keys but non-null values, then it can be handy to be able to use that object – that’s why any values are allowed. There’s an example of that in the [type inference file](examples/type-inference.test.ts).
+If you have an object and want to use its keys for a string union there’s an example of that in the [type inference file](examples/type-inference.test.ts).
 
 Example:
 
 ```ts
 type Color = "green" | "red";
 
-const colorDecoder: Decoder<Color> = stringUnion({
-  green: null,
-  red: null,
-});
+const colorDecoder: Decoder<Color> = stringUnion(["green", "red"]);
 ```
 
 ### array
