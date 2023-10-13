@@ -59,7 +59,7 @@ test("making a type from a decoder", () => {
     age: number,
     active: boolean,
     country: optional(string),
-    type: stringUnion({ user: null }),
+    type: stringUnion(["user"]),
   });
 
   // Then, let TypeScript infer the `User` type!
@@ -119,7 +119,7 @@ test("making a type from a decoder", () => {
     age: field("age", number),
     active: field("active", boolean),
     country: field("country", optional(string)),
-    type: field("type", stringUnion({ user: null })),
+    type: field("type", stringUnion(["user"])),
   }));
 
   type User2 = ReturnType<typeof userDecoder2>;
@@ -398,9 +398,12 @@ test("making a type from an object and stringUnion", () => {
   expectType<TypeEqual<Severity, "Critical" | "High" | "Low" | "Medium">>(true);
 
   // Make a decoder for the severity names out of the object.
-  // The values in the object passed to `stringUnion` are typically `null`,
-  // but this is a good use case for allowing other values (strings in this case).
-  const severityDecoder = stringUnion(SEVERITIES);
+  // TypeScript types the return value of `Object.keys` as `Array<string>` on purpose
+  // (see https://github.com/microsoft/TypeScript/issues/45390), so we need a type
+  // assertion in this case.
+  const severityDecoder = stringUnion(
+    Object.keys(SEVERITIES) as Array<Severity>
+  );
   expectType<TypeEqual<Severity, ReturnType<typeof severityDecoder>>>(true);
   expect(severityDecoder("High")).toBe("High");
 
