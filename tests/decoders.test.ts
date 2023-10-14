@@ -111,7 +111,10 @@ describe("stringUnion", () => {
 
     expect(run(colorDecoder, "Red")).toMatchInlineSnapshot(`
       At root:
-      Expected one of these variants: "red", "green", "blue"
+      Expected one of these variants:
+        "red",
+        "green",
+        "blue"
       Got: "Red"
     `);
   });
@@ -155,7 +158,9 @@ describe("array", () => {
 
     expect(run(bitsDecoder, ["0", "2"])).toMatchInlineSnapshot(`
       At root[1]:
-      Expected one of these variants: "0", "1"
+      Expected one of these variants:
+        "0",
+        "1"
       Got: "2"
     `);
 
@@ -193,7 +198,9 @@ describe("record", () => {
 
     expect(run(registersDecoder, { a: "0", b: "2" })).toMatchInlineSnapshot(`
       At root["b"]:
-      Expected one of these variants: "0", "1"
+      Expected one of these variants:
+        "0",
+        "1"
       Got: "2"
     `);
 
@@ -325,8 +332,10 @@ describe("fields", () => {
         ),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "one", "two"
-        Found extra fields: 
+        Expected only these fields:
+          "one",
+          "two"
+        Found extra fields:
           "three",
           "four"
       `);
@@ -342,8 +351,10 @@ describe("fields", () => {
         ),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "1", "2"
-        Found extra fields: 
+        Expected only these fields:
+          "1",
+          "2"
+        Found extra fields:
           "0",
           "3",
           "4",
@@ -379,8 +390,11 @@ describe("fields", () => {
         }),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "isAdmin", "name", "access"
-        Found extra fields: 
+        Expected only these fields:
+          "isAdmin",
+          "name",
+          "access"
+        Found extra fields:
           "age"
       `);
 
@@ -393,8 +407,10 @@ describe("fields", () => {
         }),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "isAdmin", "name"
-        Found extra fields: 
+        Expected only these fields:
+          "isAdmin",
+          "name"
+        Found extra fields:
           "access",
           "age"
       `);
@@ -453,7 +469,7 @@ describe("fields", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: 
+      Found extra fields:
         "a"
     `);
   });
@@ -573,8 +589,10 @@ describe("fieldsAuto", () => {
         }),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "one", "two"
-        Found extra fields: 
+        Expected only these fields:
+          "one",
+          "two"
+        Found extra fields:
           "three",
           "four"
       `);
@@ -588,8 +606,10 @@ describe("fieldsAuto", () => {
         ),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "1", "2"
-        Found extra fields: 
+        Expected only these fields:
+          "1",
+          "2"
+        Found extra fields:
           "0",
           "3",
           "4",
@@ -620,7 +640,7 @@ describe("fieldsAuto", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: 
+      Found extra fields:
         "a"
     `);
   });
@@ -665,7 +685,9 @@ describe("fieldsUnion", () => {
     expect(run(shapeDecoder, { tag: "Square", size: 5 }))
       .toMatchInlineSnapshot(`
         At root["tag"]:
-        Expected one of these tags: "Circle", "Rectangle"
+        Expected one of these tags:
+          "Circle",
+          "Rectangle"
         Got: "Square"
       `);
 
@@ -692,13 +714,15 @@ describe("fieldsUnion", () => {
     // Notice how "__proto__" isn’t even in the expected keys.
     expect(run(edgeCaseDecoder, { tag: "__proto__" })).toMatchInlineSnapshot(`
       At root["tag"]:
-      Expected one of these tags: "constructor"
+      Expected one of these tags:
+        "constructor"
       Got: "__proto__"
     `);
     expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
       .toMatchInlineSnapshot(`
         At root["tag"]:
-        Expected one of these tags: "constructor"
+        Expected one of these tags:
+          "constructor"
         Got: "hasOwnProperty"
       `);
   });

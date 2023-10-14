@@ -436,10 +436,19 @@ function formatDecoderErrorVariant(
       : formatted;
   };
 
+  const removeBrackets = (formatted: string): string =>
+    formatted.replace(/^\[|\s*\]$/g, "");
+
   const stringList = (strings: Array<string>): string =>
     strings.length === 0
-      ? "(none)"
-      : strings.map((s) => JSON.stringify(s)).join(", ");
+      ? " (none)"
+      : removeBrackets(
+          repr(strings, {
+            maxLength: Infinity,
+            maxArrayChildren: Infinity,
+            indent: options?.indent,
+          }),
+        );
 
   const got = (message: string, value: unknown): string =>
     value === DecoderError.MISSING_VALUE
@@ -464,22 +473,19 @@ function formatDecoderErrorVariant(
       }\nGot: ${formatGot(variant.got)}`;
 
     case "unknown fieldsUnion tag":
-      return `Expected one of these tags: ${stringList(
+      return `Expected one of these tags:${stringList(
         variant.knownTags,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "unknown stringUnion variant":
-      return `Expected one of these variants: ${stringList(
+      return `Expected one of these variants:${stringList(
         variant.knownVariants,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "exact fields":
-      return `Expected only these fields: ${stringList(
+      return `Expected only these fields:${stringList(
         variant.knownFields,
-      )}\nFound extra fields: ${formatGot(variant.got).replace(
-        /^\[|\]$/g,
-        "",
-      )}`;
+      )}\nFound extra fields:${removeBrackets(formatGot(variant.got))}`;
 
     case "tuple size":
       return `Expected ${variant.expected} items\nGot: ${variant.got}`;
