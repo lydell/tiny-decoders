@@ -221,15 +221,25 @@ describe("record", () => {
       [/.*/u, "Rest"],
     ]);
 
-    expect(run(decoder, bad)).toMatchInlineSnapshot(
-      `"Invalid regular expression: /\\d{4}:\\d{2/u: Incomplete quantifier"`,
+    // To avoid slightly different error messages on different Node.js versions.
+    const cleanRegexError = <T>(message: T | string): T | string =>
+      typeof message === "string"
+        ? message.replace(
+            /(Invalid regular expression):.*/,
+            "$1: (the regex error)",
+          )
+        : message;
+
+    expect(cleanRegexError(run(decoder, bad))).toMatchInlineSnapshot(
+      `"Invalid regular expression: (the regex error)"`,
     );
 
-    expect(run(fieldsAuto({ regexes: decoder }), { regexes: bad }))
-      .toMatchInlineSnapshot(`
-        At root["regexes"]:
-        Invalid regular expression: /\\d{4}:\\d{2/u: Incomplete quantifier
-      `);
+    expect(
+      cleanRegexError(run(fieldsAuto({ regexes: decoder }), { regexes: bad })),
+    ).toMatchInlineSnapshot(`
+      At root["regexes"]:
+      Invalid regular expression: (the regex error)
+    `);
   });
 
   test("ignores __proto__", () => {
