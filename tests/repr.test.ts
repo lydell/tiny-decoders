@@ -215,9 +215,8 @@ test("array", () => {
     ]
   `,
   );
-  expect(
-    repr([1, 2, 3, 4, 5, 6, 7], { maxArrayChildren: 3 }),
-  ).toMatchInlineSnapshot(`
+  expect(repr([1, 2, 3, 4, 5, 6, 7], { maxArrayChildren: 3 }))
+    .toMatchInlineSnapshot(`
     [
       1,
       2,
@@ -291,6 +290,21 @@ test("array", () => {
     ]
   `,
   );
+  const circular: Array<unknown> = [];
+  circular.push(circular, [{ circular: [1, circular] }]);
+  expect(repr(circular, { depth: Infinity })).toMatchInlineSnapshot(`
+    [
+      circular Array(2),
+      [
+        {
+          "circular": [
+            1,
+            circular Array(2)
+          ]
+        }
+      ]
+    ]
+  `);
 });
 
 test("object", () => {
@@ -336,9 +350,8 @@ test("object", () => {
     }
   `,
   );
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { maxObjectChildren: 1 }),
-  ).toMatchInlineSnapshot(`
+  expect(repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { maxObjectChildren: 1 }))
+    .toMatchInlineSnapshot(`
     {
       "a": 1,
       (4 more)
@@ -399,9 +412,8 @@ test("object", () => {
     }
   `,
   );
-  expect(
-    repr({ "a short key": "a short string" }, { maxLength: 5 }),
-  ).toMatchInlineSnapshot(`
+  expect(repr({ "a short key": "a short string" }, { maxLength: 5 }))
+    .toMatchInlineSnapshot(`
     {
       "a…y":
         "a…g"
@@ -422,6 +434,23 @@ test("object", () => {
     }
   `,
   );
+  const circular: Record<string, unknown> = {};
+  circular.circular = circular;
+  circular.other = { a: [{ other: 1, circular }] };
+  expect(repr(circular, { depth: Infinity })).toMatchInlineSnapshot(`
+    {
+      "circular": circular Object(2),
+      "other":
+        {
+        "a": [
+          {
+            "other": 1,
+            "circular": circular Object(2)
+          }
+        ]
+      }
+    }
+  `);
 });
 
 test("misc", () => {
