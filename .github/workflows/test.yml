@@ -31,6 +31,6 @@ jobs:
       - if: steps.cache-node_modules.outputs.cache-hit != 'true'
         run: npm ci --no-audit
 
-      - run: npx vitest --coverage
+      - run: npx vitest
 
       - run: npm run build
