@@ -141,10 +141,9 @@ describe("stringUnion", () => {
   });
 
   test("empty array is not allowed", () => {
-    // @ts-expect-error Argument of type 'never[]' is not assignable to parameter of type '"stringUnion must have at least one variant"'.
+    // @ts-expect-error Argument of type '[]' is not assignable to parameter of type 'readonly [string, ...string[]]'.
+    //   Source has 0 element(s) but target requires 1.
     const emptyCodec = stringUnion([]);
-    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'readonly string[]'.
-    stringUnion("stringUnion must have at least one variant");
     expect(run(emptyCodec, "test")).toMatchInlineSnapshot(`
       At root:
       Expected one of these variants: (none)
@@ -578,7 +577,8 @@ describe("fieldsUnion", () => {
   });
 
   test("empty array is not allowed", () => {
-    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["fieldsUnion must have at least one variant"]'.
+    // @ts-expect-error Argument of type '[]' is not assignable to parameter of type '[Variant<"tag">, ...Variant<"tag">[]]'.
+    //   Source has 0 element(s) but target requires 1.
     const emptyCodec = fieldsUnion("tag", []);
     // @ts-expect-error Type 'undefined' is not assignable to type 'never'.
     fieldsUnion(["fieldsUnion must have at least one variant", undefined], []);

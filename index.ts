@@ -143,11 +143,9 @@ export const string: Codec<string, string> = {
   encoder: identity,
 };
 
-export function stringUnion<const Variants extends ReadonlyArray<string>>(
-  variants: Variants[number] extends never
-    ? "stringUnion must have at least one variant"
-    : readonly [...Variants],
-): Codec<Variants[number], Variants[number]> {
+export function stringUnion<
+  const Variants extends [string, ...ReadonlyArray<string>],
+>(variants: readonly [...Variants]): Codec<Variants[number], Variants[number]> {
   return {
     decoder: (value) => {
       const stringResult = string.decoder(value);
@@ -162,7 +160,7 @@ export function stringUnion<const Variants extends ReadonlyArray<string>>(
             errors: [
               {
                 tag: "unknown stringUnion variant",
-                knownVariants: variants as Array<string>,
+                knownVariants: variants as unknown as Array<string>,
                 got: str,
                 path: [],
               },
@@ -416,19 +414,22 @@ type InferFieldsUnion<MappingsUnion extends FieldsMapping> =
 type InferEncodedFieldsUnion<MappingsUnion extends FieldsMapping> =
   MappingsUnion extends any ? InferEncodedFields<MappingsUnion> : never;
 
+type Variant<DecodedCommonField extends number | string | symbol> = Record<
+  DecodedCommonField,
+  Codec<any, any, { tag: { decoded: string; encoded: string } }>
+> &
+  Record<string, Codec<any, any, CodecMeta>>;
+
 export function fieldsUnion<
   DecodedCommonField extends keyof Variants[number],
-  Variants extends ReadonlyArray<
-    Record<
-      DecodedCommonField,
-      Codec<any, any, { tag: { decoded: string; encoded: string } }>
-    > &
-      Record<string, Codec<any, any, CodecMeta>>
-  >,
+  Variants extends [
+    Variant<DecodedCommonField>,
+    ...ReadonlyArray<Variant<DecodedCommonField>>,
+  ],
 >(
-  decodedCommonField: Variants[number] extends never
-    ? ["fieldsUnion must have at least one variant", never]
-    : keyof InferEncodedFieldsUnion<Variants[number]> extends never
+  decodedCommonField: keyof InferEncodedFieldsUnion<
+    Variants[number]
+  > extends never
     ? [
         "fieldsUnion variants must have a field in common, and their encoded field names must be the same",
         never,
