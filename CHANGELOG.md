@@ -1,3 +1,25 @@
+Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
+
+### Version 8.0.0 (2023-10-14)
+
+Changed: `stringUnion` now takes an array instead of an object.
+
+Before:
+
+```ts
+stringUnion({ green: null, red: null });
+```
+
+After:
+
+```ts
+stringUnion(["green", "red"]);
+```
+
+This is clearer, and made the implementation of `stringUnion` simpler.
+
+If you have an object and want to use its keys for a string union there’s an example of that in the [type inference file](examples/type-inference.test.ts).
+
 ### Version 7.0.1 (2022-08-07)
 
 - Fixed: The TypeScript definitions can now be found if you use `"type": "module"` in your package.json and `"module": "Node16"` or `"module": "NodeNext"` in your tsconfig.json.
