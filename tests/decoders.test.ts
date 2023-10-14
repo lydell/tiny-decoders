@@ -115,9 +115,10 @@ describe("stringUnion", () => {
     `);
   });
 
-  test("empty array", () => {
+  test("empty array is not allowed", () => {
+    // @ts-expect-error Argument of type '[]' is not assignable to parameter of type 'readonly [string, ...string[]]'.
+    //   Source has 0 element(s) but target requires 1.
     const emptyDecoder = stringUnion([]);
-    expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
     expect(run(emptyDecoder, "test")).toMatchInlineSnapshot(`
       At root:
       Expected one of these variants: (none)

@@ -37,7 +37,7 @@ export function string(value: unknown): string {
   return value;
 }
 
-export function stringUnion<T extends ReadonlyArray<string>>(
+export function stringUnion<T extends [string, ...ReadonlyArray<string>]>(
   variants: readonly [...T]
 ): Decoder<T[number]> {
   return function stringUnionDecoder(value: unknown): T[number] {
