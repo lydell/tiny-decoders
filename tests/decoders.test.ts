@@ -115,11 +115,8 @@ describe("stringUnion", () => {
     `);
   });
 
-  test("empty array is not allowed", () => {
-    // @ts-expect-error Argument of type '[]' is not assignable to parameter of type '["stringUnion must have at least one variant", never]'.
+  test("empty array", () => {
     const emptyDecoder = stringUnion([]);
-    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["stringUnion variants must have a more specific type than string (maybe you need to add `as const`?)", never]'.
-    stringUnion("stringUnion must have at least one variant");
     expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
     expect(run(emptyDecoder, "test")).toMatchInlineSnapshot(`
       At root:
@@ -134,17 +131,6 @@ describe("stringUnion", () => {
     const goodDecoder = stringUnion(["1"]);
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, "1">>(true);
     expect(goodDecoder("1")).toBe("1");
-  });
-
-  test("variants must be more specific than just string", () => {
-    const variants: Array<string> = ["string"];
-    // @ts-expect-error Argument of type 'string[]' is not assignable to parameter of type '["stringUnion variants must have a more specific type than string (maybe you need to add `as const`?)", never]'.
-    const decoder = stringUnion(variants);
-    stringUnion(
-      // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["stringUnion variants must have a more specific type than string (maybe you need to add `as const`?)", never]'.
-      "stringUnion variants must have a more specific type than string (maybe you need to add `as const`?)"
-    );
-    expect(decoder("string")).toBe("string");
   });
 });
 

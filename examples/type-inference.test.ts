@@ -59,7 +59,7 @@ test("making a type from a decoder", () => {
     age: number,
     active: boolean,
     country: optional(string),
-    type: stringUnion(["user"]),
+    type: stringUnion(["user"] as const),
   });
 
   // Then, let TypeScript infer the `User` type!
