@@ -44,7 +44,7 @@ const userDecoder = fields(
     active: field("is_active", boolean),
     age: field("age", optional(number)),
     interests: field("interests", array(string)),
-  })
+  }),
 );
 
 const payload: unknown = getSomeJSON();
@@ -299,7 +299,7 @@ Decodes a JSON string into a TypeScript `string`.
 
 ```ts
 function stringUnion<T extends [string, ...Array<string>]>(
-  variants: T
+  variants: T,
 ): Decoder<T[number]>;
 ```
 
@@ -347,7 +347,7 @@ For example, `record(number)` decodes an object where the keys can be anything a
 function fields<T>(
   callback: (
     field: <U>(key: string, decoder: Decoder<U>) => U,
-    object: Record<string, unknown>
+    object: Record<string, unknown>,
   ) => T,
   {
     exact = "allow extra",
@@ -355,7 +355,7 @@ function fields<T>(
   }: {
     exact?: "allow extra" | "throw";
     allow?: "array" | "object";
-  } = {}
+  } = {},
 ): Decoder<T>;
 ```
 
@@ -386,7 +386,7 @@ const userDecoder = fields(
     description: field("description", optional(string)),
     // Hardcoded field:
     version: 1,
-  })
+  }),
 );
 
 // Plucking a single field out of an object:
@@ -460,7 +460,7 @@ type Values<T> = T[keyof T];
 
 function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   key: string,
-  mapping: T
+  mapping: T,
 ): Decoder<
   Values<{ [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }>
 >;
@@ -498,7 +498,7 @@ See also the [renaming union field example](examples/renaming-union-field.test.t
 
 ```ts
 function tuple<T extends Array<unknown>>(
-  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
+  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }],
 ): Decoder<[...T]>;
 ```
 
@@ -524,7 +524,7 @@ function multi<
   T4 = never,
   T5 = never,
   T6 = never,
-  T7 = never
+  T7 = never,
 >(mapping: {
   undefined?: Decoder<T1, undefined>;
   null?: Decoder<T2, null>;
@@ -590,7 +590,7 @@ Example:
 ```ts
 const numberSetDecoder: Decoder<Set<number>> = chain(
   array(number),
-  (arr) => new Set(arr)
+  (arr) => new Set(arr),
 );
 ```
 
@@ -658,7 +658,7 @@ class DecoderError extends TypeError {
   constructor(
     params:
       | { message: string; value: unknown; key?: Key }
-      | (DecoderErrorVariant & { key?: Key })
+      | (DecoderErrorVariant & { key?: Key }),
   );
 
   static MISSING_VALUE: symbol;
@@ -714,7 +714,7 @@ const decoder: Decoder<Array<[RegExp, number]>> = Decode.chain(
       } catch (error) {
         throw Decode.DecoderError.at(error, key);
       }
-    })
+    }),
 );
 ```
 
@@ -752,7 +752,7 @@ function repr(
     maxLength = 100,
     recurseMaxLength = 20,
     sensitive = false,
-  }: ReprOptions = {}
+  }: ReprOptions = {},
 ): string;
 ```
 
@@ -819,7 +819,7 @@ const personDecoder = fields(
   (field): Person => ({
     name: field("name", string),
     age: field("age", optional(number)),
-  })
+  }),
 );
 
 // Annotate the generic.
@@ -897,7 +897,7 @@ This decoder would ignore its input and always “succeed” with a given value.
 ```ts
 export function either<T, U>(
   decoder1: Decoder<T>,
-  decoder2: Decoder<U>
+  decoder2: Decoder<U>,
 ): Decoder<T | U>;
 ```
 

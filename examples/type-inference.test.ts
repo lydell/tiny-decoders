@@ -352,7 +352,7 @@ test("making a type from a decoder – unions", () => {
   // decoder is allowed to return whatever it wants. `getUserDecoder` returns a
   // _new_ decoder, which we immediately call.
   const userDecoder5 = fields((field, obj) =>
-    field("type", getUserDecoder)(obj)
+    field("type", getUserDecoder)(obj),
   );
   type InferredType5 = ReturnType<typeof userDecoder5>;
   type ActualType5 =
@@ -387,7 +387,7 @@ test("making a type from an object and stringUnion", () => {
 
   const SEVERITIES = ["Low", "Medium", "High", "Critical"] as const;
 
-  type Severity = typeof SEVERITIES[number];
+  type Severity = (typeof SEVERITIES)[number];
 
   const SEVERITY_COLORS = {
     Low: "007CBB",
