@@ -687,9 +687,10 @@ function reprHelper(
             object,
           ]);
           const separator =
-            truncatedKey.length + valueRepr.length > maxLength
-              ? `\n${indent.repeat(level + 2)}`
-              : " ";
+            valueRepr.includes("\n") ||
+            truncatedKey.length + valueRepr.length + 2 <= maxLength // `2` accounts for the colon and space.
+              ? " "
+              : `\n${indent.repeat(level + 2)}`;
           return `${truncatedKey}:${separator}${valueRepr}`;
         })
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);

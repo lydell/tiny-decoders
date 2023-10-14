@@ -412,11 +412,13 @@ test("object", () => {
     }
   `,
   );
-  expect(repr({ "a short key": "a short string" }, { maxLength: 5 }))
-    .toMatchInlineSnapshot(`
+  expect(
+    repr({ "a short key": "a short string", a: "a" }, { maxLength: 8 }),
+  ).toMatchInlineSnapshot(`
     {
-      "a…y":
-        "a…g"
+      "a s…key":
+        "a s…ing",
+      "a": "a"
     }
   `);
   expect(repr({ '"), "key": "other value"': 1 })).toMatchInlineSnapshot(
@@ -440,8 +442,7 @@ test("object", () => {
   expect(repr(circular, { depth: Infinity })).toMatchInlineSnapshot(`
     {
       "circular": circular Object(2),
-      "other":
-        {
+      "other": {
         "a": [
           {
             "other": 1,
