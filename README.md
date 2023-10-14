@@ -298,7 +298,7 @@ Decodes a JSON string into a TypeScript `string`.
 ### stringUnion
 
 ```ts
-function stringUnion<T extends [string, ...ReadonlyArray<string>]>(
+function stringUnion<T extends [string, ...Array<string>]>(
   variants: T
 ): Decoder<T[number]>;
 ```
@@ -497,7 +497,7 @@ See also the [renaming union field example](examples/renaming-union-field.test.t
 ### tuple
 
 ```ts
-function tuple<T extends ReadonlyArray<unknown>>(
+function tuple<T extends Array<unknown>>(
   mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
 ): Decoder<[...T]>;
 ```

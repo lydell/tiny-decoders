@@ -37,7 +37,7 @@ export function string(value: unknown): string {
   return value;
 }
 
-export function stringUnion<T extends [string, ...ReadonlyArray<string>]>(
+export function stringUnion<T extends [string, ...Array<string>]>(
   variants: readonly [...T]
 ): Decoder<T[number]> {
   return function stringUnionDecoder(value: unknown): T[number] {
@@ -234,7 +234,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   >;
 }
 
-export function tuple<T extends ReadonlyArray<unknown>>(
+export function tuple<T extends Array<unknown>>(
   mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
 ): Decoder<[...T]> {
   return function tupleDecoder(value: unknown): [...T] {
