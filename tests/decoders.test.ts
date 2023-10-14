@@ -162,7 +162,9 @@ describe("array", () => {
     expect(run(array(number), { length: 0 })).toMatchInlineSnapshot(`
       At root:
       Expected an array
-      Got: {"length": 0}
+      Got: {
+        "length": 0
+      }
     `);
     expect(run(array(number), new Int32Array(2))).toMatchInlineSnapshot(`
       At root:
@@ -198,7 +200,9 @@ describe("record", () => {
     expect(run(record(number), [1])).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: [1]
+      Got: [
+        1
+      ]
     `);
   });
 
@@ -287,7 +291,9 @@ describe("fields", () => {
     ).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: [1]
+      Got: [
+        1
+      ]
     `);
   });
 
@@ -320,7 +326,9 @@ describe("fields", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "one", "two"
-        Found extra fields: "three", "four"
+        Found extra fields: 
+          "three",
+          "four"
       `);
     });
 
@@ -335,7 +343,13 @@ describe("fields", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "1", "2"
-        Found extra fields: "0", "3", "4", "5", "6", (93 more)
+        Found extra fields: 
+          "0",
+          "3",
+          "4",
+          "5",
+          "6",
+          (93 more)
       `);
     });
 
@@ -366,7 +380,8 @@ describe("fields", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "isAdmin", "name", "access"
-        Found extra fields: "age"
+        Found extra fields: 
+          "age"
       `);
 
       expect(
@@ -379,7 +394,9 @@ describe("fields", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "isAdmin", "name"
-        Found extra fields: "access", "age"
+        Found extra fields: 
+          "access",
+          "age"
       `);
     });
   });
@@ -406,7 +423,9 @@ describe("fields", () => {
       expect(run(decoder, { length: 0 })).toMatchInlineSnapshot(`
         At root:
         Expected an array
-        Got: {"length": 0}
+        Got: {
+          "length": 0
+        }
       `);
       expect(run(decoder, [])).toMatchInlineSnapshot(`
         At root["0"]:
@@ -434,7 +453,8 @@ describe("fields", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: "a"
+      Found extra fields: 
+        "a"
     `);
   });
 
@@ -519,7 +539,9 @@ describe("fieldsAuto", () => {
     expect(run(fieldsAuto({ 0: number }), [1])).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: [1]
+      Got: [
+        1
+      ]
     `);
   });
 
@@ -552,7 +574,9 @@ describe("fieldsAuto", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "one", "two"
-        Found extra fields: "three", "four"
+        Found extra fields: 
+          "three",
+          "four"
       `);
     });
 
@@ -565,7 +589,13 @@ describe("fieldsAuto", () => {
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "1", "2"
-        Found extra fields: "0", "3", "4", "5", "6", (93 more)
+        Found extra fields: 
+          "0",
+          "3",
+          "4",
+          "5",
+          "6",
+          (93 more)
       `);
     });
   });
@@ -590,7 +620,8 @@ describe("fieldsAuto", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: "a"
+      Found extra fields: 
+        "a"
     `);
   });
 });
@@ -641,7 +672,9 @@ describe("fieldsUnion", () => {
     expect(run(fieldsUnion("0", { a: () => 0 }), ["a"])).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: ["a"]
+      Got: [
+        "a"
+      ]
     `);
   });
 
@@ -818,7 +851,9 @@ describe("tuple", () => {
     expect(run(tuple([number]), { length: 0 })).toMatchInlineSnapshot(`
       At root:
       Expected an array
-      Got: {"length": 0}
+      Got: {
+        "length": 0
+      }
     `);
     expect(run(tuple([number]), new Int32Array(2))).toMatchInlineSnapshot(`
       At root:
