@@ -1,4 +1,5 @@
 import { expectType, TypeEqual } from "ts-expect";
+import { describe, expect, test } from "vitest";
 
 import { DecoderError, DecoderErrorVariant, ReprOptions } from "..";
 

@@ -1,4 +1,5 @@
 import { expectType, TypeEqual } from "ts-expect";
+import { expect, test } from "vitest";
 
 import { fieldsAuto, fieldsUnion, number } from "../";
 

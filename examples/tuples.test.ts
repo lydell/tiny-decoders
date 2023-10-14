@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { chain, Decoder, fields, fieldsAuto, number, string, tuple } from "../";
 
 test("decoding tuples", () => {
@@ -24,7 +26,7 @@ test("decoding tuples", () => {
       x: field("0", number),
       y: field("1", number),
     }),
-    { allow: "array" }
+    { allow: "array" },
   );
   expect(pointDecoder1(data)).toMatchInlineSnapshot(`
     {
@@ -39,7 +41,7 @@ test("decoding tuples", () => {
     ([x, y]) => ({
       x,
       y,
-    })
+    }),
   );
   expect(pointDecoder2(data)).toEqual(pointDecoder1(data));
 
@@ -62,7 +64,7 @@ test("decoding tuples", () => {
       age: field("2", number),
       description: field("3", string),
     }),
-    { allow: "array" }
+    { allow: "array" },
   );
   expect(longTupleDecoder(["John", "Doe", 30, "Likes swimming."]))
     .toMatchInlineSnapshot(`
@@ -77,7 +79,7 @@ test("decoding tuples", () => {
   // Finally, you can of course decode an object to a tuple as well:
   const obj: unknown = { x: 1, y: 2 };
   const pointTupleDecoder2 = fields(
-    (field): PointTuple => [field("x", number), field("y", number)]
+    (field): PointTuple => [field("x", number), field("y", number)],
   );
   expect(pointTupleDecoder2(obj)).toMatchInlineSnapshot(`
     [
@@ -92,7 +94,7 @@ test("decoding tuples", () => {
       x: number,
       y: number,
     }),
-    ({ x, y }) => [x, y]
+    ({ x, y }) => [x, y],
   );
   expect(pointTupleDecoder3(obj)).toEqual(pointTupleDecoder2(obj));
 });

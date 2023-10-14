@@ -38,7 +38,7 @@ export function string(value: unknown): string {
 }
 
 export function stringUnion<T extends [string, ...Array<string>]>(
-  variants: readonly [...T]
+  variants: readonly [...T],
 ): Decoder<T[number]> {
   return function stringUnionDecoder(value: unknown): T[number] {
     const str = string(value);
@@ -106,7 +106,7 @@ export function record<T>(decoder: Decoder<T>): Decoder<Record<string, T>> {
 export function fields<T>(
   callback: (
     field: <U>(key: string, decoder: Decoder<U>) => U,
-    object: Record<string, unknown>
+    object: Record<string, unknown>,
   ) => T,
   {
     exact = "allow extra",
@@ -114,7 +114,7 @@ export function fields<T>(
   }: {
     exact?: "allow extra" | "throw";
     allow?: "array" | "object";
-  } = {}
+  } = {},
 ): Decoder<WithUndefinedAsOptional<T>> {
   return function fieldsDecoder(value: unknown): WithUndefinedAsOptional<T> {
     const object: Record<string, unknown> =
@@ -137,7 +137,7 @@ export function fields<T>(
 
     if (exact !== "allow extra") {
       const unknownFields = Object.keys(object).filter(
-        (key) => !Object.prototype.hasOwnProperty.call(knownFields, key)
+        (key) => !Object.prototype.hasOwnProperty.call(knownFields, key),
       );
       if (unknownFields.length > 0) {
         throw new DecoderError({
@@ -154,10 +154,10 @@ export function fields<T>(
 
 export function fieldsAuto<T extends Record<string, unknown>>(
   mapping: { [P in keyof T]: P extends "__proto__" ? never : Decoder<T[P]> },
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
 ): Decoder<WithUndefinedAsOptional<T>> {
   return function fieldsAutoDecoder(
-    value: unknown
+    value: unknown,
   ): WithUndefinedAsOptional<T> {
     const object = unknownRecord(value);
     const keys = Object.keys(mapping);
@@ -177,7 +177,7 @@ export function fieldsAuto<T extends Record<string, unknown>>(
 
     if (exact !== "allow extra") {
       const unknownFields = Object.keys(object).filter(
-        (key) => !Object.prototype.hasOwnProperty.call(mapping, key)
+        (key) => !Object.prototype.hasOwnProperty.call(mapping, key),
       );
       if (unknownFields.length > 0) {
         throw new DecoderError({
@@ -204,7 +204,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
         [P in keyof T]: P extends number
           ? "fieldsUnion keys must be strings, not numbers"
           : T[P];
-      }
+      },
 ): Decoder<
   Expand<
     Values<{
@@ -235,7 +235,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
 }
 
 export function tuple<T extends Array<unknown>>(
-  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
+  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }],
 ): Decoder<[...T]> {
   return function tupleDecoder(value: unknown): [...T] {
     const arr = unknownArray(value);
@@ -266,7 +266,7 @@ export function multi<
   T4 = never,
   T5 = never,
   T6 = never,
-  T7 = never
+  T7 = never,
 >(mapping: {
   undefined?: Decoder<T1, undefined>;
   null?: Decoder<T2, null>;
@@ -277,7 +277,7 @@ export function multi<
   object?: Decoder<T7, Record<string, unknown>>;
 }): Decoder<T1 | T2 | T3 | T4 | T5 | T6 | T7> {
   return function multiDecoder(
-    value: unknown
+    value: unknown,
   ): T1 | T2 | T3 | T4 | T5 | T6 | T7 {
     if (value === undefined) {
       if (mapping.undefined !== undefined) {
@@ -320,12 +320,12 @@ export function optional<T>(decoder: Decoder<T>): Decoder<T | undefined>;
 
 export function optional<T, U>(
   decoder: Decoder<T>,
-  defaultValue: U
+  defaultValue: U,
 ): Decoder<T | U>;
 
 export function optional<T, U = undefined>(
   decoder: Decoder<T>,
-  defaultValue?: U
+  defaultValue?: U,
 ): Decoder<T | U> {
   return function optionalDecoder(value: unknown): T | U {
     if (value === undefined) {
@@ -347,7 +347,7 @@ export function nullable<T>(decoder: Decoder<T>): Decoder<T | null>;
 
 export function nullable<T, U>(
   decoder: Decoder<T>,
-  defaultValue: U
+  defaultValue: U,
 ): Decoder<T | U>;
 
 export function nullable<T, U = null>(
@@ -373,7 +373,7 @@ export function nullable<T, U = null>(
 
 export function chain<T, U>(
   decoder: Decoder<T>,
-  next: Decoder<U, T>
+  next: Decoder<U, T>,
 ): Decoder<U> {
   return function chainDecoder(value: unknown): U {
     return next(decoder(value));
@@ -427,7 +427,7 @@ export type DecoderErrorVariant =
 
 function formatDecoderErrorVariant(
   variant: DecoderErrorVariant,
-  options?: ReprOptions
+  options?: ReprOptions,
 ): string {
   const formatGot = (value: unknown): string => {
     const formatted = repr(value, options);
@@ -465,20 +465,20 @@ function formatDecoderErrorVariant(
 
     case "unknown fieldsUnion tag":
       return `Expected one of these tags: ${stringList(
-        variant.knownTags
+        variant.knownTags,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "unknown stringUnion variant":
       return `Expected one of these variants: ${stringList(
-        variant.knownVariants
+        variant.knownVariants,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "exact fields":
       return `Expected only these fields: ${stringList(
-        variant.knownFields
+        variant.knownFields,
       )}\nFound extra fields: ${formatGot(variant.got).replace(
         /^\[|\]$/g,
-        ""
+        "",
       )}`;
 
     case "tuple size":
@@ -515,8 +515,8 @@ export class DecoderError extends TypeError {
         variant,
         // Default to sensitive so accidental uncaught errors don’t leak
         // anything. Explicit `.format()` defaults to non-sensitive.
-        { sensitive: true }
-      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`
+        { sensitive: true },
+      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`,
     );
     this.path = key === undefined ? [] : [key];
     this.variant = variant;
@@ -568,7 +568,7 @@ export function repr(
     maxLength = 100,
     recurseMaxLength = 20,
     sensitive = false,
-  }: ReprOptions = {}
+  }: ReprOptions = {},
 ): string {
   const type = typeof value;
   const toStringType = Object.prototype.toString
@@ -649,8 +649,8 @@ export function repr(
                 recurse: false,
                 maxLength: recurseMaxLength,
                 sensitive,
-              }
-            )}`
+              },
+            )}`,
         )
         .concat(numHidden > 0 ? `(${numHidden} more)` : []);
 

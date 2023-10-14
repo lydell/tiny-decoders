@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import {
   array,
   boolean,
@@ -15,7 +17,7 @@ import {
 function run<T>(
   decoder: Decoder<T>,
   value: unknown,
-  options?: ReprOptions
+  options?: ReprOptions,
 ): T | string {
   try {
     return decoder(value);
@@ -47,7 +49,7 @@ test("the main readme example", () => {
       active: field("is_active", boolean),
       age: field("age", optional(number)),
       interests: field("interests", array(string)),
-    })
+    }),
   );
 
   const payload: unknown = getSomeJSON();
@@ -186,7 +188,7 @@ test("fields", () => {
       description: field("description", optional(string)),
       // Hardcoded field:
       version: 1,
-    })
+    }),
   );
 
   expect(
@@ -195,7 +197,7 @@ test("fields", () => {
       is_active: true,
       first_name: "John",
       last_name: "Doe",
-    })
+    }),
   ).toStrictEqual({
     active: true,
     age: 30,
@@ -221,7 +223,7 @@ test("type annotations", () => {
     (field): Person => ({
       name: field("name", string),
       age: field("age", optional(number)),
-    })
+    }),
   );
 
   // Annotate the generic.

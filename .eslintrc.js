@@ -5,7 +5,7 @@ const warn = process.argv.includes("--report-unused-disable-directives")
 
 module.exports = {
   root: true,
-  plugins: ["@typescript-eslint", "simple-import-sort", "jest"],
+  plugins: ["@typescript-eslint", "simple-import-sort", "vitest"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     sourceType: "module",
@@ -44,7 +44,7 @@ module.exports = {
     "@typescript-eslint/no-base-to-string": error,
     "@typescript-eslint/no-confusing-void-expression": error,
     "@typescript-eslint/no-dupe-class-members": error,
-    "@typescript-eslint/no-duplicate-imports": warn,
+    "@typescript-eslint/no-duplicate-type-constituents": error,
     "@typescript-eslint/no-empty-function": warn,
     "@typescript-eslint/no-empty-interface": warn,
     "@typescript-eslint/no-explicit-any": warn,
@@ -104,7 +104,7 @@ module.exports = {
     "@typescript-eslint/restrict-plus-operands": error,
     "@typescript-eslint/restrict-template-expressions": error,
     "@typescript-eslint/return-await": error,
-    "@typescript-eslint/sort-type-union-intersection-members": warn,
+    "@typescript-eslint/sort-type-constituents": warn,
     "@typescript-eslint/strict-boolean-expressions": [
       error,
       {
@@ -202,7 +202,7 @@ module.exports = {
     },
     {
       files: "tests/**/*.ts",
-      extends: ["plugin:jest/recommended", "plugin:jest/style"],
+      extends: "plugin:vitest/recommended",
       parserOptions: {
         tsconfigRootDir: __dirname,
         project: ["./tests/tsconfig.json"],
@@ -210,7 +210,7 @@ module.exports = {
     },
     {
       files: "examples/**/*.ts",
-      extends: ["plugin:jest/recommended", "plugin:jest/style"],
+      extends: "plugin:vitest/recommended",
       parserOptions: {
         tsconfigRootDir: __dirname,
         project: ["./examples/tsconfig.json"],

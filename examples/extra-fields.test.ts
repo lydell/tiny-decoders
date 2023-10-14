@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { chain, Decoder, fields, fieldsAuto, number, string } from "..";
 
 test("adding extra fields to records", () => {
@@ -17,7 +19,7 @@ test("adding extra fields to records", () => {
       name: field("name", string),
       price: field("price", number),
       version: 1,
-    })
+    }),
   );
 
   expect(productDecoder1(data)).toMatchInlineSnapshot(`
@@ -58,7 +60,7 @@ test("adding extra fields to records", () => {
       name: string,
       price: number,
     }),
-    (props) => ({ ...props, version: 1 })
+    (props) => ({ ...props, version: 1 }),
   );
 
   expect(productDecoder4(data)).toEqual(productDecoder3(data));

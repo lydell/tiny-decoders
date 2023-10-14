@@ -1,4 +1,5 @@
 import { expectType, TypeEqual } from "ts-expect";
+import { describe, expect, test } from "vitest";
 
 import {
   array,
@@ -204,8 +205,8 @@ describe("record", () => {
   test("keys to regex", () => {
     const decoder = chain(record(string), (items) =>
       Object.entries(items).map(
-        ([key, value]) => [RegExp(key, "u"), value] as const
-      )
+        ([key, value]) => [RegExp(key, "u"), value] as const,
+      ),
     );
 
     expectType<
@@ -220,20 +221,30 @@ describe("record", () => {
       [/.*/u, "Rest"],
     ]);
 
-    expect(run(decoder, bad)).toMatchInlineSnapshot(
-      `"Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier"`
+    // To avoid slightly different error messages on different Node.js versions.
+    const cleanRegexError = <T>(message: T | string): T | string =>
+      typeof message === "string"
+        ? message.replace(
+            /(Invalid regular expression):.*/,
+            "$1: (the regex error)",
+          )
+        : message;
+
+    expect(cleanRegexError(run(decoder, bad))).toMatchInlineSnapshot(
+      `"Invalid regular expression: (the regex error)"`,
     );
 
-    expect(run(fieldsAuto({ regexes: decoder }), { regexes: bad }))
-      .toMatchInlineSnapshot(`
-        At root["regexes"]:
-        Invalid regular expression: /\\d{4}:\\d{2/: Incomplete quantifier
-      `);
+    expect(
+      cleanRegexError(run(fieldsAuto({ regexes: decoder }), { regexes: bad })),
+    ).toMatchInlineSnapshot(`
+      At root["regexes"]:
+      Invalid regular expression: (the regex error)
+    `);
   });
 
   test("ignores __proto__", () => {
     expect(
-      run(record(number), JSON.parse(`{"a": 1, "__proto__": 2, "b": 3}`))
+      run(record(number), JSON.parse(`{"a": 1, "__proto__": 2, "b": 3}`)),
     ).toStrictEqual({ a: 1, b: 3 });
   });
 });
@@ -271,8 +282,8 @@ describe("fields", () => {
     expect(
       run(
         fields((field) => field("0", number)),
-        [1]
-      )
+        [1],
+      ),
     ).toMatchInlineSnapshot(`
       At root:
       Expected an object
@@ -285,16 +296,16 @@ describe("fields", () => {
       expect(
         run(
           fields((field) => [field("one", string), field("two", boolean)]),
-          { one: "a", two: true, three: 3, four: {} }
-        )
+          { one: "a", two: true, three: 3, four: {} },
+        ),
       ).toStrictEqual(["a", true]);
       expect(
         run(
           fields((field) => [field("one", string), field("two", boolean)], {
             exact: "allow extra",
           }),
-          { one: "a", two: true, three: 3, four: {} }
-        )
+          { one: "a", two: true, three: 3, four: {} },
+        ),
       ).toStrictEqual(["a", true]);
     });
 
@@ -304,8 +315,8 @@ describe("fields", () => {
           fields((field) => [field("one", string), field("two", boolean)], {
             exact: "throw",
           }),
-          { one: "a", two: true, three: 3, four: {} }
-        )
+          { one: "a", two: true, three: 3, four: {} },
+        ),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "one", "two"
@@ -319,8 +330,8 @@ describe("fields", () => {
           fields((field) => [field("1", boolean), field("2", boolean)], {
             exact: "throw",
           }),
-          Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false]))
-        )
+          Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false])),
+        ),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "1", "2"
@@ -342,7 +353,7 @@ describe("fields", () => {
                 name: field("name", string),
                 location: optional(string),
               },
-        { exact: "throw" }
+        { exact: "throw" },
       );
 
       expect(
@@ -351,7 +362,7 @@ describe("fields", () => {
           name: "John",
           access: [],
           age: 12,
-        })
+        }),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "isAdmin", "name", "access"
@@ -364,7 +375,7 @@ describe("fields", () => {
           name: "Jane",
           access: [],
           age: 12,
-        })
+        }),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "isAdmin", "name"
@@ -389,7 +400,7 @@ describe("fields", () => {
     test("array", () => {
       const decoder = fields(
         (field) => [field("length", number), field("0", boolean)],
-        { allow: "array" }
+        { allow: "array" },
       );
       expect(decoder([true])).toStrictEqual([1, true]);
       expect(run(decoder, { length: 0 })).toMatchInlineSnapshot(`
@@ -432,7 +443,7 @@ describe("fields", () => {
       constructor(
         public firstName: string,
         public lastName: string,
-        public age?: number
+        public age?: number,
       ) {
         this.firstName = firstName;
         this.lastName = lastName;
@@ -449,8 +460,8 @@ describe("fields", () => {
         new Person(
           field("first_name", string),
           field("last_name", string),
-          field("age", optional(number))
-        )
+          field("age", optional(number)),
+        ),
     );
 
     const person = decoder({ first_name: "John", last_name: "Doe" });
@@ -520,13 +531,13 @@ describe("fieldsAuto", () => {
           two: true,
           three: 3,
           four: {},
-        })
+        }),
       ).toStrictEqual({ one: "a", two: true });
       expect(
         run(
           fieldsAuto({ one: string, two: boolean }, { exact: "allow extra" }),
-          { one: "a", two: true, three: 3, four: {} }
-        )
+          { one: "a", two: true, three: 3, four: {} },
+        ),
       ).toStrictEqual({ one: "a", two: true });
     });
 
@@ -537,7 +548,7 @@ describe("fieldsAuto", () => {
           two: true,
           three: 3,
           four: {},
-        })
+        }),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "one", "two"
@@ -549,8 +560,8 @@ describe("fieldsAuto", () => {
       expect(
         run(
           fieldsAuto({ "1": boolean, "2": boolean }, { exact: "throw" }),
-          Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false]))
-        )
+          Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false])),
+        ),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields: "1", "2"
@@ -563,7 +574,7 @@ describe("fieldsAuto", () => {
     // @ts-expect-error Type '(value: unknown) => string' is not assignable to type 'never'.
     const decoder = fieldsAuto({ a: number, __proto__: string, b: number });
     expect(
-      run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`))
+      run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`)),
     ).toStrictEqual({ a: 1, b: 3 });
 
     const desc = Object.create(null) as { __proto__: Decoder<string> };
@@ -795,7 +806,7 @@ describe("tuple", () => {
 
     expect(
       // eslint-disable-next-line no-sparse-arrays
-      run(decoder, [1, "a", true, 2, "too", , , "many"])
+      run(decoder, [1, "a", true, 2, "too", , , "many"]),
     ).toMatchInlineSnapshot(`
       At root:
       Expected 4 items
@@ -1278,8 +1289,8 @@ test("chain", () => {
   expect(
     run(
       chain(array(number), (arr) => new Set(arr)),
-      [1, 2, 1]
-    )
+      [1, 2, 1],
+    ),
   ).toStrictEqual(new Set([1, 2]));
 
   expect(run(chain(number, string), 0)).toMatchInlineSnapshot(`

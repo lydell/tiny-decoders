@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import {
   array,
   chain,
@@ -60,7 +62,7 @@ test("decoding to a Set", () => {
     id: field("id", string),
     numbers: field(
       "numbers",
-      optional(chain(array(number), (arr) => new Set(arr)))
+      optional(chain(array(number), (arr) => new Set(arr))),
     ),
   }));
   expect(objDecoder2(obj)).toEqual(objDecoder1(obj));

@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import {
   boolean,
   chain,
@@ -55,7 +57,7 @@ test("renaming fields", () => {
       lastName: field("last_name", string),
       age: field("age", number),
       active: field("active", boolean),
-    })
+    }),
   );
   expect(userCamelCaseDecoder1(user)).toMatchInlineSnapshot(`
     {
@@ -75,7 +77,7 @@ test("renaming fields", () => {
       firstName,
       lastName,
       ...rest,
-    })
+    }),
   );
   expect(userCamelCaseDecoder2(user)).toMatchInlineSnapshot(`
     {
@@ -93,7 +95,7 @@ test("renaming fields", () => {
       firstName: props.first_name,
       lastName: props.last_name,
       ...props,
-    })
+    }),
   );
   expect(userCamelCaseDecoder3(user)).toMatchInlineSnapshot(`
     {

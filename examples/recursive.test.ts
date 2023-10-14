@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import { array, Decoder, fields, multi, record, string } from "../";
 
 test("recursive data structure", () => {
@@ -12,7 +14,7 @@ test("recursive data structure", () => {
     (field): Person => ({
       name: field("name", string),
       friends: field("friends", array(personDecoder1)),
-    })
+    }),
   );
 
   // But when using `fieldsAuto` you’d run into problems.
@@ -78,7 +80,7 @@ test("recurse non-record", () => {
       object: (value) => dictDecoder(value),
       // Writing just `object: dictDecoder` would result in an error:
       // ReferenceError: Cannot access 'dictDecoder' before initialization
-    })
+    }),
   );
 
   const data: unknown = {
@@ -120,7 +122,7 @@ test("circular objects", () => {
     (field): Person => ({
       name: field("name", string),
       likes: field("likes", personDecoder),
-    })
+    }),
   );
 
   const alice: Record<string, unknown> = {
@@ -138,8 +140,8 @@ test("circular objects", () => {
 
   // Calling the decoder would cause infinite recursion!
   // So be careful when working with recursive data!
-  const wouldCauseInfiniteRecursion1: () => Person = jest.fn(() =>
-    personDecoder(alice)
+  const wouldCauseInfiniteRecursion1: () => Person = vi.fn(() =>
+    personDecoder(alice),
   );
 
   expect(wouldCauseInfiniteRecursion1).not.toHaveBeenCalled();

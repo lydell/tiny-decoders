@@ -1,6 +1,8 @@
 // This file shows how best to annotate your `fields` and `fieldsAuto` decoders
 // to maximize the help you get from TypeScript.
 
+import { expect, test } from "vitest";
+
 import { Decoder, fields, fieldsAuto, number, string } from "../";
 
 test("type annotations", () => {
@@ -47,7 +49,7 @@ test("type annotations", () => {
       name: field("name", string),
       // @ts-expect-error Object literal may only specify known properties, and 'aye' does not exist in type 'Person'.
       aye: field("age", number),
-    })
+    }),
   );
   const personDecoder2Auto = fieldsAuto<Person>({
     name: string,
@@ -98,7 +100,7 @@ test("type annotations", () => {
       age: field("age", number),
       // @ts-expect-error Object literal may only specify known properties, and 'extra' does not exist in type 'Person'.
       extra: field("extra", string),
-    })
+    }),
   );
   const personDecoder7Auto = fieldsAuto<Person>({
     name: string,
@@ -117,7 +119,7 @@ test("type annotations", () => {
     (field): Person => ({
       name: field("name", string),
       age: field("age", number),
-    })
+    }),
   );
   const personDecoder8Auto = fieldsAuto<Person>({
     name: string,
