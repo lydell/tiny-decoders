@@ -550,8 +550,6 @@ export class DecoderError extends TypeError {
   }
 }
 
-const MAX_OBJECT_CHILDREN_DEFAULT = 5;
-
 export type ReprOptions = {
   depth?: number;
   indent?: string;
@@ -567,7 +565,7 @@ export function repr(
     depth = 0,
     indent = "  ",
     maxArrayChildren = 5,
-    maxObjectChildren = MAX_OBJECT_CHILDREN_DEFAULT,
+    maxObjectChildren = 5,
     maxLength = 100,
     sensitive = false,
   }: ReprOptions = {},
