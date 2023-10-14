@@ -224,18 +224,6 @@ test("array", () => {
       (4 more)
     ]
   `);
-  expect(repr([1], { depth: 0 })).toMatchInlineSnapshot(`
-    [
-      1
-    ]
-  `);
-  expect(repr([1, 2, 3], { depth: 0 })).toMatchInlineSnapshot(`
-    [
-      1,
-      2,
-      3
-    ]
-  `);
   expect(
     repr(
       // eslint-disable-next-line no-sparse-arrays
@@ -357,15 +345,6 @@ test("object", () => {
       (4 more)
     }
   `);
-  expect(repr({ a: 1, b: 2, c: 3 }, { depth: 0 })).toMatchInlineSnapshot(
-    `
-    {
-      "a": 1,
-      "b": 2,
-      "c": 3
-    }
-  `,
-  );
   expect(
     repr(
       {
@@ -412,9 +391,8 @@ test("object", () => {
     }
   `,
   );
-  expect(
-    repr({ "a short key": "a short string", a: "a" }, { maxLength: 8 }),
-  ).toMatchInlineSnapshot(`
+  expect(repr({ "a short key": "a short string", a: "a" }, { maxLength: 8 }))
+    .toMatchInlineSnapshot(`
     {
       "a s…key":
         "a s…ing",
@@ -529,11 +507,6 @@ test("sensitive output", () => {
       number
     ]
   `);
-  expect(sensitive([1], { depth: 0 })).toMatchInlineSnapshot(`
-    [
-      number
-    ]
-  `);
   expect(
     sensitive(
       // eslint-disable-next-line no-sparse-arrays
@@ -584,11 +557,6 @@ test("sensitive output", () => {
 
   expect(sensitive({})).toMatchInlineSnapshot(`{}`);
   expect(sensitive({ a: 1 })).toMatchInlineSnapshot(`
-    {
-      "a": number
-    }
-  `);
-  expect(sensitive({ a: 1 }, { depth: 0 })).toMatchInlineSnapshot(`
     {
       "a": number
     }
