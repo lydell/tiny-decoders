@@ -37,23 +37,15 @@ export function string(value: unknown): string {
   return value;
 }
 
-export function stringUnion<T extends Record<string, unknown>>(
-  mapping: keyof T extends string
-    ? keyof T extends never
-      ? "stringUnion must have at least one key"
-      : T
-    : {
-        [P in keyof T]: P extends number
-          ? ["stringUnion keys must be strings, not numbers", never]
-          : T[P];
-      }
-): Decoder<keyof T> {
-  return function stringUnionDecoder(value: unknown): keyof T {
+export function stringUnion<T extends [string, ...Array<string>]>(
+  variants: readonly [...T]
+): Decoder<T[number]> {
+  return function stringUnionDecoder(value: unknown): T[number] {
     const str = string(value);
-    if (!Object.prototype.hasOwnProperty.call(mapping, str)) {
+    if (!variants.includes(str)) {
       throw new DecoderError({
         tag: "unknown stringUnion variant",
-        knownVariants: Object.keys(mapping),
+        knownVariants: variants as unknown as Array<string>,
         got: str,
       });
     }
@@ -242,7 +234,7 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   >;
 }
 
-export function tuple<T extends ReadonlyArray<unknown>>(
+export function tuple<T extends Array<unknown>>(
   mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }]
 ): Decoder<[...T]> {
   return function tupleDecoder(value: unknown): [...T] {

@@ -59,7 +59,7 @@ test("making a type from a decoder", () => {
     age: number,
     active: boolean,
     country: optional(string),
-    type: stringUnion({ user: null }),
+    type: stringUnion(["user"] as const),
   });
 
   // Then, let TypeScript infer the `User` type!
@@ -119,7 +119,7 @@ test("making a type from a decoder", () => {
     age: field("age", number),
     active: field("active", boolean),
     country: field("country", optional(string)),
-    type: field("type", stringUnion({ user: null })),
+    type: field("type", stringUnion(["user"])),
   }));
 
   type User2 = ReturnType<typeof userDecoder2>;
@@ -385,28 +385,25 @@ test("making a type from an object and stringUnion", () => {
         `${hex}:${text}`,
   };
 
-  // An object with severity names and a corresponding color.
-  const SEVERITIES = {
+  const SEVERITIES = ["Low", "Medium", "High", "Critical"] as const;
+
+  type Severity = typeof SEVERITIES[number];
+
+  const SEVERITY_COLORS = {
     Low: "007CBB",
     Medium: "FFA500",
     High: "E64524",
     Critical: "FF0000",
-  } as const;
+  } as const satisfies Record<Severity, string>;
 
-  // Create a type from the object, for just the severity names.
-  type Severity = keyof typeof SEVERITIES;
   expectType<TypeEqual<Severity, "Critical" | "High" | "Low" | "Medium">>(true);
 
-  // Make a decoder for the severity names out of the object.
-  // The values in the object passed to `stringUnion` are typically `null`,
-  // but this is a good use case for allowing other values (strings in this case).
   const severityDecoder = stringUnion(SEVERITIES);
   expectType<TypeEqual<Severity, ReturnType<typeof severityDecoder>>>(true);
   expect(severityDecoder("High")).toBe("High");
 
-  // Use the object to color text.
   function coloredSeverity(severity: Severity): string {
-    return chalk.hex(SEVERITIES[severity])(severity);
+    return chalk.hex(SEVERITY_COLORS[severity])(severity);
   }
   expect(coloredSeverity("Low")).toBe("007CBB:Low");
 });

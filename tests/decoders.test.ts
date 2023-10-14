@@ -89,11 +89,7 @@ test("string", () => {
 describe("stringUnion", () => {
   test("basic", () => {
     type Color = ReturnType<typeof colorDecoder>;
-    const colorDecoder = stringUnion({
-      red: null,
-      green: null,
-      blue: null,
-    });
+    const colorDecoder = stringUnion(["red", "green", "blue"]);
 
     expectType<TypeEqual<Color, "blue" | "green" | "red">>(true);
 
@@ -109,8 +105,8 @@ describe("stringUnion", () => {
     expect(colorDecoder("blue")).toBe("blue");
 
     expectType<Color>(colorDecoder("red"));
-    // @ts-expect-error Passed array instead of object.
-    stringUnion(["one", "two"]);
+    // @ts-expect-error Argument of type '{ one: null; two: null; }' is not assignable to parameter of type 'readonly string[]'.
+    stringUnion({ one: null, two: null });
 
     expect(run(colorDecoder, "Red")).toMatchInlineSnapshot(`
       At root:
@@ -119,34 +115,10 @@ describe("stringUnion", () => {
     `);
   });
 
-  test("edge case keys", () => {
-    const edgeCaseDecoder = stringUnion({
-      constructor: null,
-      // Specifying `__proto__` is safe here.
-      __proto__: null,
-    });
-    expect(edgeCaseDecoder("constructor")).toBe("constructor");
-    // But `__proto__` won’t work, because it’s not an “own” property for some reason.
-    // I haven’t been able to forbid `__proto__` using TypeScript.
-    // Notice how "__proto__" isn’t even in the expected keys.
-    expect(run(edgeCaseDecoder, "__proto__")).toMatchInlineSnapshot(`
-      At root:
-      Expected one of these variants: "constructor"
-      Got: "__proto__"
-    `);
-    expect(run(edgeCaseDecoder, "hasOwnProperty")).toMatchInlineSnapshot(`
-      At root:
-      Expected one of these variants: "constructor"
-      Got: "hasOwnProperty"
-    `);
-  });
-
-  test("empty object is not allowed", () => {
-    // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"stringUnion must have at least one key"'.
-    const emptyDecoder = stringUnion({});
-    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'Record<string, null>'.
-    stringUnion("stringUnion must have at least one key");
-    expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
+  test("empty array is not allowed", () => {
+    // @ts-expect-error Argument of type '[]' is not assignable to parameter of type 'readonly [string, ...string[]]'.
+    //   Source has 0 element(s) but target requires 1.
+    const emptyDecoder = stringUnion([]);
     expect(run(emptyDecoder, "test")).toMatchInlineSnapshot(`
       At root:
       Expected one of these variants: (none)
@@ -154,12 +126,10 @@ describe("stringUnion", () => {
     `);
   });
 
-  test("keys must be strings", () => {
-    // @ts-expect-error Type 'null' is not assignable to type '["stringUnion keys must be strings, not numbers", never]'.
-    stringUnion({ 1: null });
-    // @ts-expect-error Type 'null' is not assignable to type 'never'.
-    stringUnion({ 1: ["stringUnion keys must be strings, not numbers", null] });
-    const goodDecoder = stringUnion({ "1": null });
+  test("variants must be strings", () => {
+    // @ts-expect-error Type 'number' is not assignable to type 'string'.
+    stringUnion([1]);
+    const goodDecoder = stringUnion(["1"]);
     expectType<TypeEqual<ReturnType<typeof goodDecoder>, "1">>(true);
     expect(goodDecoder("1")).toBe("1");
   });
@@ -168,7 +138,7 @@ describe("stringUnion", () => {
 describe("array", () => {
   test("basic", () => {
     type Bits = ReturnType<typeof bitsDecoder>;
-    const bitsDecoder = array(stringUnion({ "0": null, "1": null }));
+    const bitsDecoder = array(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Bits, Array<"0" | "1">>>(true);
     expectType<Bits>(bitsDecoder([]));
@@ -204,7 +174,7 @@ describe("array", () => {
 describe("record", () => {
   test("basic", () => {
     type Registers = ReturnType<typeof registersDecoder>;
-    const registersDecoder = record(stringUnion({ "0": null, "1": null }));
+    const registersDecoder = record(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Registers, Record<string, "0" | "1">>>(true);
     expectType<Registers>(registersDecoder({}));
@@ -703,7 +673,7 @@ describe("fieldsUnion", () => {
   });
 
   test("keys must be strings", () => {
-    const innerDecoder = fieldsAuto({ tag: stringUnion({ "1": null }) });
+    const innerDecoder = fieldsAuto({ tag: stringUnion(["1"] as const) });
     // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
     fieldsUnion("tag", { 1: innerDecoder });
     // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
