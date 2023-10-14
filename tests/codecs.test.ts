@@ -1237,3 +1237,38 @@ describe("map", () => {
     expect(codec.encoder(new Set([1, 2]))).toStrictEqual([1, 2, 1]);
   });
 });
+
+test("constrain the input to a decoder", () => {
+  const codec1 = fields({
+    one: string,
+  });
+
+  const codec2 = fields({
+    one: stringUnion(["foo", "bar"]),
+  });
+
+  function decodeConstrained<Decoded, Encoded>(
+    codec: Codec<Decoded, Encoded>,
+    value: Encoded,
+  ): DecoderResult<Decoded> {
+    return codec.decoder(value);
+  }
+
+  const result1 = codec1.decoder({ one: "foo" });
+
+  if (result1.tag === "DecoderError") {
+    throw new Error(formatAll(result1.errors));
+  }
+
+  const result2 = decodeConstrained(codec2, result1.value);
+
+  if (result2.tag === "DecoderError") {
+    throw new Error(formatAll(result2.errors));
+  }
+
+  // @ts-expect-error Argument of type '{ tag: "Valid"; value: { one: string; }; }' is not assignable to parameter of type '{ one: "foo" | "bar"; }'.
+  //   Property 'one' is missing in type '{ tag: "Valid"; value: { one: string; }; }' but required in type '{ one: "foo" | "bar"; }'.
+  decodeConstrained(codec2, result1);
+
+  expect(result2.value).toStrictEqual({ one: "foo" });
+});
