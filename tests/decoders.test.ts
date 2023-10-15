@@ -524,8 +524,8 @@ describe("fields", () => {
 });
 
 describe("fieldsAuto", () => {
-  // @ts-expect-error Argument of type 'readonly [(value: unknown) => string]' is not assignable to parameter of type 'FieldsMapping'.
-  fieldsAuto([string] as const);
+  // @ts-expect-error Argument of type '((value: unknown) => string)[]' is not assignable to parameter of type 'FieldsMapping'.
+  fieldsAuto([string]);
 
   test("basic", () => {
     type Person = ReturnType<typeof personDecoder>;
@@ -912,7 +912,7 @@ describe("fieldsUnion", () => {
   });
 
   test("keys must be strings", () => {
-    const innerDecoder = fieldsAuto({ tag: stringUnion(["1"] as const) });
+    const innerDecoder = fieldsAuto({ tag: stringUnion(["1"]) });
     // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
     fieldsUnion("tag", { 1: innerDecoder });
     // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
