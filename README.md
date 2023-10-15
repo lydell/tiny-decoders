@@ -735,22 +735,22 @@ If you want to format the error yourself in a custom way, look at these properti
 
 ```ts
 type ReprOptions = {
-  recurse?: boolean;
+  depth?: number;
+  indent?: string;
   maxArrayChildren?: number;
   maxObjectChildren?: number;
   maxLength?: number;
-  recurseMaxLength?: number;
   sensitive?: boolean;
 };
 
 function repr(
   value: unknown,
   {
-    recurse = true,
+    depth = 0,
+    indent = "  ",
     maxArrayChildren = 5,
-    maxObjectChildren = 3,
+    maxObjectChildren = 5,
     maxLength = 100,
-    recurseMaxLength = 20,
     sensitive = false,
   }: ReprOptions = {},
 ): string;
@@ -762,11 +762,11 @@ Options:
 
 | name | type | default | description |
 | --- | --- | --- | --- |
-| recurse | `boolean` | `true` | Whether to recursively call `repr` on array items and object values. It only recurses once. |
-| maxArrayChildren | `number` | `5` | The number of array items to print (when `recurse` is `true`.) |
-| maxObjectChildren | `number` | `3` | The number of object key-values to print (when `recurse` is `true`.) |
+| depth | `number` | `0` | How deep to recursively call `repr` on array items and object values. |
+| indent | `string` | `"  "` (two spaces) | The indentation to use for nested values when `depth` is larger than 0. |
+| maxArrayChildren | `number` | `5` | The number of array items to print. |
+| maxObjectChildren | `number` | `5` | The number of object key-values to print. |
 | maxLength | `number` | `100` | The maximum length of literals, such as strings, before truncating them. |
-| recurseMaxLength | `number` | `20` | Like `maxLength`, but when recursing. One typically wants shorter lengths here to avoid overly long error messages. |
 | sensitive | `boolean` | `false` | Set it do `true` if you deal with sensitive data to avoid leaks. See below. |
 
 ## Error messages

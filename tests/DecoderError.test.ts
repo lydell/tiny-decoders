@@ -185,13 +185,21 @@ describe("format", () => {
     expect(error.format()).toMatchInlineSnapshot(`
       At root:
       Expected a string
-      Got: ["abc", Object(1), 2]
+      Got: [
+        "abc",
+        Object(1),
+        2
+      ]
     `);
     expect(error.format({ sensitive: true, maxArrayChildren: 2 }))
       .toMatchInlineSnapshot(`
         At root:
         Expected a string
-        Got: [string, Object(1), (1 more)]
+        Got: [
+          string,
+          Object(1),
+          (1 more)
+        ]
         (Actual values are hidden in sensitive mode.)
       `);
   });

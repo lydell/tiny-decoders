@@ -1,5 +1,17 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 9.0.0 (unreleased)
+
+Changed: `repr` now prints objects and arrays slightly differently, and some options have changed.
+
+tiny-decoders has always printed representations of values on a single line. This stems back to when tiny-decoders used to print a “stack trace” (showing you a little of each parent object and array) – then it was useful to have a very short, one-line representation. Since that’s not a thing anymore, it’s more helpful to print objects and arrays multi-line: One item per line.
+
+Here’s how the options have changed:
+
+- `recurse: boolean`: Replaced by `depth: number`. Defaults to 0 (which prints the current object or array, but does not recurse).
+- `recurseMaxLength`: Removed. `maxLength` is now used always. This is because values are printed multi-line; apart for the indentation there’s the same amount of space available regardless of how deeply nested a value is.
+- Finally, the new `indent: string` is the indent used when recursing. It defaults to `"  "` (two spaces).
+
 ### Version 8.0.0 (2023-10-14)
 
 Changed: `stringUnion` now takes an array instead of an object.

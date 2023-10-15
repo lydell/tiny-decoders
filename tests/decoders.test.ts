@@ -111,7 +111,10 @@ describe("stringUnion", () => {
 
     expect(run(colorDecoder, "Red")).toMatchInlineSnapshot(`
       At root:
-      Expected one of these variants: "red", "green", "blue"
+      Expected one of these variants:
+        "red",
+        "green",
+        "blue"
       Got: "Red"
     `);
   });
@@ -155,14 +158,18 @@ describe("array", () => {
 
     expect(run(bitsDecoder, ["0", "2"])).toMatchInlineSnapshot(`
       At root[1]:
-      Expected one of these variants: "0", "1"
+      Expected one of these variants:
+        "0",
+        "1"
       Got: "2"
     `);
 
     expect(run(array(number), { length: 0 })).toMatchInlineSnapshot(`
       At root:
       Expected an array
-      Got: {"length": 0}
+      Got: {
+        "length": 0
+      }
     `);
     expect(run(array(number), new Int32Array(2))).toMatchInlineSnapshot(`
       At root:
@@ -191,14 +198,18 @@ describe("record", () => {
 
     expect(run(registersDecoder, { a: "0", b: "2" })).toMatchInlineSnapshot(`
       At root["b"]:
-      Expected one of these variants: "0", "1"
+      Expected one of these variants:
+        "0",
+        "1"
       Got: "2"
     `);
 
     expect(run(record(number), [1])).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: [1]
+      Got: [
+        1
+      ]
     `);
   });
 
@@ -287,7 +298,9 @@ describe("fields", () => {
     ).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: [1]
+      Got: [
+        1
+      ]
     `);
   });
 
@@ -319,8 +332,12 @@ describe("fields", () => {
         ),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "one", "two"
-        Found extra fields: "three", "four"
+        Expected only these fields:
+          "one",
+          "two"
+        Found extra fields:
+          "three",
+          "four"
       `);
     });
 
@@ -334,8 +351,16 @@ describe("fields", () => {
         ),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "1", "2"
-        Found extra fields: "0", "3", "4", "5", "6", (93 more)
+        Expected only these fields:
+          "1",
+          "2"
+        Found extra fields:
+          "0",
+          "3",
+          "4",
+          "5",
+          "6",
+          (93 more)
       `);
     });
 
@@ -365,8 +390,12 @@ describe("fields", () => {
         }),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "isAdmin", "name", "access"
-        Found extra fields: "age"
+        Expected only these fields:
+          "isAdmin",
+          "name",
+          "access"
+        Found extra fields:
+          "age"
       `);
 
       expect(
@@ -378,8 +407,12 @@ describe("fields", () => {
         }),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "isAdmin", "name"
-        Found extra fields: "access", "age"
+        Expected only these fields:
+          "isAdmin",
+          "name"
+        Found extra fields:
+          "access",
+          "age"
       `);
     });
   });
@@ -406,7 +439,9 @@ describe("fields", () => {
       expect(run(decoder, { length: 0 })).toMatchInlineSnapshot(`
         At root:
         Expected an array
-        Got: {"length": 0}
+        Got: {
+          "length": 0
+        }
       `);
       expect(run(decoder, [])).toMatchInlineSnapshot(`
         At root["0"]:
@@ -434,7 +469,8 @@ describe("fields", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: "a"
+      Found extra fields:
+        "a"
     `);
   });
 
@@ -519,7 +555,9 @@ describe("fieldsAuto", () => {
     expect(run(fieldsAuto({ 0: number }), [1])).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: [1]
+      Got: [
+        1
+      ]
     `);
   });
 
@@ -551,8 +589,12 @@ describe("fieldsAuto", () => {
         }),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "one", "two"
-        Found extra fields: "three", "four"
+        Expected only these fields:
+          "one",
+          "two"
+        Found extra fields:
+          "three",
+          "four"
       `);
     });
 
@@ -564,8 +606,16 @@ describe("fieldsAuto", () => {
         ),
       ).toMatchInlineSnapshot(`
         At root:
-        Expected only these fields: "1", "2"
-        Found extra fields: "0", "3", "4", "5", "6", (93 more)
+        Expected only these fields:
+          "1",
+          "2"
+        Found extra fields:
+          "0",
+          "3",
+          "4",
+          "5",
+          "6",
+          (93 more)
       `);
     });
   });
@@ -590,7 +640,8 @@ describe("fieldsAuto", () => {
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
-      Found extra fields: "a"
+      Found extra fields:
+        "a"
     `);
   });
 });
@@ -634,14 +685,18 @@ describe("fieldsUnion", () => {
     expect(run(shapeDecoder, { tag: "Square", size: 5 }))
       .toMatchInlineSnapshot(`
         At root["tag"]:
-        Expected one of these tags: "Circle", "Rectangle"
+        Expected one of these tags:
+          "Circle",
+          "Rectangle"
         Got: "Square"
       `);
 
     expect(run(fieldsUnion("0", { a: () => 0 }), ["a"])).toMatchInlineSnapshot(`
       At root:
       Expected an object
-      Got: ["a"]
+      Got: [
+        "a"
+      ]
     `);
   });
 
@@ -659,13 +714,15 @@ describe("fieldsUnion", () => {
     // Notice how "__proto__" isn’t even in the expected keys.
     expect(run(edgeCaseDecoder, { tag: "__proto__" })).toMatchInlineSnapshot(`
       At root["tag"]:
-      Expected one of these tags: "constructor"
+      Expected one of these tags:
+        "constructor"
       Got: "__proto__"
     `);
     expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
       .toMatchInlineSnapshot(`
         At root["tag"]:
-        Expected one of these tags: "constructor"
+        Expected one of these tags:
+          "constructor"
         Got: "hasOwnProperty"
       `);
   });
@@ -818,7 +875,9 @@ describe("tuple", () => {
     expect(run(tuple([number]), { length: 0 })).toMatchInlineSnapshot(`
       At root:
       Expected an array
-      Got: {"length": 0}
+      Got: {
+        "length": 0
+      }
     `);
     expect(run(tuple([number]), new Int32Array(2))).toMatchInlineSnapshot(`
       At root:

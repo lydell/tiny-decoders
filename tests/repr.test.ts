@@ -63,9 +63,7 @@ test("string", () => {
   expect(repr("0")).toMatchInlineSnapshot(`"0"`);
   expect(repr("string")).toMatchInlineSnapshot(`"string"`);
   expect(repr('"quotes"')).toMatchInlineSnapshot(`"\\"quotes\\""`);
-  expect(repr(" \t\r\n\u2028\u2029\f\v")).toMatchInlineSnapshot(
-    `" \\t\\r\\n  \\f\\u000b"`,
-  );
+  expect(repr(" \t\r\n\f\v")).toMatchInlineSnapshot(`" \\t\\r\\n\\f\\u000b"`);
   expect(repr("Iñtërnâtiônàlizætiøn☃💩")).toMatchInlineSnapshot(
     `"Iñtërnâtiônàlizætiøn☃💩"`,
   );
@@ -158,22 +156,74 @@ test("primitive wrappers", () => {
 
 test("array", () => {
   expect(repr([])).toMatchInlineSnapshot(`[]`);
-  expect(repr([1])).toMatchInlineSnapshot(`[1]`);
-  expect(repr([1, 2])).toMatchInlineSnapshot(`[1, 2]`);
-  expect(repr([1, 2, 3])).toMatchInlineSnapshot(`[1, 2, 3]`);
-  expect(repr([1, 2, 3, 4])).toMatchInlineSnapshot(`[1, 2, 3, 4]`);
-  expect(repr([1, 2, 3, 4, 5])).toMatchInlineSnapshot(`[1, 2, 3, 4, 5]`);
+  expect(repr([1])).toMatchInlineSnapshot(`
+    [
+      1
+    ]
+  `);
+  expect(repr([1, 2])).toMatchInlineSnapshot(`
+    [
+      1,
+      2
+    ]
+  `);
+  expect(repr([1, 2, 3])).toMatchInlineSnapshot(`
+    [
+      1,
+      2,
+      3
+    ]
+  `);
+  expect(repr([1, 2, 3, 4])).toMatchInlineSnapshot(`
+    [
+      1,
+      2,
+      3,
+      4
+    ]
+  `);
+  expect(repr([1, 2, 3, 4, 5])).toMatchInlineSnapshot(`
+    [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  `);
   expect(repr([1, 2, 3, 4, 5, 6])).toMatchInlineSnapshot(
-    `[1, 2, 3, 4, 5, (1 more)]`,
+    `
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      (1 more)
+    ]
+  `,
   );
   expect(repr([1, 2, 3, 4, 5, 6, 7])).toMatchInlineSnapshot(
-    `[1, 2, 3, 4, 5, (2 more)]`,
+    `
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      (2 more)
+    ]
+  `,
   );
-  expect(
-    repr([1, 2, 3, 4, 5, 6, 7], { maxArrayChildren: 3 }),
-  ).toMatchInlineSnapshot(`[1, 2, 3, (4 more)]`);
-  expect(repr([1], { recurse: false })).toMatchInlineSnapshot(`Array(1)`);
-  expect(repr([1, 2, 3], { recurse: false })).toMatchInlineSnapshot(`Array(3)`);
+  expect(repr([1, 2, 3, 4, 5, 6, 7], { maxArrayChildren: 3 }))
+    .toMatchInlineSnapshot(`
+    [
+      1,
+      2,
+      3,
+      (4 more)
+    ]
+  `);
   expect(
     repr(
       // eslint-disable-next-line no-sparse-arrays
@@ -199,32 +249,102 @@ test("array", () => {
       { maxArrayChildren: Infinity },
     ),
   ).toMatchInlineSnapshot(
-    `[undefined, <empty>, null, true, NaN, "a somewha…ng string", Symbol(sym…scription), function "functionW…tLongName", /a somewha…g regex/gm, Date, Error, String, [], {}, Array(1), Object(1), Point(2)]`,
+    `
+    [
+      undefined,
+      <empty>,
+      null,
+      true,
+      NaN,
+      "a somewhat long string",
+      Symbol(symbol with long description),
+      function "functionWithSomewhatLongName",
+      /a somewhat long regex/gm,
+      Date,
+      Error,
+      String,
+      [],
+      {},
+      Array(1),
+      Object(1),
+      Point(2)
+    ]
+  `,
   );
-  expect(
-    repr(["a short string"], { recurseMaxLength: 5 }),
-  ).toMatchInlineSnapshot(`["a…g"]`);
+  expect(repr(["a short string"], { maxLength: 5 })).toMatchInlineSnapshot(
+    `
+    [
+      "a…g"
+    ]
+  `,
+  );
+  const circular: Array<unknown> = [];
+  circular.push(circular, [{ circular: [1, circular] }]);
+  expect(repr(circular, { depth: Infinity })).toMatchInlineSnapshot(`
+    [
+      circular Array(2),
+      [
+        {
+          "circular": [
+            1,
+            circular Array(2)
+          ]
+        }
+      ]
+    ]
+  `);
 });
 
 test("object", () => {
   expect(repr({})).toMatchInlineSnapshot(`{}`);
-  expect(repr({ a: 1 })).toMatchInlineSnapshot(`{"a": 1}`);
-  expect(repr({ a: 1, b: 2 })).toMatchInlineSnapshot(`{"a": 1, "b": 2}`);
+  expect(repr({ a: 1 })).toMatchInlineSnapshot(`
+    {
+      "a": 1
+    }
+  `);
+  expect(repr({ a: 1, b: 2 })).toMatchInlineSnapshot(`
+    {
+      "a": 1,
+      "b": 2
+    }
+  `);
   expect(repr({ a: 1, b: 2, c: 3 })).toMatchInlineSnapshot(
-    `{"a": 1, "b": 2, "c": 3}`,
+    `
+    {
+      "a": 1,
+      "b": 2,
+      "c": 3
+    }
+  `,
   );
   expect(repr({ a: 1, b: 2, c: 3, d: 4 })).toMatchInlineSnapshot(
-    `{"a": 1, "b": 2, "c": 3, (1 more)}`,
+    `
+    {
+      "a": 1,
+      "b": 2,
+      "c": 3,
+      "d": 4
+    }
+  `,
   );
   expect(repr({ a: 1, b: 2, c: 3, d: 4, e: 5 })).toMatchInlineSnapshot(
-    `{"a": 1, "b": 2, "c": 3, (2 more)}`,
+    `
+    {
+      "a": 1,
+      "b": 2,
+      "c": 3,
+      "d": 4,
+      "e": 5
+    }
+  `,
   );
-  expect(
-    repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { maxObjectChildren: 1 }),
-  ).toMatchInlineSnapshot(`{"a": 1, (4 more)}`);
-  expect(repr({ a: 1, b: 2, c: 3 }, { recurse: false })).toMatchInlineSnapshot(
-    `Object(3)`,
-  );
+  expect(repr({ a: 1, b: 2, c: 3, d: 4, e: 5 }, { maxObjectChildren: 1 }))
+    .toMatchInlineSnapshot(`
+    {
+      "a": 1,
+      (4 more)
+    }
+  `);
   expect(
     repr(
       {
@@ -249,17 +369,67 @@ test("object", () => {
       { maxObjectChildren: Infinity },
     ),
   ).toMatchInlineSnapshot(
-    `{"a": undefined, "b": null, "c": true, "d": NaN, "e": "a somewha…ng string", "f": Symbol(sym…scription), "g": function "functionW…tLongName", "h": /a somewha…g regex/gm, "i": Date, "j": Error, "k": String, "l": [], "m": {}, "o": Array(1), "p": Object(1), "r": Point(2), "a somewha… key name": 1}`,
+    `
+    {
+      "a": undefined,
+      "b": null,
+      "c": true,
+      "d": NaN,
+      "e": "a somewhat long string",
+      "f": Symbol(symbol with long description),
+      "g": function "functionWithSomewhatLongName",
+      "h": /a somewhat long regex/gm,
+      "i": Date,
+      "j": Error,
+      "k": String,
+      "l": [],
+      "m": {},
+      "o": Array(1),
+      "p": Object(1),
+      "r": Point(2),
+      "a somewhat long key name": 1
+    }
+  `,
   );
-  expect(
-    repr({ "a short key": "a short string" }, { recurseMaxLength: 5 }),
-  ).toMatchInlineSnapshot(`{"a…y": "a…g"}`);
+  expect(repr({ "a short key": "a short string", a: "a" }, { maxLength: 8 }))
+    .toMatchInlineSnapshot(`
+    {
+      "a s…key":
+        "a s…ing",
+      "a": "a"
+    }
+  `);
   expect(repr({ '"), "key": "other value"': 1 })).toMatchInlineSnapshot(
-    `{"\\"), \\"ke…r value\\"": 1}`,
+    `
+    {
+      "\\"), \\"key\\": \\"other value\\"": 1
+    }
+  `,
   );
   expect(repr(new Point(10, 235.8))).toMatchInlineSnapshot(
-    `Point {"x": 10, "y": 235.8}`,
+    `
+    Point {
+      "x": 10,
+      "y": 235.8
+    }
+  `,
   );
+  const circular: Record<string, unknown> = {};
+  circular.circular = circular;
+  circular.other = { a: [{ other: 1, circular }] };
+  expect(repr(circular, { depth: Infinity })).toMatchInlineSnapshot(`
+    {
+      "circular": circular Object(2),
+      "other": {
+        "a": [
+          {
+            "other": 1,
+            "circular": circular Object(2)
+          }
+        ]
+      }
+    }
+  `);
 });
 
 test("misc", () => {
@@ -332,8 +502,11 @@ test("sensitive output", () => {
   expect(sensitive(new String("string"))).toMatchInlineSnapshot(`String`);
 
   expect(sensitive([])).toMatchInlineSnapshot(`[]`);
-  expect(sensitive([1])).toMatchInlineSnapshot(`[number]`);
-  expect(sensitive([1], { recurse: false })).toMatchInlineSnapshot(`Array(1)`);
+  expect(sensitive([1])).toMatchInlineSnapshot(`
+    [
+      number
+    ]
+  `);
   expect(
     sensitive(
       // eslint-disable-next-line no-sparse-arrays
@@ -359,14 +532,35 @@ test("sensitive output", () => {
       { maxArrayChildren: Infinity },
     ),
   ).toMatchInlineSnapshot(
-    `[undefined, <empty>, null, boolean, number, string, symbol, function "repr", regexp, Date, Error, String, [], {}, Array(1), Object(1), Point(2)]`,
+    `
+    [
+      undefined,
+      <empty>,
+      null,
+      boolean,
+      number,
+      string,
+      symbol,
+      function "repr",
+      regexp,
+      Date,
+      Error,
+      String,
+      [],
+      {},
+      Array(1),
+      Object(1),
+      Point(2)
+    ]
+  `,
   );
 
   expect(sensitive({})).toMatchInlineSnapshot(`{}`);
-  expect(sensitive({ a: 1 })).toMatchInlineSnapshot(`{"a": number}`);
-  expect(sensitive({ a: 1 }, { recurse: false })).toMatchInlineSnapshot(
-    `Object(1)`,
-  );
+  expect(sensitive({ a: 1 })).toMatchInlineSnapshot(`
+    {
+      "a": number
+    }
+  `);
   expect(
     sensitive(
       {
@@ -390,9 +584,33 @@ test("sensitive output", () => {
       { maxObjectChildren: Infinity },
     ),
   ).toMatchInlineSnapshot(
-    `{"a": undefined, "b": null, "c": boolean, "d": number, "e": string, "f": symbol, "g": function "repr", "h": regexp, "i": Date, "j": Error, "k": String, "l": [], "m": {}, "o": Array(1), "p": Object(1), "r": Point(2)}`,
+    `
+    {
+      "a": undefined,
+      "b": null,
+      "c": boolean,
+      "d": number,
+      "e": string,
+      "f": symbol,
+      "g": function "repr",
+      "h": regexp,
+      "i": Date,
+      "j": Error,
+      "k": String,
+      "l": [],
+      "m": {},
+      "o": Array(1),
+      "p": Object(1),
+      "r": Point(2)
+    }
+  `,
   );
   expect(sensitive(new Point(10, 235.8))).toMatchInlineSnapshot(
-    `Point {"x": number, "y": number}`,
+    `
+    Point {
+      "x": number,
+      "y": number
+    }
+  `,
   );
 });
