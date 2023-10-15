@@ -207,6 +207,10 @@ module.exports = {
         tsconfigRootDir: __dirname,
         project: ["./tests/tsconfig.json"],
       },
+      rules: {
+        "vitest/no-disabled-tests": warn,
+        "vitest/no-focused-tests": warn,
+      },
     },
     {
       files: "examples/**/*.ts",
@@ -214,6 +218,10 @@ module.exports = {
       parserOptions: {
         tsconfigRootDir: __dirname,
         project: ["./examples/tsconfig.json"],
+      },
+      rules: {
+        "vitest/no-disabled-tests": warn,
+        "vitest/no-focused-tests": warn,
       },
     },
   ],
