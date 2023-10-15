@@ -239,10 +239,24 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 </tr>
 <tr>
 <th><a href="#multi">multi</a></th>
-<td><pre>(mapping: Record&lt;string, Decoder&lt;T&gt;&gt;) =&gt;
-  Decoder&lt;T&gt;</pre></td>
+<td><pre>(types: [
+  "type1",
+  "type2",
+  "type7"
+]) =&gt;
+  Decoder&lt;
+    { type: "type1", value: type1 }
+    | { type: "type2", value: type2 }
+    | { type: "type7", value: type7 }
+  &gt;</pre></td>
 <td>you decide</td>
-<td><code>T</code></td>
+<td>A subset of: <pre>{ type: "undefined"; value: undefined }
+| { type: "null"; value: null }
+| { type: "boolean"; value: boolean }
+| { type: "number"; value: number }
+| { type: "string"; value: string }
+| { type: "array"; value: Array<unknown> }
+| { type: "object"; value: Record<string, unknown> }</pre></td>
 </tr>
 <tr>
 <th><a href="#optional">optional</a></th>
@@ -517,43 +531,58 @@ See the [tuples example](examples/tuples.test.ts) for more details.
 ### multi
 
 ```ts
-function multi<
-  T1 = never,
-  T2 = never,
-  T3 = never,
-  T4 = never,
-  T5 = never,
-  T6 = never,
-  T7 = never,
->(mapping: {
-  undefined?: Decoder<T1, undefined>;
-  null?: Decoder<T2, null>;
-  boolean?: Decoder<T3, boolean>;
-  number?: Decoder<T4, number>;
-  string?: Decoder<T5, string>;
-  array?: Decoder<T6, Array<unknown>>;
-  object?: Decoder<T7, Record<string, unknown>>;
-}): Decoder<T1 | T2 | T3 | T4 | T5 | T6 | T7>;
+function multi<Types extends [MultiTypeName, ...Array<MultiTypeName>]>(
+  types: Types,
+): Decoder<Multi<Types[number]>>;
+
+type MultiTypeName =
+  | "array"
+  | "boolean"
+  | "null"
+  | "number"
+  | "object"
+  | "string"
+  | "undefined";
+
+type Multi<Types> = Types extends any
+  ? Types extends "undefined"
+    ? { type: "undefined"; value: undefined }
+    : Types extends "null"
+    ? { type: "null"; value: null }
+    : Types extends "boolean"
+    ? { type: "boolean"; value: boolean }
+    : Types extends "number"
+    ? { type: "number"; value: number }
+    : Types extends "string"
+    ? { type: "string"; value: string }
+    : Types extends "array"
+    ? { type: "array"; value: Array<unknown> }
+    : Types extends "object"
+    ? { type: "object"; value: Record<string, unknown> }
+    : never
+  : never;
 ```
 
 Decode multiple JSON types into a TypeScript type of choice.
 
 This is useful for supporting stuff that can be either a string or a number, for example.
 
-The `mapping` is an object where the keys are wanted JSON types and the values are callbacks for each type. Specify which JSON types you want and what to do with each (transform the data or decode it further).
+The type annotation for `multi` is a bit wacky, but it’s not that complicated to use. The `types` parameter is an array of strings – the wanted JSON types. For example, you can say `["string", "number"]`. Then the decoder will give you back either `{ type: "string", value: string }` or `{ type: "number", value: number }`. You can use [chain](#chain) to map that to some type of choice, or decode further.
 
 Example:
 
 ```ts
 type Id = { tag: "Id"; id: string } | { tag: "LegacyId"; id: number };
 
-const idDecoder: Decoder<Id> = multi({
-  string: (id) => ({ tag: "Id" as const, id }),
-  number: (id) => ({ tag: "LegacyId" as const, id }),
+const idDecoder: Decoder<Id> = chain(multi(["string", "number"]), (value) => {
+  switch (value.type) {
+    case "string":
+      return { tag: "Id" as const, id: value.value };
+    case "number":
+      return { tag: "LegacyId" as const, id: value.value };
+  }
 });
 ```
-
-You can return anything from each type callback – the result of the decoder is the union of all of that.
 
 ### optional
 
@@ -868,7 +897,7 @@ export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
   };
 ```
 
-There used to be a `lazy` function. It was used for recursive structures, but when using [fields](#fields) or [multi](#multi) you don’t need it. See the [recursive example](examples/recursive.test.ts) for more information.
+There used to be a `lazy` function. It was used for recursive structures, but when using [fields](#fields) or [multi](#multi) with [chain](#chain) you don’t need it. See the [recursive example](examples/recursive.test.ts) for more information.
 
 ### unknown
 

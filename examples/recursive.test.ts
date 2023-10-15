@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import { array, Decoder, fields, multi, record, string } from "../";
+import { array, chain, Decoder, fields, multi, record, string } from "../";
 
 test("recursive data structure", () => {
   // Consider this recursive data structure:
@@ -73,13 +73,15 @@ test("recurse non-record", () => {
   type Dict = { [key: string]: Dict | number };
 
   const dictDecoder: Decoder<Dict> = record(
-    multi({
-      number: (value) => value,
-      // The trick here is to use a seemingly useless arrow function to delay
-      // the reference to `dictDecoder`.
-      object: (value) => dictDecoder(value),
-      // Writing just `object: dictDecoder` would result in an error:
-      // ReferenceError: Cannot access 'dictDecoder' before initialization
+    chain(multi(["number", "object"]), (value) => {
+      switch (value.type) {
+        case "number":
+          return value.value;
+        case "object":
+          // Thanks to the arrow function we’re in, the reference to
+          // `dictDecoder` is delayed and therefore works.
+          return dictDecoder(value.value);
+      }
     }),
   );
 

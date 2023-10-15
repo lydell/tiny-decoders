@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 
 import {
   boolean,
+  chain,
   DecoderError,
   fields,
   fieldsAuto,
@@ -53,9 +54,7 @@ test("making a type from a decoder", () => {
 
   // Here’s a more complex example for trying out TypeScript’s inference.
   const userDecoder = fieldsAuto({
-    // For some reason `id` becomes `unknown` when using `fieldsAuto`, but not
-    // when using `fields` (see further down).
-    id: multi({ string, number }),
+    id: chain(multi(["string", "number"]), ({ value }) => value),
     name: string,
     age: number,
     active: boolean,
@@ -115,7 +114,10 @@ test("making a type from a decoder", () => {
   // Here’s the same decoder again, but written using `fields` instead of
   // `fieldsAuto`. It should give the same inferred type.
   const userDecoder2 = fields((field) => ({
-    id: field("id", multi({ string, number })),
+    id: field(
+      "id",
+      chain(multi(["string", "number"]), ({ value }) => value),
+    ),
     name: field("name", string),
     age: field("age", number),
     active: field("active", boolean),
@@ -124,6 +126,8 @@ test("making a type from a decoder", () => {
   }));
 
   type User2 = ReturnType<typeof userDecoder2>;
+
+  expectType<TypeEqual<User, User2>>(true);
 
   const user4: User2 = {
     id: 1,

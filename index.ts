@@ -1,3 +1,7 @@
+// There are some things that cannot be implemented without `any`.
+// No `any` “leaks” when _using_ the library, though.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export type Decoder<T, U = unknown> = (value: U) => T;
 
 type WithUndefinedAsOptional<T> = T extends Record<string, unknown>
@@ -259,58 +263,69 @@ export function tuple<T extends Array<unknown>>(
   };
 }
 
-export function multi<
-  T1 = never,
-  T2 = never,
-  T3 = never,
-  T4 = never,
-  T5 = never,
-  T6 = never,
-  T7 = never,
->(mapping: {
-  undefined?: Decoder<T1, undefined>;
-  null?: Decoder<T2, null>;
-  boolean?: Decoder<T3, boolean>;
-  number?: Decoder<T4, number>;
-  string?: Decoder<T5, string>;
-  array?: Decoder<T6, Array<unknown>>;
-  object?: Decoder<T7, Record<string, unknown>>;
-}): Decoder<T1 | T2 | T3 | T4 | T5 | T6 | T7> {
-  return function multiDecoder(
-    value: unknown,
-  ): T1 | T2 | T3 | T4 | T5 | T6 | T7 {
+type Multi<Types> = Types extends any
+  ? Types extends "undefined"
+    ? { type: "undefined"; value: undefined }
+    : Types extends "null"
+    ? { type: "null"; value: null }
+    : Types extends "boolean"
+    ? { type: "boolean"; value: boolean }
+    : Types extends "number"
+    ? { type: "number"; value: number }
+    : Types extends "string"
+    ? { type: "string"; value: string }
+    : Types extends "array"
+    ? { type: "array"; value: Array<unknown> }
+    : Types extends "object"
+    ? { type: "object"; value: Record<string, unknown> }
+    : never
+  : never;
+
+type MultiTypeName =
+  | "array"
+  | "boolean"
+  | "null"
+  | "number"
+  | "object"
+  | "string"
+  | "undefined";
+
+export function multi<Types extends [MultiTypeName, ...Array<MultiTypeName>]>(
+  types: readonly [...Types],
+): Decoder<Multi<Types[number]>> {
+  return function multiDecoder(value): Multi<Types[number]> {
     if (value === undefined) {
-      if (mapping.undefined !== undefined) {
-        return mapping.undefined(value);
+      if (types.includes("undefined")) {
+        return { type: "undefined", value } as unknown as Multi<Types[number]>;
       }
     } else if (value === null) {
-      if (mapping.null !== undefined) {
-        return mapping.null(value);
+      if (types.includes("null")) {
+        return { type: "null", value } as unknown as Multi<Types[number]>;
       }
     } else if (typeof value === "boolean") {
-      if (mapping.boolean !== undefined) {
-        return mapping.boolean(value);
+      if (types.includes("boolean")) {
+        return { type: "boolean", value } as unknown as Multi<Types[number]>;
       }
     } else if (typeof value === "number") {
-      if (mapping.number !== undefined) {
-        return mapping.number(value);
+      if (types.includes("number")) {
+        return { type: "number", value } as unknown as Multi<Types[number]>;
       }
     } else if (typeof value === "string") {
-      if (mapping.string !== undefined) {
-        return mapping.string(value);
+      if (types.includes("string")) {
+        return { type: "string", value } as unknown as Multi<Types[number]>;
       }
     } else if (Array.isArray(value)) {
-      if (mapping.array !== undefined) {
-        return mapping.array(value);
+      if (types.includes("array")) {
+        return { type: "array", value } as unknown as Multi<Types[number]>;
       }
     } else {
-      if (mapping.object !== undefined) {
-        return mapping.object(value as Record<string, unknown>);
+      if (types.includes("object")) {
+        return { type: "object", value } as unknown as Multi<Types[number]>;
       }
     }
     throw new DecoderError({
       tag: "unknown multi type",
-      knownTypes: Object.keys(mapping) as Array<"undefined">, // Type checking hack.
+      knownTypes: types as unknown as Array<"undefined">, // Type checking hack.
       got: value,
     });
   };
