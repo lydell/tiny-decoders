@@ -263,6 +263,13 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 | { type: "object"; value: Record<string, unknown> }</pre></td>
 </tr>
 <tr>
+<th><a href="#recursive">recursive</a></th>
+<td><pre>(callback: () => Decoder&lt;T&gt;) =&gt;
+  Decoder&lt;T&gt;</pre></td>
+<td>n/a</td>
+<td><code>T</code></td>
+</tr>
+<tr>
 <th><a href="#undefinedor">undefinedOr</a></th>
 <td><pre>(decoder: Decoder&lt;T&gt;) =&gt;
   Decoder&lt;T | undefined&gt;</pre></td>
@@ -655,6 +662,22 @@ const idDecoder: Decoder<Id> = chain(multi(["string", "number"]), (value) => {
 });
 ```
 
+### recursive
+
+```ts
+function recursive<T>(callback: () => Decoder<T>): Decoder<T>;
+```
+
+When you make a decoder for a recursive data structure, you might end up with errors like:
+
+```
+ReferenceError: Cannot access 'myDecoder' before initialization
+```
+
+The solution is to wrap `myDecoder` in `recursive`: `recursive(() => myDecoder)`. The unnecessary-looking arrow function delays the reference to `myDecoder` so we’re able to define it.
+
+See the [recursive example](examples/recursive.test.ts) for more information.
+
 ### undefinedOr
 
 ```ts
@@ -933,17 +956,6 @@ See the [type inference example](examples/type-inference.test.ts) for more detai
 ## Things left out
 
 Here are some decoders I’ve left out. They are rarely needed or not needed at all, and/or too trivial to be included in a decoding library _for the minimalist._
-
-### lazy
-
-```ts
-export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
-  return function lazyDecoder(value: unknown): T {
-    return callback()(value);
-  };
-```
-
-There used to be a `lazy` function. It was used for recursive structures, but when using [fields](#fields) or [multi](#multi) with [chain](#chain) you don’t need it. See the [recursive example](examples/recursive.test.ts) for more information.
 
 ### unknown
 

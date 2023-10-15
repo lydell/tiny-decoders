@@ -17,6 +17,7 @@ import {
   nullable,
   number,
   record,
+  recursive,
   repr,
   string,
   stringUnion,
@@ -1223,6 +1224,26 @@ describe("multi", () => {
       Expected one of these types: undefined
       Got: {}
     `);
+  });
+});
+
+describe("recursive", () => {
+  test("basic", () => {
+    type Recursive = {
+      a?: Recursive;
+      b: Array<Recursive>;
+    };
+
+    const decoder: Decoder<Recursive> = fieldsAuto({
+      a: field(
+        recursive(() => decoder),
+        { optional: true },
+      ),
+      b: array(recursive(() => decoder)),
+    });
+
+    const input = { a: { b: [] }, b: [{ a: { b: [] }, b: [] }] };
+    expect(decoder(input)).toStrictEqual(input);
   });
 });
 

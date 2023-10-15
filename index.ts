@@ -404,6 +404,12 @@ export function multi<Types extends [MultiTypeName, ...Array<MultiTypeName>]>(
   };
 }
 
+export function recursive<T>(callback: () => Decoder<T>): Decoder<T> {
+  return function recursiveDecoder(value: unknown): T {
+    return callback()(value);
+  };
+}
+
 export function undefinedOr<T>(decoder: Decoder<T>): Decoder<T | undefined>;
 
 export function undefinedOr<T, U>(

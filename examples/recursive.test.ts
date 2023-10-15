@@ -1,6 +1,15 @@
 import { expect, test, vi } from "vitest";
 
-import { array, chain, Decoder, fields, multi, record, string } from "../";
+import {
+  array,
+  chain,
+  Decoder,
+  fieldsAuto,
+  multi,
+  record,
+  recursive,
+  string,
+} from "../";
 
 test("recursive data structure", () => {
   // Consider this recursive data structure:
@@ -9,24 +18,21 @@ test("recursive data structure", () => {
     friends: Array<Person>;
   };
 
-  // When using `fields` there won’t be any trouble decoding it:
-  const personDecoder1 = fields(
-    (field): Person => ({
-      name: field("name", string),
-      friends: field("friends", array(personDecoder1)),
-    }),
-  );
-
-  // But when using `fieldsAuto` you’d run into problems.
   // This wouldn’t work to decode it, because we’re trying to use
   // `personDecoder` in the definition of `personDecoder` itself.
-  // So, use `fields` if you need recursion.
   /*
-  const personDecoder2 = fieldsAuto<Person>({
+  const personDecoder = fieldsAuto<Person>({
     name: string,
     friends: array(personDecoder2), // ReferenceError: Cannot access 'personDecoder2' before initialization
   });
   */
+
+  // `recursive` lets us delay when `personDecoder` is referenced, solving the
+  // issue.
+  const personDecoder: Decoder<Person> = fieldsAuto({
+    name: string,
+    friends: array(recursive(() => personDecoder)),
+  });
 
   const data: unknown = {
     name: "John",
@@ -47,7 +53,7 @@ test("recursive data structure", () => {
     ],
   };
 
-  expect(personDecoder1(data)).toMatchInlineSnapshot(`
+  expect(personDecoder(data)).toMatchInlineSnapshot(`
     {
       "friends": [
         {
@@ -120,12 +126,10 @@ test("circular objects", () => {
     likes: Person;
   };
 
-  const personDecoder = fields(
-    (field): Person => ({
-      name: field("name", string),
-      likes: field("likes", personDecoder),
-    }),
-  );
+  const personDecoder: Decoder<Person> = fieldsAuto({
+    name: string,
+    likes: recursive(() => personDecoder),
+  });
 
   const alice: Record<string, unknown> = {
     name: "Alice",
