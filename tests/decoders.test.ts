@@ -890,9 +890,42 @@ describe("tuple", () => {
 describe("multi", () => {
   test("basic", () => {
     type Id = ReturnType<typeof idDecoder>;
-    const idDecoder = multi({
-      string: (id) => ({ tag: "Id" as const, id }),
-      number: (id) => ({ tag: "LegacyId" as const, id }),
+    const idDecoder = multi(["string", "number"]);
+
+    expectType<
+      TypeEqual<
+        Id,
+        { type: "number"; value: number } | { type: "string"; value: string }
+      >
+    >(true);
+    expectType<Id>(idDecoder("123"));
+
+    expect(idDecoder("123")).toStrictEqual({
+      type: "string",
+      value: "123",
+    });
+
+    expect(idDecoder(123)).toStrictEqual({
+      type: "number",
+      value: 123,
+    });
+
+    expect(run(idDecoder, true)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: string, number
+      Got: true
+    `);
+  });
+
+  test("basic – mapped", () => {
+    type Id = ReturnType<typeof idDecoder>;
+    const idDecoder = chain(multi(["string", "number"]), (value) => {
+      switch (value.type) {
+        case "string":
+          return { tag: "Id" as const, id: value.value };
+        case "number":
+          return { tag: "LegacyId" as const, id: value.value };
+      }
     });
 
     expectType<
@@ -919,9 +952,13 @@ describe("multi", () => {
 
   test("basic – variation", () => {
     type Id = ReturnType<typeof idDecoder>;
-    const idDecoder = multi({
-      string: (id) => id,
-      number: String,
+    const idDecoder = chain(multi(["string", "number"]), (value) => {
+      switch (value.type) {
+        case "string":
+          return value.value;
+        case "number":
+          return value.value.toString();
+      }
     });
 
     expectType<TypeEqual<Id, string>>(true);
@@ -937,10 +974,10 @@ describe("multi", () => {
     `);
   });
 
-  test("empty object", () => {
-    const decoder = multi({});
-
-    expectType<Decoder<never>>(decoder);
+  test("empty array", () => {
+    // @ts-expect-error Argument of type '[]' is not assignable to parameter of type 'readonly [MultiTypeName, ...MultiTypeName[]]'.
+    //   Source has 0 element(s) but target requires 1.
+    const decoder = multi([]);
 
     expect(run(decoder, undefined)).toMatchInlineSnapshot(`
       At root:
@@ -950,15 +987,15 @@ describe("multi", () => {
   });
 
   test("all types", () => {
-    const decoder = multi({
-      undefined: (x) => x,
-      null: (x) => x,
-      boolean: (x) => x,
-      number: (x) => x,
-      string: (x) => x,
-      array: (x) => x,
-      object: (x) => x,
-    });
+    const decoder = multi([
+      "undefined",
+      "null",
+      "boolean",
+      "number",
+      "string",
+      "array",
+      "object",
+    ]);
 
     const values = [
       undefined,
@@ -974,12 +1011,12 @@ describe("multi", () => {
     ];
 
     for (const value of values) {
-      expect(decoder(value)).toStrictEqual(value);
+      expect(decoder(value).value).toStrictEqual(value);
     }
   });
 
   test("coverage", () => {
-    const decoder = multi({ undefined: (x) => x });
+    const decoder = multi(["undefined"]);
 
     expect(run(decoder, null)).toMatchInlineSnapshot(`
       At root:

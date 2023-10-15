@@ -1,5 +1,39 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 10.0.0 (unreleased)
+
+Changed: `multi` has a new API.
+
+Before:
+
+```ts
+type Id = { tag: "Id"; id: string } | { tag: "LegacyId"; id: number };
+
+const idDecoder: Decoder<Id> = multi({
+  string: (id) => ({ tag: "Id" as const, id }),
+  number: (id) => ({ tag: "LegacyId" as const, id }),
+});
+```
+
+After:
+
+```ts
+type Id = { tag: "Id"; id: string } | { tag: "LegacyId"; id: number };
+
+const idDecoder: Decoder<Id> = chain(multi(["string", "number"]), (value) => {
+  switch (value.type) {
+    case "string":
+      return { tag: "Id" as const, id: value.value };
+    case "number":
+      return { tag: "LegacyId" as const, id: value.value };
+  }
+});
+```
+
+Like before, you specify the types you want (`string` and `number` above), but now you get a tagged union back (`{ type: "string", value: string } | { type: "number", value: number }`) instead of supplying functions to call for each type. You typically want to pair this with `chain`, switching on the different variants of the tagged union.
+
+This change unlocks further changes that will come in future releases.
+
 ### Version 9.0.0 (2023-10-15)
 
 Changed: `repr` now prints objects and arrays slightly differently, and some options have changed.
