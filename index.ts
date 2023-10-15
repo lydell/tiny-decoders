@@ -268,8 +268,8 @@ type Field<Decoded, Encoded, Meta extends FieldMeta> = Meta & {
 };
 
 type FieldMeta = {
-  renameFrom?: string;
-  optional?: boolean;
+  renameFrom?: string | undefined;
+  optional?: boolean | undefined;
   tag?: { decoded: string; encoded: string } | undefined;
 };
 
@@ -564,13 +564,62 @@ export function tag<const Decoded extends string>(
 
 export function tag<const Decoded extends string, const Encoded extends string>(
   decoded: Decoded,
-  encoded: Encoded,
+  options: {
+    renameTagFrom: Encoded;
+  },
 ): Field<Decoded, Encoded, { tag: { decoded: string; encoded: string } }>;
 
-export function tag<const Decoded extends string, const Encoded extends string>(
+export function tag<
+  const Decoded extends string,
+  const EncodedFieldName extends string,
+>(
   decoded: Decoded,
-  encoded: Encoded = decoded as unknown as Encoded,
-): Field<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
+  options: {
+    renameFieldFrom: EncodedFieldName;
+  },
+): Field<
+  Decoded,
+  Decoded,
+  { renameFrom: EncodedFieldName; tag: { decoded: string; encoded: string } }
+>;
+
+export function tag<
+  const Decoded extends string,
+  const Encoded extends string,
+  const EncodedFieldName extends string,
+>(
+  decoded: Decoded,
+  options: {
+    renameTagFrom: Encoded;
+    renameFieldFrom: EncodedFieldName;
+  },
+): Field<
+  Decoded,
+  Encoded,
+  { renameFrom: EncodedFieldName; tag: { decoded: string; encoded: string } }
+>;
+
+export function tag<
+  const Decoded extends string,
+  const Encoded extends string,
+  const EncodedFieldName extends string,
+>(
+  decoded: Decoded,
+  {
+    renameTagFrom: encoded = decoded as unknown as Encoded,
+    renameFieldFrom: encodedFieldName,
+  }: {
+    renameTagFrom?: Encoded;
+    renameFieldFrom?: EncodedFieldName;
+  } = {},
+): Field<
+  Decoded,
+  Encoded,
+  {
+    renameFrom: EncodedFieldName | undefined;
+    tag: { decoded: string; encoded: string };
+  }
+> {
   return {
     codec: {
       decoder: (value) => {
@@ -595,6 +644,7 @@ export function tag<const Decoded extends string, const Encoded extends string>(
       },
       encoder: () => encoded,
     },
+    renameFrom: encodedFieldName,
     tag: { decoded, encoded },
   };
 }

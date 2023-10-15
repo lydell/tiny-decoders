@@ -1,25 +1,25 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { fieldsUnion, Infer, number, tag } from "../";
+import { Codec, fieldsUnion, Infer, number, tag } from "../";
 
 test("using different tags in JSON and in TypeScript", () => {
   // There’s nothing stopping you from using different keys and values in JSON
-  // and TypeScript. For example, `"type": "circle"` → `tag: "Circle"`.
+  // and TypeScript. For example, `"type": "Ring"` → `tag: "Circle"`.
 
-  // On this line we specify the JSON field name:
+  // On this line we specify the TypeScript common field name:
   const codec = fieldsUnion("tag", [
     {
-      // But here we create an object with a `tag` field instead.
-      tag: tag("Circle", "circle"),
-      radius: number,
+      // Here we specify the common field name used in JSON ("type").
+      // Unfortunately you need to specify it on every variant (and it has to be
+      // the same for all of them).
+      tag: tag("Square", { renameFieldFrom: "type" }),
+      size: number,
     },
     {
-      // The second argument to the `tag()` function is optional and
-      // is the JSON name. If you leave it out, the first argument is used
-      // for both the JSON and TypeScript name.
-      tag: tag("Square", "square"),
-      size: number,
+      // Here we also translate the "Ring" JSON tag name to "Circle" in TypeScript.
+      tag: tag("Circle", { renameTagFrom: "Ring", renameFieldFrom: "type" }),
+      radius: number,
     },
   ]);
 
@@ -35,4 +35,30 @@ test("using different tags in JSON and in TypeScript", () => {
   };
   expect(codec.decoder({ type: "circle", radius: 5 })).toStrictEqual(expected);
   expect(codec.encoder(expected)).toStrictEqual({ type: "circle", radius: 5 });
+
+  // Here’s a test for using `renameTagFrom` without `renameTagFrom`.
+  const codec2 = fieldsUnion("tag", [
+    {
+      tag: tag("Rectangle", { renameTagFrom: "rectangle" }),
+      width: number,
+      height: number,
+    },
+  ]);
+  expectType<
+    TypeEqual<
+      typeof codec2,
+      Codec<
+        {
+          tag: "Rectangle";
+          width: number;
+          height: number;
+        },
+        {
+          tag: "rectangle";
+          width: number;
+          height: number;
+        }
+      >
+    >
+  >(true);
 });
