@@ -41,13 +41,12 @@ test("renaming fields", () => {
     active: boolean;
   };
 
-  // If you want to rename some fields, use the `named` function. This means having to
-  // duplicate some field names, but it’s not so bad.
+  // If you want to rename some fields, use the `field` function.
   const userCamelCaseCodec: Codec<UserCamelCase> = fields({
-    firstName: field("first_name", string),
-    lastName: field("last_name", string),
-    age: field("age", number),
-    active: field("active", boolean),
+    firstName: field(string, { renameFrom: "first_name" }),
+    lastName: field(string, { renameFrom: "last_name" }),
+    age: number,
+    active: boolean,
   });
 
   const expected: UserCamelCase = {

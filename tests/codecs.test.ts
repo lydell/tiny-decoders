@@ -17,7 +17,6 @@ import {
   multi,
   nullOr,
   number,
-  optional,
   parse,
   parseWithoutCodec,
   record,
@@ -462,7 +461,7 @@ describe("fields", () => {
       fields({
         first_name: string,
         last_name: string,
-        age: optional(number),
+        age: field(number, { optional: true }),
       }),
       {
         decoder: (object) =>
@@ -518,8 +517,8 @@ describe("fieldsUnion", () => {
       },
       {
         tag: tag("Rectangle"),
-        width: field("width_px", number),
-        height: field("height_px", number),
+        width: field(number, { renameFrom: "width_px" }),
+        height: field(number, { renameFrom: "height_px" }),
       },
     ]);
 
@@ -923,70 +922,48 @@ describe("multi", () => {
   });
 });
 
-describe("optional", () => {
-  test("optional does not allow undefined", () => {
-    const codec = optional(string);
-
-    expectType<TypeEqual<Infer<typeof codec>, string>>(true);
-
-    expect(codec.decoder("a")).toBe("a");
-    expect(run(codec, undefined)).toMatchInlineSnapshot();
-
-    expect(codec.encoder("a")).toBe("a");
-    // @ts-expect-error Argument of type 'undefined' is not assignable to parameter of type 'string'.
-    codec.encoder(undefined);
-
-    expect(run(codec, null)).toMatchInlineSnapshot(`
-      At root (optional):
-      Expected a string
-      Got: null
-    `);
+test("optional field", () => {
+  type Person = Infer<typeof personCodec>;
+  const personCodec = fields({
+    name: string,
+    age: field(number, { optional: true }),
   });
 
-  test("optional field", () => {
-    type Person = Infer<typeof personCodec>;
-    const personCodec = fields({
-      name: string,
-      age: optional(number),
-    });
+  expectType<TypeEqual<Person, { name: string; age?: number }>>(true);
 
-    expectType<TypeEqual<Person, { name: string; age?: number }>>(true);
-
-    expect(personCodec.decoder({ name: "John" })).toStrictEqual({
-      name: "John",
-    });
-
-    expect(
-      run(personCodec, { name: "John", age: undefined }),
-    ).toMatchInlineSnapshot();
-
-    expect(personCodec.decoder({ name: "John", age: 45 })).toStrictEqual({
-      name: "John",
-      age: 45,
-    });
-
-    expect(personCodec.encoder({ name: "John" })).toStrictEqual({
-      name: "John",
-    });
-
-    // @ts-expect-error Type 'undefined' is not assignable to type 'number'.
-    personCodec.encoder({ name: "John", age: undefined });
-
-    expect(personCodec.encoder({ name: "John", age: 45 })).toStrictEqual({
-      name: "John",
-      age: 45,
-    });
-
-    expect(run(personCodec, { name: "John", age: "old" }))
-      .toMatchInlineSnapshot(`
-        At root["age"] (optional):
-        Expected a number
-        Got: "old"
-      `);
-
-    const person: Person = { name: "John" };
-    void person;
+  expect(personCodec.decoder({ name: "John" })).toStrictEqual({
+    name: "John",
   });
+
+  expect(
+    run(personCodec, { name: "John", age: undefined }),
+  ).toMatchInlineSnapshot();
+
+  expect(personCodec.decoder({ name: "John", age: 45 })).toStrictEqual({
+    name: "John",
+    age: 45,
+  });
+
+  expect(personCodec.encoder({ name: "John" })).toStrictEqual({
+    name: "John",
+  });
+
+  // @ts-expect-error Type 'undefined' is not assignable to type 'number'.
+  personCodec.encoder({ name: "John", age: undefined });
+
+  expect(personCodec.encoder({ name: "John", age: 45 })).toStrictEqual({
+    name: "John",
+    age: 45,
+  });
+
+  expect(run(personCodec, { name: "John", age: "old" })).toMatchInlineSnapshot(`
+    At root["age"] (optional):
+    Expected a number
+    Got: "old"
+  `);
+
+  const person: Person = { name: "John" };
+  void person;
 });
 
 describe("undefinedOr", () => {

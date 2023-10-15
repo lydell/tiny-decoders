@@ -9,6 +9,7 @@ import {
   Codec,
   CodecMeta,
   DecoderError,
+  DecoderResult,
   fields,
   fieldsUnion,
   Infer,
@@ -18,6 +19,7 @@ import {
   singleField,
   string,
   stringUnion,
+  tag,
   unknown,
 } from "..";
 
@@ -49,25 +51,33 @@ test("looking for a field that differs", () => {
     // The return type annotation here makes TypeScript catch accidental
     // extra fields in the return value.
     // https://github.com/microsoft/TypeScript/issues/7547
-    decoder: (value): Person => {
+    decoder: (value): DecoderResult<Person> => {
       // If the object has a `name` field, it’s probably the new format,
       // otherwise it’s probably the old one. This approach of having
       // some “simple” check to see if the data is “old” and “new” and then
       // committing to that gives the best (most understandable) error messages
       // when decoding fails.
-      const nameField = singleField("name", optional(string)).decoder(value);
-
-      // The `name` field exists, so use the modern codec.
-      if (nameField !== undefined) {
+      if (typeof value === "object" && value !== null && "name" in value) {
+        // The `name` field exists, so use the modern codec.
         return modernPersonCodec.decoder(value);
       }
 
       // Use the legacy codec, but return a modern `Person`.
-      const legacyPerson = legacyPersonCodec.decoder(value);
-      return {
-        name: `${legacyPerson.first_name} ${legacyPerson.last_name}`,
-        age: legacyPerson.age,
-      };
+      const result = legacyPersonCodec.decoder(value);
+      switch (result.tag) {
+        case "DecoderError":
+          return result;
+        case "Valid": {
+          const legacyPerson = result.value;
+          return {
+            tag: "Valid",
+            value: {
+              name: `${legacyPerson.first_name} ${legacyPerson.last_name}`,
+              age: legacyPerson.age,
+            },
+          };
+        }
+      }
     },
     encoder: modernPersonCodec.encoder,
   };
@@ -103,29 +113,30 @@ test("looking for a field that differs", () => {
 });
 
 test("ignoring unknown tags in fieldsUnion", () => {
-  function ignoreUnknownTag<Decoded, Encoded, Options extends CodecMeta>(
-    codec: Codec<Decoded, Encoded, Options>,
-  ): Codec<Decoded | undefined, Encoded | undefined, Options> {
+  function ignoreUnknownTag<Decoded, Encoded>(
+    codec: Codec<Decoded, Encoded>,
+  ): Codec<Decoded | undefined, Encoded | undefined> {
     return {
       ...codec,
       decoder(value) {
-        try {
-          return codec.decoder(value);
-        } catch (unknownError) {
-          const error = DecoderError.at(unknownError);
-          if (
-            // If the tag is unknown…
-            error.variant.tag === "unknown fieldsUnion tag" &&
-            // …and it happened on the top level (not some nested `fieldsUnion`)…
-            error.path.length === 1
-          ) {
-            // …then return `undefined` instead of failing.
-            return undefined;
-            // If you wanted to keep what tag we actually got,
-            // you could return something other than `undefined`,
-            // containing `newError.variant.got`.
-          }
-          throw error;
+        const result = codec.decoder(value);
+        switch (result.tag) {
+          case "Valid":
+            return result;
+          case "DecoderError":
+            if (
+              // If the tag is unknown…
+              result.errors[0].tag === "unknown fieldsUnion tag" &&
+              // …and it happened on the top level (not some nested `fieldsUnion`)…
+              result.errors[0].path.length === 1
+            ) {
+              // …then return `undefined` instead of failing.
+              return { tag: "Valid", value: undefined };
+              // If you wanted to keep what tag we actually got,
+              // you could return something other than `undefined`,
+              // containing `newError.variant.got`.
+            }
+            return result;
         }
       },
       encoder(value) {
@@ -137,7 +148,7 @@ test("ignoring unknown tags in fieldsUnion", () => {
   // TODO: Add nested fieldsUnion as well
   type Shape = Infer<typeof Shape>;
   const Shape = ignoreUnknownTag(
-    fieldsUnion("tag", (tag) => [
+    fieldsUnion("tag", [
       {
         tag: tag("Square"),
         size: number,

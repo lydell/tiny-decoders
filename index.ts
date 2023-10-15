@@ -2,20 +2,9 @@
 // No `any` “leaks” when _using_ the library, though.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export type Codec<
-  Decoded,
-  Encoded = unknown,
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  Meta extends CodecMeta = {},
-> = Meta & {
+export type Codec<Decoded, Encoded = unknown> = {
   decoder: (value: unknown) => DecoderResult<Decoded>;
   encoder: (value: Decoded) => Encoded;
-};
-
-export type CodecMeta = {
-  encodedFieldName?: string;
-  optional?: boolean;
-  tag?: { decoded: string; encoded: string } | undefined;
 };
 
 export type DecoderResult<Decoded> =
@@ -27,8 +16,6 @@ export type DecoderResult<Decoded> =
       tag: "Valid";
       value: Decoded;
     };
-
-type MergeMeta<A extends CodecMeta, B extends CodecMeta> = Expand<A & B>;
 
 // Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
 // https://stackoverflow.com/a/57683652/2010616
@@ -276,18 +263,42 @@ export function record<DecodedValue, EncodedValue>(
   };
 }
 
-type FieldsMapping = Record<string, Codec<any, any, CodecMeta>>;
+type Field<Decoded, Encoded, Meta extends FieldMeta> = Meta & {
+  codec: Codec<Decoded, Encoded>;
+};
+
+type FieldMeta = {
+  renameFrom?: string;
+  optional?: boolean;
+  tag?: { decoded: string; encoded: string } | undefined;
+};
+
+type FieldsMapping = Record<string, Codec<any> | Field<any, any, FieldMeta>>;
+
+type InferField<T extends Codec<any> | Field<any, any, FieldMeta>> =
+  T extends Field<any, any, FieldMeta>
+    ? Infer<T["codec"]>
+    : T extends Codec<any>
+    ? Infer<T>
+    : never;
+
+type InferEncodedField<T extends Codec<any> | Field<any, any, FieldMeta>> =
+  T extends Field<any, any, FieldMeta>
+    ? InferEncoded<T["codec"]>
+    : T extends Codec<any>
+    ? InferEncoded<T>
+    : never;
 
 type InferFields<Mapping extends FieldsMapping> = Expand<
   // eslint-disable-next-line @typescript-eslint/sort-type-constituents
   {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? never
-      : Key]: Infer<Mapping[Key]>;
+      : Key]: InferField<Mapping[Key]>;
   } & {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? Key
-      : never]?: Infer<Mapping[Key]>;
+      : never]?: InferField<Mapping[Key]>;
   }
 >;
 
@@ -296,19 +307,19 @@ type InferEncodedFields<Mapping extends FieldsMapping> = Expand<
   {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? never
-      : Mapping[Key] extends { encodedFieldName: infer Name }
+      : Mapping[Key] extends { renameFrom: infer Name }
       ? Name extends string
         ? Name
         : Key
-      : Key]: InferEncoded<Mapping[Key]>;
+      : Key]: InferEncodedField<Mapping[Key]>;
   } & {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
-      ? Mapping[Key] extends { encodedFieldName: infer Name }
+      ? Mapping[Key] extends { renameFrom: infer Name }
         ? Name extends string
           ? Name
           : Key
         : Key
-      : never]?: InferEncoded<Mapping[Key]>;
+      : never]?: InferEncodedField<Mapping[Key]>;
   }
 >;
 
@@ -332,11 +343,14 @@ export function fields<Mapping extends FieldsMapping>(
         if (key === "__proto__") {
           continue;
         }
+        const fieldOrCodec = mapping[key];
+        const field_: Field<any, any, FieldMeta> =
+          "codec" in fieldOrCodec ? fieldOrCodec : { codec: fieldOrCodec };
         const {
-          decoder,
-          encodedFieldName = key,
+          codec: { decoder },
+          renameFrom: encodedFieldName = key,
           optional: isOptional = false,
-        } = mapping[key];
+        } = field_;
         if (encodedFieldName === "__proto__") {
           continue;
         }
@@ -389,11 +403,14 @@ export function fields<Mapping extends FieldsMapping>(
         if (key === "__proto__") {
           continue;
         }
+        const fieldOrCodec = mapping[key];
+        const field_: Field<any, any, FieldMeta> =
+          "codec" in fieldOrCodec ? fieldOrCodec : { codec: fieldOrCodec };
         const {
-          encoder,
-          encodedFieldName = key,
+          codec: { encoder },
+          renameFrom: encodedFieldName = key,
           optional: isOptional = false,
-        } = mapping[key];
+        } = field_;
         if (
           encodedFieldName === "__proto__" ||
           (isOptional && !(key in object))
@@ -416,9 +433,9 @@ type InferEncodedFieldsUnion<MappingsUnion extends FieldsMapping> =
 
 type Variant<DecodedCommonField extends number | string | symbol> = Record<
   DecodedCommonField,
-  Codec<any, any, { tag: { decoded: string; encoded: string } }>
+  Field<any, any, { tag: { decoded: string; encoded: string } }>
 > &
-  Record<string, Codec<any, any, CodecMeta>>;
+  Record<string, Codec<any> | Field<any, any, FieldMeta>>;
 
 export function fieldsUnion<
   DecodedCommonField extends keyof Variants[number],
@@ -435,7 +452,7 @@ export function fieldsUnion<
         never,
       ]
     : DecodedCommonField,
-  variants: [...Variants],
+  variants: readonly [...Variants],
   { disallowExtraFields = false }: { disallowExtraFields?: boolean } = {},
 ): Codec<
   InferFieldsUnion<Variants[number]>,
@@ -452,9 +469,14 @@ export function fieldsUnion<
   let maybeEncodedCommonField: number | string | symbol | undefined = undefined;
 
   for (const [index, variant] of variants.entries()) {
-    const codec = variant[decodedCommonField as DecodedCommonField];
-    const { encodedFieldName = decodedCommonField as DecodedCommonField } =
-      codec;
+    const field_: Field<
+      any,
+      any,
+      FieldMeta & { tag: { decoded: string; encoded: string } }
+    > = variant[decodedCommonField as DecodedCommonField];
+    const {
+      renameFrom: encodedFieldName = decodedCommonField as DecodedCommonField,
+    } = field_;
     if (maybeEncodedCommonField === undefined) {
       maybeEncodedCommonField = encodedFieldName;
     } else if (maybeEncodedCommonField !== encodedFieldName) {
@@ -470,8 +492,8 @@ export function fieldsUnion<
       InferFields<Variants[number]>,
       InferEncodedFields<Variants[number]>
     > = fields(variant, { disallowExtraFields });
-    decoderMap.set(codec.tag.encoded, fullCodec.decoder);
-    encoderMap.set(codec.tag.decoded, fullCodec.encoder);
+    decoderMap.set(field_.tag.encoded, fullCodec.decoder);
+    encoderMap.set(field_.tag.decoded, fullCodec.encoder);
   }
 
   if (typeof maybeEncodedCommonField !== "string") {
@@ -526,65 +548,53 @@ export function fieldsUnion<
   };
 }
 
-export function field<
-  Decoded,
-  Encoded,
-  EncodedFieldName extends string,
-  Meta extends CodecMeta,
->(
-  encodedFieldName: EncodedFieldName,
-  codec: Codec<Decoded, Encoded, Meta>,
-): Codec<
-  Decoded,
-  Encoded,
-  MergeMeta<Meta, { encodedFieldName: EncodedFieldName }>
-> {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+export function field<Decoded, Encoded, const Meta extends FieldMeta>(
+  codec: Codec<Decoded, Encoded>,
+  meta: Meta,
+): Field<Decoded, Encoded, Meta> {
   return {
-    ...codec,
-    encodedFieldName,
-  } as Codec<
-    Decoded,
-    Encoded,
-    MergeMeta<Meta, { encodedFieldName: EncodedFieldName }>
-  >;
+    codec,
+    ...meta,
+  };
 }
 
 export function tag<const Decoded extends string>(
   decoded: Decoded,
-): Codec<Decoded, Decoded, { tag: { decoded: string; encoded: string } }>;
+): Field<Decoded, Decoded, { tag: { decoded: string; encoded: string } }>;
 
 export function tag<const Decoded extends string, const Encoded extends string>(
   decoded: Decoded,
   encoded: Encoded,
-): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }>;
+): Field<Decoded, Encoded, { tag: { decoded: string; encoded: string } }>;
 
 export function tag<const Decoded extends string, const Encoded extends string>(
   decoded: Decoded,
   encoded: Encoded = decoded as unknown as Encoded,
-): Codec<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
+): Field<Decoded, Encoded, { tag: { decoded: string; encoded: string } }> {
   return {
-    decoder: (value) => {
-      const strResult = string.decoder(value);
-      if (strResult.tag === "DecoderError") {
-        return strResult;
-      }
-      const str = strResult.value;
-      return str === encoded
-        ? { tag: "Valid", value: decoded }
-        : {
-            tag: "DecoderError",
-            errors: [
-              {
-                tag: "wrong tag",
-                expected: encoded,
-                got: str,
-                path: [],
-              },
-            ],
-          };
+    codec: {
+      decoder: (value) => {
+        const strResult = string.decoder(value);
+        if (strResult.tag === "DecoderError") {
+          return strResult;
+        }
+        const str = strResult.value;
+        return str === encoded
+          ? { tag: "Valid", value: decoded }
+          : {
+              tag: "DecoderError",
+              errors: [
+                {
+                  tag: "wrong tag",
+                  expected: encoded,
+                  got: str,
+                  path: [],
+                },
+              ],
+            };
+      },
+      encoder: () => encoded,
     },
-    encoder: () => encoded,
     tag: { decoded, encoded },
   };
 }
@@ -751,20 +761,6 @@ export function recursive<Decoded, Encoded>(
     decoder: (value) => callback().decoder(value),
     encoder: (value) => callback().encoder(value),
   };
-}
-
-export function optional<Decoded, Encoded, Meta extends CodecMeta>(
-  codec: Codec<Decoded, Encoded, Meta>,
-): Omit<Codec<Decoded, Encoded, MergeMeta<Meta, { optional: true }>>, "tag"> {
-  const { tag: _tag, ...rest } = codec;
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  return {
-    ...rest,
-    optional: true,
-  } as Omit<
-    Codec<Decoded, Encoded, MergeMeta<Meta, { optional: true }>>,
-    "tag"
-  >;
 }
 
 export function undefinedOr<Decoded, Encoded>(

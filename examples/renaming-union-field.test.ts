@@ -1,14 +1,14 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { fieldsUnion, Infer, number } from "../";
+import { fieldsUnion, Infer, number, tag } from "../";
 
 test("using different tags in JSON and in TypeScript", () => {
   // There’s nothing stopping you from using different keys and values in JSON
   // and TypeScript. For example, `"type": "circle"` → `tag: "Circle"`.
 
   // On this line we specify the JSON field name:
-  const codec = fieldsUnion("type", (tag) => [
+  const codec = fieldsUnion("tag", [
     {
       // But here we create an object with a `tag` field instead.
       tag: tag("Circle", "circle"),
