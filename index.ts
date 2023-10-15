@@ -107,6 +107,9 @@ export function record<T>(decoder: Decoder<T>): Decoder<Record<string, T>> {
   };
 }
 
+/**
+ * @deprecated Use `fieldsAuto` instead.
+ */
 export function fields<T>(
   callback: (
     field: <U>(key: string, decoder: Decoder<U>) => U,
@@ -127,7 +130,7 @@ export function fields<T>(
         : unknownRecord(value);
     const knownFields = Object.create(null) as Record<string, null>;
 
-    function field<U>(key: string, decoder: Decoder<U>): U {
+    function field_<U>(key: string, decoder: Decoder<U>): U {
       try {
         const result = decoder(object[key]);
         knownFields[key] = null;
@@ -137,7 +140,7 @@ export function fields<T>(
       }
     }
 
-    const result = callback(field, object);
+    const result = callback(field_, object);
 
     if (exact !== "allow extra") {
       const unknownFields = Object.keys(object).filter(
@@ -156,24 +159,77 @@ export function fields<T>(
   };
 }
 
-export function fieldsAuto<T extends Record<string, unknown>>(
-  mapping: { [P in keyof T]: P extends "__proto__" ? never : Decoder<T[P]> },
+type Field<Decoded, Meta extends FieldMeta> = Meta & {
+  decoder: Decoder<Decoded>;
+};
+
+type FieldMeta = {
+  renameFrom?: string | undefined;
+  optional?: boolean | undefined;
+};
+
+type FieldsMapping = Record<string, Decoder<any> | Field<any, FieldMeta>>;
+
+type InferField<T extends Decoder<any> | Field<any, FieldMeta>> =
+  T extends Field<any, FieldMeta>
+    ? ReturnType<T["decoder"]>
+    : T extends Decoder<any>
+    ? ReturnType<T>
+    : never;
+
+type InferFields<Mapping extends FieldsMapping> = Expand<
+  // eslint-disable-next-line @typescript-eslint/sort-type-constituents
+  {
+    [Key in keyof Mapping as Mapping[Key] extends { optional: true }
+      ? never
+      : Key]: InferField<Mapping[Key]>;
+  } & {
+    [Key in keyof Mapping as Mapping[Key] extends { optional: true }
+      ? Key
+      : never]?: InferField<Mapping[Key]>;
+  }
+>;
+
+export function fieldsAuto<Mapping extends FieldsMapping>(
+  mapping: Mapping,
   { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
-): Decoder<WithUndefinedAsOptional<T>> {
-  return function fieldsAutoDecoder(
-    value: unknown,
-  ): WithUndefinedAsOptional<T> {
+): Decoder<InferFields<Mapping>> {
+  return function fieldsAutoDecoder(value): InferFields<Mapping> {
     const object = unknownRecord(value);
     const keys = Object.keys(mapping);
+    const knownFields = new Set<string>();
     const result: Record<string, unknown> = {};
 
     for (const key of keys) {
       if (key === "__proto__") {
         continue;
       }
-      const decoder = mapping[key];
+      const fieldOrDecoder = mapping[key];
+      const field_: Field<any, FieldMeta> =
+        "decoder" in fieldOrDecoder
+          ? fieldOrDecoder
+          : { decoder: fieldOrDecoder };
+      const {
+        decoder,
+        renameFrom: encodedFieldName = key,
+        optional: isOptional = false,
+      } = field_;
+      if (encodedFieldName === "__proto__") {
+        continue;
+      }
+      knownFields.add(encodedFieldName);
+      if (!(encodedFieldName in object)) {
+        if (!isOptional) {
+          throw new DecoderError({
+            tag: "missing field",
+            field: encodedFieldName,
+            got: object,
+          });
+        }
+        continue;
+      }
       try {
-        result[key] = decoder(object[key]);
+        result[key] = decoder(object[encodedFieldName]);
       } catch (error) {
         throw DecoderError.at(error, key);
       }
@@ -181,18 +237,28 @@ export function fieldsAuto<T extends Record<string, unknown>>(
 
     if (exact !== "allow extra") {
       const unknownFields = Object.keys(object).filter(
-        (key) => !Object.prototype.hasOwnProperty.call(mapping, key),
+        (key) => !knownFields.has(key),
       );
       if (unknownFields.length > 0) {
         throw new DecoderError({
           tag: "exact fields",
-          knownFields: keys,
+          knownFields: Array.from(knownFields),
           got: unknownFields,
         });
       }
     }
 
-    return result as WithUndefinedAsOptional<T>;
+    return result as InferFields<Mapping>;
+  };
+}
+
+export function field<Decoded, const Meta extends FieldMeta>(
+  decoder: Decoder<Decoded>,
+  meta: Meta,
+): Field<Decoded, Meta> {
+  return {
+    decoder,
+    ...meta,
   };
 }
 
@@ -217,8 +283,8 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
   >
 > {
   // eslint-disable-next-line prefer-arrow-callback
-  return fields(function fieldsUnionFields(field, object) {
-    const tag = field(key, string);
+  return fields(function fieldsUnionFields(field_, object) {
+    const tag = field_(key, string);
     if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
       const decoder = (mapping as T)[tag];
       return decoder(object);
@@ -331,14 +397,14 @@ export function multi<Types extends [MultiTypeName, ...Array<MultiTypeName>]>(
   };
 }
 
-export function optional<T>(decoder: Decoder<T>): Decoder<T | undefined>;
+export function undefinedOr<T>(decoder: Decoder<T>): Decoder<T | undefined>;
 
-export function optional<T, U>(
+export function undefinedOr<T, U>(
   decoder: Decoder<T>,
   defaultValue: U,
 ): Decoder<T | U>;
 
-export function optional<T, U = undefined>(
+export function undefinedOr<T, U = undefined>(
   decoder: Decoder<T>,
   defaultValue?: U,
 ): Decoder<T | U> {
@@ -405,6 +471,11 @@ export type DecoderErrorVariant =
       tag: "exact fields";
       knownFields: Array<string>;
       got: Array<string>;
+    }
+  | {
+      tag: "missing field";
+      field: string;
+      got: Record<string, unknown>;
     }
   | {
       tag: "tuple size";
@@ -497,6 +568,11 @@ function formatDecoderErrorVariant(
         variant.knownVariants,
       )}\nGot: ${formatGot(variant.got)}`;
 
+    case "missing field":
+      return `Expected an object with a field called: ${JSON.stringify(
+        variant.field,
+      )}\nGot: ${formatGot(variant.got)}`;
+
     case "exact fields":
       return `Expected only these fields:${stringList(
         variant.knownFields,
@@ -525,8 +601,8 @@ export class DecoderError extends TypeError {
     key,
     ...params
   }:
-    | { message: string; value: unknown; key?: Key }
-    | (DecoderErrorVariant & { key?: Key })) {
+    | { message: string; value: unknown; key?: Key | undefined }
+    | (DecoderErrorVariant & { key?: Key | undefined })) {
     const variant: DecoderErrorVariant =
       "tag" in params
         ? params
@@ -572,12 +648,12 @@ export class DecoderError extends TypeError {
 }
 
 export type ReprOptions = {
-  depth?: number;
-  indent?: string;
-  maxArrayChildren?: number;
-  maxObjectChildren?: number;
-  maxLength?: number;
-  sensitive?: boolean;
+  depth?: number | undefined;
+  indent?: string | undefined;
+  maxArrayChildren?: number | undefined;
+  maxObjectChildren?: number | undefined;
+  maxLength?: number | undefined;
+  sensitive?: boolean | undefined;
 };
 
 export function repr(
@@ -606,9 +682,13 @@ export function repr(
   );
 }
 
+type NonNullableObject<T> = {
+  [K in keyof T]-?: NonNullable<T[K]>;
+};
+
 function reprHelper(
   value: unknown,
-  options: Required<ReprOptions>,
+  options: NonNullableObject<ReprOptions>,
   level: number,
   seen: Array<unknown>,
 ): string {

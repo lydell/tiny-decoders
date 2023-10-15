@@ -41,9 +41,7 @@ test("type annotations", () => {
   greet(personDecoder1Auto(testPerson));
 
   // The way to make the above type errors more clear is to provide explicit type
-  // annotations, so that TypeScript knows what you’re trying to do. And yes,
-  // this is the recommended way of adding the type annotations for `fields` and
-  // `fieldsAuto` – see the next section for why.
+  // annotations, so that TypeScript knows what you’re trying to do.
   const personDecoder2 = fields(
     (field): Person => ({
       name: field("name", string),
@@ -51,9 +49,10 @@ test("type annotations", () => {
       aye: field("age", number),
     }),
   );
-  const personDecoder2Auto = fieldsAuto<Person>({
+  // @ts-expect-error Type 'Decoder<{ name: string; aye: number; }, unknown>' is not assignable to type 'Decoder<Person>'.
+  //   Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.ts(2322)
+  const personDecoder2Auto: Decoder<Person> = fieldsAuto({
     name: string,
-    // @ts-expect-error Object literal may only specify known properties, and 'aye' does not exist in type '{ name: Decoder<string, unknown>; age: Decoder<number, unknown>; }'.
     aye: number,
   });
   greet(personDecoder2(testPerson));
@@ -93,7 +92,7 @@ test("type annotations", () => {
   greet(personDecoder6(testPerson));
   greet(personDecoder6Auto(testPerson));
 
-  // The recommended notations do produce errors!
+  // The recommended type annotation for `fields` does produce errors!
   const personDecoder7 = fields(
     (field): Person => ({
       name: field("name", string),
@@ -102,10 +101,10 @@ test("type annotations", () => {
       extra: field("extra", string),
     }),
   );
-  const personDecoder7Auto = fieldsAuto<Person>({
+  const personDecoder7Auto: Decoder<Person> = fieldsAuto({
     name: string,
     age: number,
-    // @ts-expect-error Object literal may only specify known properties, and 'extra' does not exist in type '{ name: Decoder<string, unknown>; age: Decoder<number, unknown>; }'.
+    // This is currently not an error unfortunately, but in a future version of tiny-decoders it will be.
     extra: string,
   });
   greet(personDecoder7(testPerson));
@@ -121,7 +120,7 @@ test("type annotations", () => {
       age: field("age", number),
     }),
   );
-  const personDecoder8Auto = fieldsAuto<Person>({
+  const personDecoder8Auto: Decoder<Person> = fieldsAuto({
     name: string,
     age: number,
   });

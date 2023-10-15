@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-shadow */ // TODO: Remove this line when removing the `fields` function.
 // This file shows how to infer types from decoders.
 
 import { expectType, TypeEqual } from "ts-expect";
@@ -7,14 +8,15 @@ import {
   boolean,
   chain,
   DecoderError,
+  field,
   fields,
   fieldsAuto,
   fieldsUnion,
   multi,
   number,
-  optional,
   string,
   stringUnion,
+  undefinedOr,
 } from "..";
 
 test("making a type from a decoder", () => {
@@ -58,7 +60,7 @@ test("making a type from a decoder", () => {
     name: string,
     age: number,
     active: boolean,
-    country: optional(string),
+    country: field(string, { optional: true }),
     type: stringUnion(["user"] as const),
   });
 
@@ -80,7 +82,6 @@ test("making a type from a decoder", () => {
     {
       "active": true,
       "age": 30,
-      "country": undefined,
       "id": 1,
       "name": "John Doe",
       "type": "user",
@@ -121,7 +122,7 @@ test("making a type from a decoder", () => {
     name: field("name", string),
     age: field("age", number),
     active: field("active", boolean),
-    country: field("country", optional(string)),
+    country: field("country", undefinedOr(string)),
     type: field("type", stringUnion(["user"])),
   }));
 

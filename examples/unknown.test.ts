@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { fieldsAuto, string } from "../";
+import { Decoder, fieldsAuto, string } from "../";
 
 test("decoding unknown values", () => {
   // Have a piece of data with a very generic field?
@@ -11,7 +11,7 @@ test("decoding unknown values", () => {
 
   const message: unknown = { text: "Hello, world!", data: 15 };
 
-  const messageDecoder1 = fieldsAuto<Message>({
+  const messageDecoder1: Decoder<Message> = fieldsAuto({
     text: string,
     // All fields are already `unknown` so you can pass them through as-is.
     data: (value) => value,
@@ -27,7 +27,7 @@ test("decoding unknown values", () => {
   const identity = <T>(value: T): T => value;
   const unknown = identity;
 
-  const messageDecoder2 = fieldsAuto<Message>({
+  const messageDecoder2: Decoder<Message> = fieldsAuto({
     text: string,
     data: unknown,
   });

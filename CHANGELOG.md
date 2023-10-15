@@ -1,5 +1,68 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 11.0.0 (unreleased)
+
+- Changed: `fieldsAuto` works slightly differently. As part of that change, `optional` has been removed and replaced by `undefinedOr` and `field`. These changes make `fields` redundant, so it has been deprecated.
+
+- Added: `recursive`. It’s needed now that `fields` has been deprecated.
+
+- Changed: TypeScript 5+, because the above uses [const type parameters](https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/#const-type-parameters)) (added in 5.0), and leads to [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) (added in 4.4) option in `tsconfig.json` being recommended.
+
+The motivation for the changes are:
+
+- Supporting TypeScript’s [exactOptionalPropertyTypes](https://devblogs.microsoft.com/typescript/announcing-typescript-4-4/#exact-optional-property-types) option.
+- Supporting generic decoders.
+- Stop setting all optional fields to `undefined` when they are missing (rather than leaving them out).
+- Better error messages for missing required fields.
+- Being able to rename fields with `fieldsAuto`. Now you don’t need to refactor from `fieldsAuto` to `fields` anymore if you need to rename a field.
+- Getting rid of `fields` unlocks further changes that will come in future releases. (Note: `fields` is only deprecated in this release, not removed.)
+
+The `optional` function did two things: It made a decoder also accept `undefined`, and marked fields as optional. Marking the fields as optional was done by looking for fields with `| undefined` in their type. However, if the type of a field is generic, TypeScript can’t know if the type is going to have `| undefined` until the generic type is instantiated with a concrete type. As such it couldn’t know if the field should be optional or not yet either. This resulted in it being very difficult and ugly trying to write a type annotation for a generic function returning a decoder. This design also doesn’t let you use `exactOptionalPropertyTypes` as intended. The whole concept was flawed.
+
+`optional` has therefore been renamed to `undefinedOr`, and now it does only one thing: Makes a decoder also accept `undefined`.
+
+The `field` function has been introduced to mark fields as optional, separating the two jobs that `optional` used to do.
+
+For example:
+
+```ts
+fieldsAuto({
+  // Required field.
+  a: string,
+
+  // Optional field.
+  b: field(string, { optional: true }),
+
+  // Required field that can be set to `undefined`:
+  c: undefinedOr(string),
+
+  // Optional field that can be set to `undefined`:
+  d: field(undefinedOr(string), { optional: true }),
+});
+```
+
+In all places where you use `optional(x)` currently, you need to figure out if you should use `undefinedOr(x)` or `field(x, { optional: true })` or `field(undefinedOr(x), { optional: true })`.
+
+The `field` function also lets you rename fields. This means that you can refactor:
+
+```ts
+fields((field) => ({
+  firstName: field("first_name", string),
+}));
+```
+
+Into:
+
+```ts
+fieldsAuto({
+  firstName: field(string, { renameFrom: "first_name" }),
+});
+```
+
+If you used `fields` for other reasons, you can refactor them away by using `recursive`, `chain` and writing custom decoders.
+
+Read the documentation for `fieldsAuto` and `field` to learn more about how they work.
+
 ### Version 10.0.0 (2023-10-15)
 
 Changed: `multi` has a new API.

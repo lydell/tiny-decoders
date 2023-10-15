@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-shadow */ // TODO: Remove this line when removing the `fields` function.
+import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
 import {
@@ -5,13 +7,14 @@ import {
   boolean,
   Decoder,
   DecoderError,
+  field,
   fields,
   fieldsAuto,
   number,
-  optional,
   repr,
   ReprOptions,
   string,
+  undefinedOr,
 } from "..";
 
 function run<T>(
@@ -43,14 +46,12 @@ test("the main readme example", () => {
     interests: Array<string>;
   };
 
-  const userDecoder = fields(
-    (field): User => ({
-      name: field("full_name", string),
-      active: field("is_active", boolean),
-      age: field("age", optional(number)),
-      interests: field("interests", array(string)),
-    }),
-  );
+  const userDecoder: Decoder<User> = fieldsAuto({
+    name: string,
+    active: field(boolean, { renameFrom: "is_active" }),
+    age: field(number, { optional: true }),
+    interests: array(string),
+  });
 
   const payload: unknown = getSomeJSON();
 
@@ -66,37 +67,7 @@ test("the main readme example", () => {
   const payload2: unknown = getSomeInvalidJSON();
 
   expect(run(userDecoder, payload2)).toMatchInlineSnapshot(`
-    At root["age"] (optional):
-    Expected a number
-    Got: "30"
-  `);
-});
-
-test("the main readme example – variant", () => {
-  const userDecoder = fieldsAuto({
-    full_name: string,
-    is_active: boolean,
-    age: optional(number),
-    interests: array(string),
-  });
-
-  type User = ReturnType<typeof userDecoder>;
-
-  const payload: unknown = getSomeJSON();
-
-  const user: User = userDecoder(payload);
-
-  expect(user).toStrictEqual({
-    full_name: "John Doe",
-    is_active: true,
-    age: 30,
-    interests: ["Programming", "Cooking"],
-  });
-
-  const payload2: unknown = getSomeInvalidJSON();
-
-  expect(run(userDecoder, payload2)).toMatchInlineSnapshot(`
-    At root["age"] (optional):
+    At root["age"]:
     Expected a number
     Got: "30"
   `);
@@ -104,7 +75,7 @@ test("the main readme example – variant", () => {
 
 function getSomeJSON(): unknown {
   return {
-    full_name: "John Doe",
+    name: "John Doe",
     is_active: true,
     age: 30,
     interests: ["Programming", "Cooking"],
@@ -113,7 +84,7 @@ function getSomeJSON(): unknown {
 
 function getSomeInvalidJSON(): unknown {
   return {
-    full_name: "John Doe",
+    name: "John Doe",
     is_active: true,
     age: "30",
     interests: [],
@@ -172,7 +143,7 @@ test("fields", () => {
     age: number;
     active: boolean;
     name: string;
-    description?: string;
+    description?: string | undefined;
     version: 1;
   };
 
@@ -185,7 +156,7 @@ test("fields", () => {
       // Combining two fields:
       name: `${field("first_name", string)} ${field("last_name", string)}`,
       // Optional field:
-      description: field("description", optional(string)),
+      description: field("description", undefinedOr(string)),
       // Hardcoded field:
       version: 1,
     }),
@@ -212,26 +183,29 @@ test("fields", () => {
   expect(ageDecoder({ age: 30 })).toBe(30);
 });
 
-test("type annotations", () => {
-  type Person = {
-    name: string;
-    age?: number;
-  };
-
-  // Annotate the return type of the callback.
-  const personDecoder = fields(
-    (field): Person => ({
-      name: field("name", string),
-      age: field("age", optional(number)),
-    }),
-  );
-
-  // Annotate the generic.
-  const personDecoderAuto = fieldsAuto<Person>({
-    name: string,
-    age: optional(number),
+test("fieldsAuto", () => {
+  const exampleDecoder = fieldsAuto({
+    name: field(string, { optional: true }),
   });
 
-  const data: unknown = { name: "John" };
-  expect(personDecoder(data)).toStrictEqual(personDecoderAuto(data));
+  type Example = { name?: string };
+
+  expectType<TypeEqual<ReturnType<typeof exampleDecoder>, Example>>(true);
+
+  const exampleDecoder2 = fieldsAuto({
+    name: field(undefinedOr(string), { optional: true }),
+  });
+
+  expect(exampleDecoder({})).toStrictEqual({});
+  expect(exampleDecoder({ name: "some string" })).toStrictEqual({
+    name: "some string",
+  });
+
+  type Example2 = { name?: string | undefined };
+
+  expectType<TypeEqual<ReturnType<typeof exampleDecoder2>, Example2>>(true);
+
+  expect(exampleDecoder2({ name: undefined })).toStrictEqual({
+    name: undefined,
+  });
 });
