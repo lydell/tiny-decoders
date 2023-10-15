@@ -41,9 +41,9 @@ export function string(value: unknown): string {
   return value;
 }
 
-export function stringUnion<T extends [string, ...Array<string>]>(
-  variants: readonly [...T],
-): Decoder<T[number]> {
+export function stringUnion<
+  const T extends readonly [string, ...Array<string>],
+>(variants: T): Decoder<T[number]> {
   return function stringUnionDecoder(value: unknown): T[number] {
     const str = string(value);
     if (!variants.includes(str)) {
@@ -312,9 +312,9 @@ export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
 }
 
 export function tuple<T extends Array<unknown>>(
-  mapping: readonly [...{ [P in keyof T]: Decoder<T[P]> }],
-): Decoder<[...T]> {
-  return function tupleDecoder(value: unknown): [...T] {
+  mapping: [...{ [P in keyof T]: Decoder<T[P]> }],
+): Decoder<T> {
+  return function tupleDecoder(value: unknown): T {
     const arr = unknownArray(value);
     if (arr.length !== mapping.length) {
       throw new DecoderError({
@@ -332,7 +332,7 @@ export function tuple<T extends Array<unknown>>(
         throw DecoderError.at(error, index);
       }
     }
-    return result as [...T];
+    return result as T;
   };
 }
 
@@ -363,9 +363,9 @@ type MultiTypeName =
   | "string"
   | "undefined";
 
-export function multi<Types extends [MultiTypeName, ...Array<MultiTypeName>]>(
-  types: readonly [...Types],
-): Decoder<Multi<Types[number]>> {
+export function multi<
+  Types extends readonly [MultiTypeName, ...Array<MultiTypeName>],
+>(types: Types): Decoder<Multi<Types[number]>> {
   return function multiDecoder(value): Multi<Types[number]> {
     if (value === undefined) {
       if (types.includes("undefined")) {
