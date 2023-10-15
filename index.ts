@@ -220,6 +220,13 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
       knownFields.add(encodedFieldName);
       if (!(encodedFieldName in object)) {
         if (!isOptional) {
+          // TODO: Remove this try-catch when upgrading `fieldsUnion`.
+          try {
+            result[key] = decoder(undefined);
+            continue;
+          } catch {
+            // Prefer the below error.
+          }
           throw new DecoderError({
             tag: "missing field",
             field: encodedFieldName,

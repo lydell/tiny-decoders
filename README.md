@@ -476,6 +476,9 @@ The `exact` option let’s you choose between ignoring extraneous data and makin
 
 See also the [Extra fields](examples/extra-fields.test.ts) example.
 
+> **Warning**  
+> Temporary behavior: If a field is missing and _not_ marked as optional, `fieldsAuto` still _tries_ the decoder at the field (passing `undefined` to it). If the decoder succeeds (because it allows `undefined` or succeeds for any input), that value is used. If it fails, the regular “missing field” error is thrown. This means that `fieldsAuto({ name: undefinedOr(string) })` successfully produces `{ name: undefined }` if given `{}` as input. It is supposed to fail in that case (because a required field is missing), but temporarily it does not fail. This is to support how `fieldsUnion` is used currently. When `fieldsUnion` is updated to a new API in an upcoming version of tiny-decoders, this temporary behavior in `fieldsAuto` will be removed.
+
 ### field
 
 ```ts
