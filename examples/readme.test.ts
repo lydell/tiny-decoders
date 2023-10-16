@@ -209,3 +209,44 @@ test("fieldsAuto", () => {
     name: undefined,
   });
 });
+
+test("field", () => {
+  const exampleDecoder = fieldsAuto({
+    // Required field.
+    a: string,
+
+    // Optional field.
+    b: field(string, { optional: true }),
+
+    // Required field that can be set to `undefined`:
+    c: undefinedOr(string),
+
+    // Optional field that can be set to `undefined`:
+    d: field(undefinedOr(string), { optional: true }),
+  });
+
+  type Example = {
+    a: string;
+    b?: string;
+    c: string | undefined;
+    d?: string | undefined;
+  };
+
+  expectType<TypeEqual<ReturnType<typeof exampleDecoder>, Example>>(true);
+
+  expect(exampleDecoder({ a: "", c: undefined })).toStrictEqual({
+    a: "",
+    c: undefined,
+  });
+
+  expect(
+    exampleDecoder({ a: "", b: "", c: undefined, d: undefined }),
+  ).toStrictEqual({ a: "", b: "", c: undefined, d: undefined });
+
+  expect(exampleDecoder({ a: "", b: "", c: "", d: "" })).toStrictEqual({
+    a: "",
+    b: "",
+    c: "",
+    d: "",
+  });
+});

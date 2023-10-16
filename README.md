@@ -17,7 +17,7 @@ npm install tiny-decoders
 
 tiny-decoders requires TypeScript 5+ (because it uses [const type parameters](https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/#const-type-parameters)).
 
-It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json`.
+It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json` – see the note at the [field](#field) function.
 
 Note that it is possible to use tiny-decoders in plain JavaScript without type checking as well.
 
@@ -79,7 +79,7 @@ You can even [infer the type from the decoder](#type-inference) instead of writi
 type User2 = ReturnType<typeof userDecoder2>;
 ```
 
-The above produces the `User` type already shown above.
+`User2` above is equivalent to the `User` type already shown earlier.
 
 ## Decoder&lt;T&gt;
 
@@ -494,6 +494,10 @@ function field<Decoded, const Meta extends FieldMeta>(
   meta: Meta,
 ): Field<Decoded, Meta>;
 
+type Field<Decoded, Meta extends FieldMeta> = Meta & {
+  decoder: Decoder<Decoded>;
+};
+
 type FieldMeta = {
   renameFrom?: string | undefined;
   optional?: boolean | undefined;
@@ -507,6 +511,35 @@ This function takes a decoder and lets you:
 - Both: `field(string, { optional: true, renameFrom: "some_name" })`
 
 Use it with [fieldsAuto](#fieldsAuto).
+
+Here’s an example illustrating the difference between `field(string, { optional: true })` and `undefinedOr(string)`:
+
+```ts
+const exampleDecoder = fieldsAuto({
+  // Required field.
+  a: string,
+
+  // Optional field.
+  b: field(string, { optional: true }),
+
+  // Required field that can be set to `undefined`:
+  c: undefinedOr(string),
+
+  // Optional field that can be set to `undefined`:
+  d: field(undefinedOr(string), { optional: true }),
+});
+```
+
+The inferred type of `exampleDecoder` is:
+
+```ts
+type Example = {
+  a: string;
+  b?: string;
+  c: string | undefined;
+  d?: string | undefined;
+};
+```
 
 > **Warning**  
 > It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json`.
@@ -543,7 +576,7 @@ Use it with [fieldsAuto](#fieldsAuto).
 >
 > That gives the same inferred type, but also supports decoding the `name` field being set to `undefined` explicitly.
 >
-> All in all, you avoid a slight gotcha with optional fields and inferred types if you use `exactOptionalPropertyTypes`.
+> All in all, you avoid a slight gotcha with optional fields and inferred types if you enable `exactOptionalPropertyTypes`.
 
 ### fieldsUnion
 
@@ -945,10 +978,15 @@ Rather than first defining the type and then defining the decoder (which often f
 ```ts
 const personDecoder = fieldsAuto({
   name: string,
-  age: optional(number),
+  age: number,
 });
 
 type Person = ReturnType<typeof personDecoder>;
+// equivalent to:
+type Person = {
+  name: string;
+  age: number;
+};
 ```
 
 See the [type inference example](examples/type-inference.test.ts) for more details.
