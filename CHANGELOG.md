@@ -1,6 +1,6 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
-### Version 11.0.0 (unreleased)
+### Version 11.0.0 (2023-10-21)
 
 This release deprecates `fields`, and makes `fieldsAuto` more powerful so that it can do most of what only `fields` could before. Removing `fields` unlocks further changes that will come in future releases. It’s also nice to have just one way of decoding objects (`fieldsAuto`), instead of having two. Finally, the changes to `fieldsAuto` gets rid of a flawed design choice which solves several reported bugs: [#22](https://github.com/lydell/tiny-decoders/issues/22) and [#24](https://github.com/lydell/tiny-decoders/issues/24).
 
