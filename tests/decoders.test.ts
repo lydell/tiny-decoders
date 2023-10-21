@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-shadow */ // TODO: Remove this line when removing the `fields` function.
+
 import { expectType, TypeEqual } from "ts-expect";
 import { describe, expect, test } from "vitest";
 
@@ -7,18 +9,20 @@ import {
   chain,
   Decoder,
   DecoderError,
+  field,
   fields,
   fieldsAuto,
   fieldsUnion,
   multi,
   nullable,
   number,
-  optional,
   record,
+  recursive,
   repr,
   string,
   stringUnion,
   tuple,
+  undefinedOr,
 } from "..";
 
 function run<T>(decoder: Decoder<T>, value: unknown): T | string {
@@ -376,7 +380,7 @@ describe("fields", () => {
             : {
                 isAdmin: false,
                 name: field("name", string),
-                location: optional(string),
+                location: undefinedOr(string),
               },
         { exact: "throw" },
       );
@@ -496,7 +500,7 @@ describe("fields", () => {
         new Person(
           field("first_name", string),
           field("last_name", string),
-          field("age", optional(number)),
+          field("age", undefinedOr(number)),
         ),
     );
 
@@ -520,8 +524,8 @@ describe("fields", () => {
 });
 
 describe("fieldsAuto", () => {
-  // @ts-expect-error Argument of type 'readonly [(value: unknown) => string]' is not assignable to parameter of type '{ [x: string]: Decoder<unknown, unknown>; }'.
-  fieldsAuto([string] as const);
+  // @ts-expect-error Argument of type '((value: unknown) => string)[]' is not assignable to parameter of type 'FieldsMapping'.
+  fieldsAuto([string]);
 
   test("basic", () => {
     type Person = ReturnType<typeof personDecoder>;
@@ -547,9 +551,12 @@ describe("fieldsAuto", () => {
 
     expect(run(personDecoder, { id: 1, first_name: "John" }))
       .toMatchInlineSnapshot(`
-        At root["firstName"]:
-        Expected a string
-        Got: undefined
+        At root:
+        Expected an object with a field called: "firstName"
+        Got: {
+          "id": 1,
+          "first_name": "John"
+        }
       `);
 
     expect(run(fieldsAuto({ 0: number }), [1])).toMatchInlineSnapshot(`
@@ -558,6 +565,157 @@ describe("fieldsAuto", () => {
       Got: [
         1
       ]
+    `);
+  });
+
+  test("optional and renamed fields", () => {
+    type Person = ReturnType<typeof personDecoder>;
+    const personDecoder = fieldsAuto({
+      id: number,
+      firstName: field(string, { renameFrom: "first_name" }),
+      lastName: field(string, { renameFrom: "last_name", optional: true }),
+      age: field(number, { optional: true }),
+      likes: field(undefinedOr(number), { optional: true }),
+      followers: field(undefinedOr(number), {}),
+    });
+
+    expectType<
+      TypeEqual<
+        Person,
+        {
+          id: number;
+          firstName: string;
+          lastName?: string;
+          age?: number;
+          likes?: number | undefined;
+          followers: number | undefined;
+        }
+      >
+    >(true);
+    expectType<Person>(
+      personDecoder({ id: 1, first_name: "John", followers: undefined }),
+    );
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        firstName: "John",
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      At root:
+      Expected an object with a field called: "first_name"
+      Got: {
+        "id": 1,
+        "firstName": "John",
+        "followers": undefined
+      }
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        first_name: "John",
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      {
+        "firstName": "John",
+        "followers": undefined,
+        "id": 1,
+      }
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        first_name: "John",
+        lastName: "Doe",
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      {
+        "firstName": "John",
+        "followers": undefined,
+        "id": 1,
+      }
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        first_name: "John",
+        last_name: "Doe",
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      {
+        "firstName": "John",
+        "followers": undefined,
+        "id": 1,
+        "lastName": "Doe",
+      }
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        first_name: "John",
+        age: 42,
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      {
+        "age": 42,
+        "firstName": "John",
+        "followers": undefined,
+        "id": 1,
+      }
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        first_name: "John",
+        age: undefined,
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      At root["age"]:
+      Expected a number
+      Got: undefined
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        first_name: "John",
+        likes: 42,
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      {
+        "firstName": "John",
+        "followers": undefined,
+        "id": 1,
+        "likes": 42,
+      }
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
+        first_name: "John",
+        likes: undefined,
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      {
+        "firstName": "John",
+        "followers": undefined,
+        "id": 1,
+        "likes": undefined,
+      }
     `);
   });
 
@@ -621,7 +779,6 @@ describe("fieldsAuto", () => {
   });
 
   test("__proto__ is not allowed", () => {
-    // @ts-expect-error Type '(value: unknown) => string' is not assignable to type 'never'.
     const decoder = fieldsAuto({ a: number, __proto__: string, b: number });
     expect(
       run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`)),
@@ -629,7 +786,21 @@ describe("fieldsAuto", () => {
 
     const desc = Object.create(null) as { __proto__: Decoder<string> };
     desc.__proto__ = string;
-    // @ts-expect-error Argument of type '{ __proto__: Decoder<string, unknown>; }' is not assignable to parameter of type '{ __proto__: never; }'.
+    const decoder2 = fieldsAuto(desc);
+    expect(run(decoder2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
+  });
+
+  test("renaming from __proto__ is not allowed", () => {
+    const decoder = fieldsAuto({
+      a: number,
+      b: field(string, { renameFrom: "__proto__" }),
+    });
+    expect(
+      run(decoder, JSON.parse(`{"a": 1, "__proto__": "a"}`)),
+    ).toStrictEqual({ a: 1 });
+
+    const desc = Object.create(null) as { __proto__: Decoder<string> };
+    desc.__proto__ = string;
     const decoder2 = fieldsAuto(desc);
     expect(run(decoder2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
   });
@@ -741,7 +912,7 @@ describe("fieldsUnion", () => {
   });
 
   test("keys must be strings", () => {
-    const innerDecoder = fieldsAuto({ tag: stringUnion(["1"] as const) });
+    const innerDecoder = fieldsAuto({ tag: stringUnion(["1"]) });
     // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
     fieldsUnion("tag", { 1: innerDecoder });
     // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
@@ -1056,9 +1227,29 @@ describe("multi", () => {
   });
 });
 
-describe("optional", () => {
-  test("optional string", () => {
-    const decoder = optional(string);
+describe("recursive", () => {
+  test("basic", () => {
+    type Recursive = {
+      a?: Recursive;
+      b: Array<Recursive>;
+    };
+
+    const decoder: Decoder<Recursive> = fieldsAuto({
+      a: field(
+        recursive(() => decoder),
+        { optional: true },
+      ),
+      b: array(recursive(() => decoder)),
+    });
+
+    const input = { a: { b: [] }, b: [{ a: { b: [] }, b: [] }] };
+    expect(decoder(input)).toStrictEqual(input);
+  });
+});
+
+describe("undefinedOr", () => {
+  test("undefined or string", () => {
+    const decoder = undefinedOr(string);
 
     expectType<TypeEqual<ReturnType<typeof decoder>, string | undefined>>(true);
 
@@ -1073,7 +1264,7 @@ describe("optional", () => {
   });
 
   test("with default", () => {
-    const decoder = optional(string, "def");
+    const decoder = undefinedOr(string, "def");
 
     expectType<TypeEqual<ReturnType<typeof decoder>, string>>(true);
 
@@ -1082,7 +1273,7 @@ describe("optional", () => {
   });
 
   test("with other type default", () => {
-    const decoder = optional(string, 0);
+    const decoder = undefinedOr(string, 0);
 
     expectType<TypeEqual<ReturnType<typeof decoder>, number | string>>(true);
 
@@ -1090,11 +1281,11 @@ describe("optional", () => {
     expect(decoder("a")).toBe("a");
   });
 
-  test("optional field", () => {
+  test("using with fields results in an optional field", () => {
     type Person = ReturnType<typeof personDecoder>;
     const personDecoder = fields((field) => ({
       name: field("name", string),
-      age: field("age", optional(number)),
+      age: field("age", undefinedOr(number)),
     }));
 
     expectType<TypeEqual<Person, { name: string; age?: number }>>(true);
@@ -1125,19 +1316,31 @@ describe("optional", () => {
     void person;
   });
 
-  test("optional autoField", () => {
+  test("using with fieldsAuto does NOT result in an optional field", () => {
     type Person = ReturnType<typeof personDecoder>;
     const personDecoder = fieldsAuto({
       name: string,
-      age: optional(number),
+      age: undefinedOr(number),
     });
 
-    expectType<TypeEqual<Person, { name: string; age?: number }>>(true);
+    expectType<TypeEqual<Person, { name: string; age: number | undefined }>>(
+      true,
+    );
 
-    expect(personDecoder({ name: "John" })).toStrictEqual({
-      name: "John",
-      age: undefined,
-    });
+    // TODO: This is supposed to be an error. It will be once the temporary behavior in `fieldsAuto` is removed.
+    // expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
+    //   At root:
+    //   Expected an object with a field called: "age"
+    //   Got: {
+    //     "name": "John"
+    //   }
+    // `);
+    expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
+      {
+        "age": undefined,
+        "name": "John",
+      }
+    `);
 
     expect(personDecoder({ name: "John", age: undefined })).toStrictEqual({
       name: "John",
@@ -1156,11 +1359,15 @@ describe("optional", () => {
         Got: "old"
       `);
 
+    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | undefined; }'.
     const person: Person = { name: "John" };
     void person;
+
+    const person2: Person = { name: "John", age: undefined };
+    void person2;
   });
 
-  test("optional custom decoder", () => {
+  test("undefined or custom decoder", () => {
     function decoder(): never {
       throw new Error("Fail");
     }
@@ -1168,21 +1375,21 @@ describe("optional", () => {
       throw new DecoderError({ message: "Fail", value: 1 });
     }
 
-    expect(run(optional(decoder), 1)).toMatchInlineSnapshot(`
+    expect(run(undefinedOr(decoder), 1)).toMatchInlineSnapshot(`
       At root (optional):
       Fail
     `);
 
-    expect(run(optional(decoder2), 1)).toMatchInlineSnapshot(`
+    expect(run(undefinedOr(decoder2), 1)).toMatchInlineSnapshot(`
       At root (optional):
       Fail
       Got: 1
     `);
   });
 
-  test("optional higher up the chain makes no difference", () => {
+  test("undefinedOr higher up the chain makes no difference", () => {
     const decoder = fieldsAuto({
-      test: optional(fieldsAuto({ inner: string })),
+      test: undefinedOr(fieldsAuto({ inner: string })),
     });
 
     expect(run(decoder, { test: 1 })).toMatchInlineSnapshot(`
@@ -1296,9 +1503,11 @@ describe("nullable", () => {
     expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
 
     expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
-      At root["age"] (nullable):
-      Expected a number
-      Got: undefined
+      At root:
+      Expected an object with a field called: "age"
+      Got: {
+        "name": "John"
+      }
     `);
 
     expect(run(personDecoder, { name: "John", age: undefined }))
@@ -1368,8 +1577,8 @@ describe("nullable", () => {
     `);
   });
 
-  test("optional and nullable", () => {
-    const decoder = optional(nullable(nullable(optional(string))));
+  test("undefinedOr and nullable", () => {
+    const decoder = undefinedOr(nullable(nullable(undefinedOr(string))));
 
     expect(run(decoder, 1)).toMatchInlineSnapshot(`
       At root (nullable) (optional):

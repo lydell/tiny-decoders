@@ -11,8 +11,15 @@ npm install tiny-decoders
 **Don’t miss out!**
 
 - 👉 [Decoders summary](#decoders)
-- 👉 [Optimal type annotations](#type-annotations)
 - 👉 [Great error messages](#error-messages)
+
+## TypeScript requirements
+
+tiny-decoders requires TypeScript 5+ (because it uses [const type parameters](https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/#const-type-parameters)).
+
+It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json` – see the note at the [field](#field) function.
+
+Note that it is possible to use tiny-decoders in plain JavaScript without type checking as well.
 
 ## Example
 
@@ -21,10 +28,9 @@ import {
   array,
   boolean,
   DecoderError,
-  fields,
+  field,
   fieldsAuto,
   number,
-  optional,
   string,
 } from "tiny-decoders";
 
@@ -38,14 +44,12 @@ type User = {
   interests: Array<string>;
 };
 
-const userDecoder = fields(
-  (field): User => ({
-    name: field("full_name", string),
-    active: field("is_active", boolean),
-    age: field("age", optional(number)),
-    interests: field("interests", array(string)),
-  }),
-);
+const userDecoder: Decoder<User> = fieldsAuto({
+  name: string,
+  active: field(boolean, { renameFrom: "is_active" }),
+  age: field(number, { optional: true }),
+  interests: array(string),
+});
 
 const payload: unknown = getSomeJSON();
 
@@ -64,20 +68,9 @@ try {
 Here’s an example error message:
 
 ```
-At root["age"] (optional):
+At root["age"]:
 Expected a number
 Got: "30"
-```
-
-If you use the same field names in both JSON and TypeScript there’s a shortcut:
-
-```ts
-const userDecoder2 = fieldsAuto({
-  full_name: string,
-  is_active: boolean,
-  age: optional(number),
-  interests: array(string),
-});
 ```
 
 You can even [infer the type from the decoder](#type-inference) instead of writing it manually!
@@ -86,16 +79,7 @@ You can even [infer the type from the decoder](#type-inference) instead of writi
 type User2 = ReturnType<typeof userDecoder2>;
 ```
 
-The above produces this type:
-
-```ts
-type User2 = {
-  full_name: string;
-  is_active: boolean;
-  age?: number;
-  interests: string[];
-};
-```
+`User2` above is equivalent to the `User` type already shown earlier.
 
 ## Decoder&lt;T&gt;
 
@@ -197,20 +181,40 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 <th><a href="#fieldsauto">fieldsAuto</a></th>
 <td><pre>(mapping: {
   field1: Decoder&lt;T1&gt;,
-  field2: Decoder&lt;T2&gt;,
+  field2: Field&lt;T2, { optional: true }&gt;,
+  field3: Field&lt;T3, { renameFrom: "field_3" }&gt;,
   fieldN: Decoder&lt;TN&gt;
 }) =&gt;
   Decoder&lt;{
     field1: T1,
-    field2: T2,
+    field2?: T2,
+    field3: T3,
     fieldN: TN
   }&gt;</pre></td>
-<td>object</td>
+<td><pre>{
+  "field1": ...,
+  "field2": ...,
+  "field_3": ...,
+  "fieldN": ...
+}</pre> or: <pre>{
+  "field1": ...,
+  "field_3": ...,
+  "fieldN": ...
+}</pre></td>
 <td><pre>{
   field1: T1,
   field2: T2,
   fieldN: TN
 }</pre></td>
+</tr>
+<tr>
+<th><a href="#field">field</a></th>
+<td><pre>(
+  decoder: Decoder&lt;Decoded&gt;,
+  meta: Meta,
+): Field&lt;Decoded, Meta&gt;</pre></td>
+<td>n/a</td>
+<td>n/a, only used with <code>fieldsAuto</code></td>
 </tr>
 <tr>
 <th><a href="#fieldsunion">fieldsUnion</a></th>
@@ -259,10 +263,17 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 | { type: "object"; value: Record<string, unknown> }</pre></td>
 </tr>
 <tr>
-<th><a href="#optional">optional</a></th>
+<th><a href="#recursive">recursive</a></th>
+<td><pre>(callback: () => Decoder&lt;T&gt;) =&gt;
+  Decoder&lt;T&gt;</pre></td>
+<td>n/a</td>
+<td><code>T</code></td>
+</tr>
+<tr>
+<th><a href="#undefinedor">undefinedOr</a></th>
 <td><pre>(decoder: Decoder&lt;T&gt;) =&gt;
   Decoder&lt;T | undefined&gt;</pre></td>
-<td>missing or …</td>
+<td>undefined or …</td>
 <td><code>T | undefined</code></td>
 </tr>
 <tr>
@@ -357,6 +368,9 @@ For example, `record(number)` decodes an object where the keys can be anything a
 
 ### fields
 
+> **Warning**  
+> This function is deprecated. Use [fieldsAuto](#fieldsAuto) instead.
+
 ```ts
 function fields<T>(
   callback: (
@@ -375,8 +389,6 @@ function fields<T>(
 
 Decodes a JSON object (or array) into any TypeScript you’d like (`T`), usually an object/interface with known fields.
 
-This is the most general function, which you can use for lots of different data. Other functions might be more convenient though.
-
 The type annotation is a bit overwhelming, but using `fields` isn’t super complicated. In a callback, you get a `field` function that you use to pluck out stuff from the JSON object. For example:
 
 ```ts
@@ -384,7 +396,7 @@ type User = {
   age: number;
   active: boolean;
   name: string;
-  description?: string;
+  description?: string | undefined;
   version: 1;
 };
 
@@ -397,7 +409,7 @@ const userDecoder = fields(
     // Combining two fields:
     name: `${field("first_name", string)} ${field("last_name", string)}`,
     // Optional field:
-    description: field("description", optional(string)),
+    description: field("description", undefinedOr(string)),
     // Hardcoded field:
     version: 1,
   }),
@@ -411,8 +423,6 @@ const ageDecoder: Decoder<number> = fields((field) => field("age", number));
 
 `object` is passed in case you need to check stuff like `"my-key" in object`.
 
-Note that if your input object and the decoded object look exactly the same and you don’t need any advanced features it’s often more convenient to use [fieldsAuto](#fieldsauto).
-
 Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see the [tuples example](examples/tuples.test.ts).
 
 The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
@@ -422,38 +432,47 @@ The `exact` option let’s you choose between ignoring extraneous data and makin
 
 The `allow` option defaults to only allowing JSON objects. Set it to `"array"` if you are decoding an array.
 
-More examples:
-
-- [Extra fields](examples/extra-fields.test.ts).
-- [Renaming fields](examples/renaming-fields.test.ts).
-- [Tuples](examples/tuples.test.ts).
-
 ### fieldsAuto
 
 ```ts
-function fieldsAuto<T extends Record<string, unknown>>(
-  mapping: { [P in keyof T]: Decoder<T[P]> },
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
-): Decoder<T> {
+function fieldsAuto<Mapping extends FieldsMapping>(
+  mapping: Mapping,
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+): Decoder<InferFields<Mapping>>;
+
+type FieldsMapping = Record<string, Decoder<any> | Field<any, FieldMeta>>;
+
+type Field<Decoded, Meta extends FieldMeta> = Meta & {
+  decoder: Decoder<Decoded>;
+};
+
+type FieldMeta = {
+  renameFrom?: string | undefined;
+  optional?: boolean | undefined;
+};
+
+type InferFields<Mapping extends FieldsMapping> = magic;
 ```
 
 Decodes a JSON object with certain fields into a TypeScript object type/interface with known fields.
 
-This is for situations where the JSON keys and your TypeScript type keys have the same names, and you don’t need any advanced features from [fields](#fields).
+The `mapping` parameter is an object with the keys you want in your TypeScript object. The values are either `Decoder`s or `Field`s. A `Field` is just a `Decoder` with some metadata: Whether the field is optional, and whether the field has a different name in the JSON object. Passing a plain `Decoder` instead of a `Field` is just a convenience shortcut for passing a `Field` with the default metadata (the field is required, and has the same name both in TypeScript and in JSON).
+
+Use the [field](#field) function to create a `Field` – use it when you need to mark a field as optional, or when it has a different name in JSON than in TypeScript.
 
 Example:
 
 ```ts
 type User = {
   name: string;
-  age: number;
+  age?: number;
   active: boolean;
 };
 
-const userDecoder = fieldsAuto<User>({
+const userDecoder: Decoder<User> = fieldsAuto({
   name: string,
-  age: number,
-  active: boolean,
+  age: field(number, { optional: true }),
+  active: field(boolean, { renameFrom: "is_active" }),
 });
 ```
 
@@ -462,10 +481,102 @@ The `exact` option let’s you choose between ignoring extraneous data and makin
 - `"allow extra"` (default) allows extra properties on the object.
 - `"throw"` throws a `DecoderError` for extra properties.
 
-More examples:
+See also the [Extra fields](examples/extra-fields.test.ts) example.
 
-- [Extra fields](examples/extra-fields.test.ts).
-- [Renaming fields](examples/renaming-fields.test.ts).
+> **Warning**  
+> Temporary behavior: If a field is missing and _not_ marked as optional, `fieldsAuto` still _tries_ the decoder at the field (passing `undefined` to it). If the decoder succeeds (because it allows `undefined` or succeeds for any input), that value is used. If it fails, the regular “missing field” error is thrown. This means that `fieldsAuto({ name: undefinedOr(string) })` successfully produces `{ name: undefined }` if given `{}` as input. It is supposed to fail in that case (because a required field is missing), but temporarily it does not fail. This is to support how `fieldsUnion` is used currently. When `fieldsUnion` is updated to a new API in an upcoming version of tiny-decoders, this temporary behavior in `fieldsAuto` will be removed.
+
+### field
+
+```ts
+function field<Decoded, const Meta extends FieldMeta>(
+  decoder: Decoder<Decoded>,
+  meta: Meta,
+): Field<Decoded, Meta>;
+
+type Field<Decoded, Meta extends FieldMeta> = Meta & {
+  decoder: Decoder<Decoded>;
+};
+
+type FieldMeta = {
+  renameFrom?: string | undefined;
+  optional?: boolean | undefined;
+};
+```
+
+This function takes a decoder and lets you:
+
+- Mark a field as optional: `field(string, { optional: true })`
+- Rename a field: `field(string, { renameFrom: "some_name" })`
+- Both: `field(string, { optional: true, renameFrom: "some_name" })`
+
+Use it with [fieldsAuto](#fieldsAuto).
+
+Here’s an example illustrating the difference between `field(string, { optional: true })` and `undefinedOr(string)`:
+
+```ts
+const exampleDecoder = fieldsAuto({
+  // Required field.
+  a: string,
+
+  // Optional field.
+  b: field(string, { optional: true }),
+
+  // Required field that can be set to `undefined`:
+  c: undefinedOr(string),
+
+  // Optional field that can be set to `undefined`:
+  d: field(undefinedOr(string), { optional: true }),
+});
+```
+
+The inferred type of `exampleDecoder` is:
+
+```ts
+type Example = {
+  a: string;
+  b?: string;
+  c: string | undefined;
+  d?: string | undefined;
+};
+```
+
+> **Warning**  
+> It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json`.
+>
+> Why? Let’s take this decoder as an example:
+>
+> ```ts
+> const exampleDecoder = fieldsAuto({
+>   name: field(string, { optional: true }),
+> });
+> ```
+>
+> With `exactOptionalPropertyTypes` enabled, the inferred type of `exampleDecoder` is:
+>
+> ```ts
+> type Example = { name?: string };
+> ```
+>
+> That type allows constructing `{}` or `{ name: "some string" }`. If you pass either of those to `exampleDecoder` (such as `exampleDecoder({ name: "some string" })`), the decoder will succeed. It makes sense that a decoder accepts things that it has produced itself (when no transformation is involved).
+>
+> With `exactOptionalPropertyTypes` turned off (which is the default), the inferred type of `exampleDecoder` is:
+>
+> ```ts
+> type Example = { name?: string | undefined };
+> ```
+>
+> Notice the added `| undefined`. That allows also constructing `{ name: undefined }`. But if you run `exampleDecoder({ name: undefined })`, the decoder will fail. The decoder only supports `name` existing and being set to a string, or `name` being missing. It does not support it being set to `undefined` explicitly. If you wanted to support that, use `undefinedOr`:
+>
+> ```ts
+> const exampleDecoder = fieldsAuto({
+>   name: field(undefinedOr(string), { optional: true }),
+> });
+> ```
+>
+> That gives the same inferred type, but also supports decoding the `name` field being set to `undefined` explicitly.
+>
+> All in all, you avoid a slight gotcha with optional fields and inferred types if you enable `exactOptionalPropertyTypes`.
 
 ### fieldsUnion
 
@@ -498,11 +609,11 @@ const shapeDecoder = fieldsUnion("tag", {
     tag: () => "Circle" as const,
     radius: number,
   }),
-  Rectangle: fields((field) => ({
-    tag: "Rectangle" as const,
-    width: field("width_px", number),
-    height: field("height_px", number),
-  })),
+  Rectangle: fieldsAuto({
+    tag: () => "Rectangle" as const,
+    width: field(number, { renameFrom: "width_px" }),
+    height: field(number, { renameFrom: "height_px" }),
+  }),
 });
 ```
 
@@ -584,17 +695,39 @@ const idDecoder: Decoder<Id> = chain(multi(["string", "number"]), (value) => {
 });
 ```
 
-### optional
+### recursive
 
 ```ts
-function optional<T>(decoder: Decoder<T>): Decoder<T | undefined>;
+function recursive<T>(callback: () => Decoder<T>): Decoder<T>;
+```
 
-function optional<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
+When you make a decoder for a recursive data structure, you might end up with errors like:
+
+```
+ReferenceError: Cannot access 'myDecoder' before initialization
+```
+
+The solution is to wrap `myDecoder` in `recursive`: `recursive(() => myDecoder)`. The unnecessary-looking arrow function delays the reference to `myDecoder` so we’re able to define it.
+
+See the [recursive example](examples/recursive.test.ts) for more information.
+
+### undefinedOr
+
+```ts
+function undefinedOr<T>(decoder: Decoder<T>): Decoder<T | undefined>;
+
+function undefinedOr<T, U>(
+  decoder: Decoder<T>,
+  defaultValue: U,
+): Decoder<T | U>;
 ```
 
 Returns a new decoder that also accepts `undefined`. Alternatively, supply a `defaultValue` to use in place of `undefined`.
 
-When do you get `undefined` in JSON? When you try to access a field that does not exist using JavaScript. So `optional` is useful to make fields optional in [fields](#fields) and [fieldsAuto](#fieldsauto).
+Notes:
+
+- Using `undefinedOr` does _not_ make a field in an object optional (except in the deprecated [fields](#fields) function). It only allows the field to be `undefined`. Similarly, using the [field](#field) function to mark a field as optional does not allow setting the field to `undefined`, only omitting it.
+- JSON does not have `undefined` (only `null`). So `undefinedOr` is more useful when you are decoding something that does not come from JSON. However, even when working with JSON `undefinedOr` still has a use: If you infer types from decoders, using `undefinedOr` on object fields results in `| undefined` for the type of the field, which allows you to assign `undefined` to it which is occasionally useful.
 
 ### nullable
 
@@ -638,6 +771,11 @@ type DecoderErrorVariant =
       tag: "exact fields";
       knownFields: Array<string>;
       got: Array<string>;
+    }
+  | {
+      tag: "missing field";
+      field: string;
+      got: Record<string, unknown>;
     }
   | {
       tag: "tuple size";
@@ -686,8 +824,8 @@ class DecoderError extends TypeError {
 
   constructor(
     params:
-      | { message: string; value: unknown; key?: Key }
-      | (DecoderErrorVariant & { key?: Key }),
+      | { message: string; value: unknown; key?: Key | undefined }
+      | (DecoderErrorVariant & { key?: Key | undefined }),
   );
 
   static MISSING_VALUE: symbol;
@@ -758,18 +896,18 @@ If you want to format the error yourself in a custom way, look at these properti
 - `.path`: The path into a JSON object/array to the value that caused the error.
 - `.variant`: The actual error.
 - `.nullable`: The error happened at a [nullable](#nullable).
-- `.optional`: The error happened at an [optional](#optional).
+- `.optional`: The error happened at an [undefinedOr](#undefinedor).
 
 ## repr
 
 ```ts
 type ReprOptions = {
-  depth?: number;
-  indent?: string;
-  maxArrayChildren?: number;
-  maxObjectChildren?: number;
-  maxLength?: number;
-  sensitive?: boolean;
+  depth?: number | undefined;
+  indent?: string | undefined;
+  maxArrayChildren?: number | undefined;
+  maxObjectChildren?: number | undefined;
+  maxLength?: number | undefined;
+  sensitive?: boolean | undefined;
 };
 
 function repr(
@@ -833,53 +971,22 @@ It’s helpful when errors show you the actual values that failed decoding to ma
 - `error.format()` defaults to showing actual values. It also shows the “path” to the problematic value (which isn’t available at the time `error` is constructed, which is why `error.message` doesn’t contain the path).
 - `error.format({ sensitive: true })` can be used to hide potentially sensitive data. (See `ReprOptions`.)
 
-## Type annotations
-
-The obvious type annotation for decoders is `: Decoder<T>`. But sometimes that’s not the best choice, due to TypeScript quirks! For [fields](#fields) and [fieldsAuto](#fieldsAuto), the recommended approach is:
-
-```ts
-type Person = {
-  name: string;
-  age?: number;
-};
-
-// Annotate the return type of the callback.
-const personDecoder = fields(
-  (field): Person => ({
-    name: field("name", string),
-    age: field("age", optional(number)),
-  }),
-);
-
-// Annotate the generic.
-const personDecoderAuto = fieldsAuto<Person>({
-  name: string,
-  age: optional(number),
-});
-```
-
-That gives the best TypeScript error messages, and the most type safety.
-
-See the [type annotations example](examples/type-annotations.test.ts) for more details.
-
 ## Type inference
 
 Rather than first defining the type and then defining the decoder (which often feels like writing the type twice), you can _only_ define the decoder and then infer the type.
 
 ```ts
-const personDecoder = fields((field) => ({
-  name: field("name", string),
-  age: field("age", optional(number)),
-}));
-
-const personDecoderAuto = fieldsAuto({
+const personDecoder = fieldsAuto({
   name: string,
-  age: optional(number),
+  age: number,
 });
 
-type Person1 = ReturnType<typeof personDecoder>;
-
-type Person2 = ReturnType<typeof personDecoderAuto>;
+type Person = ReturnType<typeof personDecoder>;
+// equivalent to:
+type Person = {
+  name: string;
+  age: number;
+};
 ```
 
 See the [type inference example](examples/type-inference.test.ts) for more details.
@@ -887,17 +994,6 @@ See the [type inference example](examples/type-inference.test.ts) for more detai
 ## Things left out
 
 Here are some decoders I’ve left out. They are rarely needed or not needed at all, and/or too trivial to be included in a decoding library _for the minimalist._
-
-### lazy
-
-```ts
-export function lazy<T>(callback: () => Decoder<T>): Decoder<T> {
-  return function lazyDecoder(value: unknown): T {
-    return callback()(value);
-  };
-```
-
-There used to be a `lazy` function. It was used for recursive structures, but when using [fields](#fields) or [multi](#multi) with [chain](#chain) you don’t need it. See the [recursive example](examples/recursive.test.ts) for more information.
 
 ### unknown
 

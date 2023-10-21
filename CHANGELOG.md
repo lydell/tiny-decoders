@@ -1,5 +1,113 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 11.0.0 (unreleased)
+
+This release deprecates `fields`, and makes `fieldsAuto` more powerful so that it can do most of what only `fields` could before. Removing `fields` unlocks further changes that will come in future releases. It’s also nice to have just one way of decoding objects (`fieldsAuto`), instead of having two. Finally, the changes to `fieldsAuto` gets rid of a flawed design choice which solves several reported bugs: [#22](https://github.com/lydell/tiny-decoders/issues/22) and [#24](https://github.com/lydell/tiny-decoders/issues/24).
+
+- Changed: `optional` has been removed and replaced by `undefinedOr` and a new function called `field`. The `optional` function did two things: It made a decoder also accept `undefined`, and marked fields as optional. Now there’s one function for each use case.
+
+- Added: The new `field` function returns a `Field` type, which is a decoder with some metadata. The metadata tells whether the field is optional, and whether the field has a different name in the JSON object.
+
+- Changed: `fieldsAuto` takes an object like before, where the values are `Decoder`s like before, but now the values can be `Field`s as well (returned from the `field` function). Passing a plain `Decoder` instead of a `Field` is just a convenience shortcut for passing a `Field` with the default metadata (the field is required, and has the same name both in TypeScript and in JSON).
+
+- Changed: `fieldsAuto` no longer computes which fields are optional by checking if the type of the field includes `| undefined`. Instead, it’s based purely on the `Field` metadata.
+
+- Changed: `const myDecoder = fieldsAuto<MyType>({ /* ... */ })` now needs to be written as `const myDecoder: Decoder<MyType> = fieldsAuto({ /* ... */ })`. It is no longer recommended to specify the generic of `fieldsAuto`, and doing so does not mean the same thing anymore. Either annotate the decoder as any other, or don’t and infer the type.
+
+- Added: `recursive`. It’s needed when making a decoder for a recursive data structure using `fieldsAuto`. (Previously, the recommendation was to use `fields` for recursive objects.)
+
+- Changed: TypeScript 5+ is now required, because the above uses [const type parameters](https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/#const-type-parameters)) (added in 5.0), and leads to the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) (added in 4.4) option in `tsconfig.json` being recommended (see the documentation for the `field` function for why).
+
+The motivation for the changes are:
+
+- Supporting TypeScript’s [exactOptionalPropertyTypes](https://devblogs.microsoft.com/typescript/announcing-typescript-4-4/#exact-optional-property-types) option. That option decouples optional fields (`field?:`) and union with undefined (`| undefined`). Now tiny-decoders has done that too.
+
+- Supporting generic decoders. Marking the fields as optional was previously done by looking for fields with `| undefined` in their type. However, if the type of a field is generic, TypeScript can’t know if the type is going to have `| undefined` until the generic type is instantiated with a concrete type. As such it couldn’t know if the field should be optional or not yet either. This resulted in it being very difficult and ugly trying to write a type annotation for a generic function returning a decoder – in practice it was unusable without forcing TypeScript to the wanted type annotation. [#24](https://github.com/lydell/tiny-decoders/issues/24)
+
+- Stop setting all optional fields to `undefined` when they are missing (rather than leaving them out). [#22](https://github.com/lydell/tiny-decoders/issues/22)
+
+- Better error messages for missing required fields.
+
+  Before:
+
+  ```
+  At root["firstName"]:
+  Expected a string
+
+  Got: undefined
+  ```
+
+  After:
+
+  ```
+  At root:
+  Expected an object with a field called: "firstName"
+  Got: {
+    "id": 1,
+    "first_name": "John"
+  }
+  ```
+
+  In other words, `fieldsAuto` now checks if fields exist, rather than trying to access them regardless. Previously, `fieldsAuto` ran `decoderAtKey(object[key])` even when `key` did not exist in `object`, which is equivalent to `decoderAtKey(undefined)`. Whether or not that succeeded was up to if `decoderAtKey` was using `optional` or not. This resulted in the worse (but technically correct) error message. The new version of `fieldsAuto` knows if the field is supposed to be optional or not thanks to the `Field` type and the `field` function mentioned above.
+
+  > **Warning**  
+  > Temporary behavior: If a field is missing and _not_ marked as optional, `fieldsAuto` still _tries_ the decoder at the field (passing `undefined` to it). If the decoder succeeds (because it allows `undefined` or succeeds for any input), that value is used. If it fails, the regular “missing field” error is thrown. This means that `fieldsAuto({ name: undefinedOr(string) })` successfully produces `{ name: undefined }` if given `{}` as input. It is supposed to fail in that case (because a required field is missing), but temporarily it does not fail. This is to support how `fieldsUnion` is used currently. When `fieldsUnion` is updated to a new API in an upcoming version of tiny-decoders, this temporary behavior in `fieldsAuto` will be removed.
+
+- Being able to rename fields with `fieldsAuto`. Now you don’t need to refactor from `fieldsAuto` to `fields` anymore if you need to rename a field. This is done by using the `field` function.
+
+- Getting rid of `fields` unlocks further changes that will come in future releases. (Note: `fields` is only deprecated in this release, not removed.)
+
+Here’s an example illustrating the difference between optional fields and accepting `undefined`:
+
+```ts
+fieldsAuto({
+  // Required field.
+  a: string,
+
+  // Optional field.
+  b: field(string, { optional: true }),
+
+  // Required field that can be set to `undefined`:
+  c: undefinedOr(string),
+
+  // Optional field that can be set to `undefined`:
+  d: field(undefinedOr(string), { optional: true }),
+});
+```
+
+The inferred type of the above is:
+
+```ts
+type Inferred = {
+  a: string;
+  b?: string;
+  c: string | undefined;
+  d?: string | undefined;
+};
+```
+
+In all places where you use `optional(x)` currently, you need to figure out if you should use `undefinedOr(x)` or `field(x, { optional: true })` or `field(undefinedOr(x), { optional: true })`.
+
+The `field` function also lets you rename fields. This means that you can refactor:
+
+```ts
+fields((field) => ({
+  firstName: field("first_name", string),
+}));
+```
+
+Into:
+
+```ts
+fieldsAuto({
+  firstName: field(string, { renameFrom: "first_name" }),
+});
+```
+
+If you used `fields` for other reasons, you can refactor them away by using `recursive`, `chain` and writing custom decoders.
+
+Read the documentation for `fieldsAuto` and `field` to learn more about how they work.
+
 ### Version 10.0.0 (2023-10-15)
 
 Changed: `multi` has a new API.
