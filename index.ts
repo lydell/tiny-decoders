@@ -166,6 +166,7 @@ type Field<Decoded, Meta extends FieldMeta> = Meta & {
 type FieldMeta = {
   renameFrom?: string | undefined;
   optional?: boolean | undefined;
+  tag?: { decoded: string; encoded: string } | undefined;
 };
 
 type FieldsMapping = Record<string, Decoder<any> | Field<any, FieldMeta>>;
@@ -259,7 +260,7 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
   };
 }
 
-export function field<Decoded, const Meta extends FieldMeta>(
+export function field<Decoded, const Meta extends Omit<FieldMeta, "tag">>(
   decoder: Decoder<Decoded>,
   meta: Meta,
 ): Field<Decoded, Meta> {
@@ -269,46 +270,158 @@ export function field<Decoded, const Meta extends FieldMeta>(
   };
 }
 
-type Values<T> = T[keyof T];
+type InferFieldsUnion<MappingsUnion extends FieldsMapping> =
+  MappingsUnion extends any ? InferFields<MappingsUnion> : never;
 
-export function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
-  key: string,
-  mapping: keyof T extends string
-    ? keyof T extends never
-      ? "fieldsUnion must have at least one member"
-      : T
-    : {
-        [P in keyof T]: P extends number
-          ? "fieldsUnion keys must be strings, not numbers"
-          : T[P];
-      },
-): Decoder<
-  Expand<
-    Values<{
-      [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never;
-    }>
-  >
-> {
-  // eslint-disable-next-line prefer-arrow-callback
-  return fields(function fieldsUnionFields(field_, object) {
-    const tag = field_(key, string);
-    if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
-      const decoder = (mapping as T)[tag];
-      return decoder(object);
+type Variant<DecodedCommonField extends number | string | symbol> = Record<
+  DecodedCommonField,
+  Field<any, { tag: { decoded: string; encoded: string } }>
+> &
+  Record<string, Decoder<any> | Field<any, FieldMeta>>;
+
+export function fieldsUnion<
+  const DecodedCommonField extends keyof Variants[number],
+  Variants extends readonly [
+    Variant<DecodedCommonField>,
+    ...ReadonlyArray<Variant<DecodedCommonField>>,
+  ],
+>(
+  decodedCommonField: DecodedCommonField,
+  variants: Variants,
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+): Decoder<InferFieldsUnion<Variants[number]>> {
+  if (decodedCommonField === "__proto__") {
+    throw new Error("fieldsUnion: commonField cannot be __proto__");
+  }
+
+  const decoderMap = new Map<string, Decoder<any>>(); // encodedName -> decoder
+
+  let maybeEncodedCommonField: number | string | symbol | undefined = undefined;
+
+  for (const [index, variant] of variants.entries()) {
+    const field_: Field<
+      any,
+      FieldMeta & { tag: { decoded: string; encoded: string } }
+    > = variant[decodedCommonField];
+    const { renameFrom: encodedFieldName = decodedCommonField } = field_;
+    if (maybeEncodedCommonField === undefined) {
+      maybeEncodedCommonField = encodedFieldName;
+    } else if (maybeEncodedCommonField !== encodedFieldName) {
+      throw new Error(
+        `Codec.fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
+          decodedCommonField,
+        )}: Got a different encoded field name (${JSON.stringify(
+          encodedFieldName,
+        )}) than before (${JSON.stringify(maybeEncodedCommonField)}).`,
+      );
     }
-    throw new DecoderError({
-      tag: "unknown fieldsUnion tag",
-      knownTags: Object.keys(mapping),
-      got: tag,
-      key,
-    });
-  }) as Decoder<
-    Expand<
-      Values<{
-        [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never;
-      }>
-    >
-  >;
+    const fullDecoder = fieldsAuto(variant, { exact });
+    decoderMap.set(field_.tag.encoded, fullDecoder);
+  }
+
+  if (typeof maybeEncodedCommonField !== "string") {
+    throw new Error(
+      `Codec.fieldsUnion: Got unusable encoded common field: ${repr(
+        maybeEncodedCommonField,
+      )}`,
+    );
+  }
+
+  const encodedCommonField = maybeEncodedCommonField;
+
+  return function fieldsUnionDecoder(
+    value: unknown,
+  ): InferFieldsUnion<Variants[number]> {
+    const encodedName = fieldsAuto({ [encodedCommonField]: string })(value)[
+      encodedCommonField
+    ];
+    const decoder = decoderMap.get(encodedName);
+    if (decoder === undefined) {
+      throw new DecoderError({
+        tag: "unknown fieldsUnion tag",
+        knownTags: Array.from(decoderMap.keys()),
+        got: encodedName,
+        key: encodedCommonField,
+      });
+    }
+    return decoder(value) as InferFieldsUnion<Variants[number]>;
+  };
+}
+
+export function tag<const Decoded extends string>(
+  decoded: Decoded,
+): Field<Decoded, { tag: { decoded: string; encoded: string } }>;
+
+export function tag<const Decoded extends string, const Encoded extends string>(
+  decoded: Decoded,
+  options: {
+    renameTagFrom: Encoded;
+  },
+): Field<Decoded, { tag: { decoded: string; encoded: string } }>;
+
+export function tag<
+  const Decoded extends string,
+  const EncodedFieldName extends string,
+>(
+  decoded: Decoded,
+  options: {
+    renameFieldFrom: EncodedFieldName;
+  },
+): Field<
+  Decoded,
+  { renameFrom: EncodedFieldName; tag: { decoded: string; encoded: string } }
+>;
+
+export function tag<
+  const Decoded extends string,
+  const Encoded extends string,
+  const EncodedFieldName extends string,
+>(
+  decoded: Decoded,
+  options: {
+    renameTagFrom: Encoded;
+    renameFieldFrom: EncodedFieldName;
+  },
+): Field<
+  Decoded,
+  { renameFrom: EncodedFieldName; tag: { decoded: string; encoded: string } }
+>;
+
+export function tag<
+  const Decoded extends string,
+  const Encoded extends string,
+  const EncodedFieldName extends string,
+>(
+  decoded: Decoded,
+  {
+    renameTagFrom: encoded = decoded as unknown as Encoded,
+    renameFieldFrom: encodedFieldName,
+  }: {
+    renameTagFrom?: Encoded;
+    renameFieldFrom?: EncodedFieldName;
+  } = {},
+): Field<
+  Decoded,
+  {
+    renameFrom: EncodedFieldName | undefined;
+    tag: { decoded: string; encoded: string };
+  }
+> {
+  return {
+    decoder: function tagDecoder(value: unknown): Decoded {
+      const str = string(value);
+      if (str !== encoded) {
+        throw new DecoderError({
+          tag: "wrong tag",
+          expected: encoded,
+          got: str,
+        });
+      }
+      return decoded;
+    },
+    renameFrom: encodedFieldName,
+    tag: { decoded, encoded },
+  };
 }
 
 export function tuple<T extends Array<unknown>>(
@@ -518,6 +631,11 @@ export type DecoderErrorVariant =
       knownVariants: Array<string>;
       got: string;
     }
+  | {
+      tag: "wrong tag";
+      expected: string;
+      got: string;
+    }
   | { tag: "array"; got: unknown }
   | { tag: "boolean"; got: unknown }
   | { tag: "number"; got: unknown }
@@ -584,6 +702,11 @@ function formatDecoderErrorVariant(
     case "missing field":
       return `Expected an object with a field called: ${JSON.stringify(
         variant.field,
+      )}\nGot: ${formatGot(variant.got)}`;
+
+    case "wrong tag":
+      return `Expected this string: ${JSON.stringify(
+        variant.expected,
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "exact fields":

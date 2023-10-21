@@ -1,21 +1,21 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { fieldsAuto, fieldsUnion, number } from "../";
+import { fieldsUnion, number, tag } from "../";
 
 test("using different tags in JSON and in TypeScript", () => {
-  // There’s nothing stopping you from using different keys and values in JSON
-  // and TypeScript. For example, `"type": "circle"` → `tag: "Circle"`.
-  const decoder = fieldsUnion("type", {
-    circle: fieldsAuto({
-      tag: () => "Circle" as const,
+  // Here’s how to use different keys and values in JSON and TypeScript.
+  // For example, `"type": "circle"` → `tag: "Circle"`.
+  const decoder = fieldsUnion("tag", [
+    {
+      tag: tag("Circle", { renameTagFrom: "circle", renameFieldFrom: "type" }),
       radius: number,
-    }),
-    square: fieldsAuto({
-      tag: () => "Square" as const,
+    },
+    {
+      tag: tag("Square", { renameTagFrom: "square", renameFieldFrom: "type" }),
       size: number,
-    }),
-  });
+    },
+  ]);
 
   type InferredType = ReturnType<typeof decoder>;
   type ExpectedType =

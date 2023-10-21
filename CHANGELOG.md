@@ -1,5 +1,77 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 12.0.0 (unreleased)
+
+This release changes how `fieldsUnion` works. The new way should be easier to use, and it looks more similar to the type definition of a tagged union.
+
+- Changed: The first argument to `fieldsUnion` is no longer the common field name used in the JSON, but the common field name used in TypeScript. This doesn’t matter if you use the same common field name in both JSON and TypeScript. But if you did use different names – don’t worry, you’ll get TypeScript errors so you won’t forget to update something.
+
+- Changed: The second argument to `fieldsUnion` is now an array of objects, instead of an object with decoders. The objects in the array are “`fieldsAuto` objects” – they fit when passed to `fieldsAuto` as well. All of those objects must have the first argument to `fieldsUnion` as a key, and use the new `tag` function on that key.
+
+- Added: The `tag` function. Used with `fieldsUnion`, once for each variant of the union. `tag("MyTag")` returns a `Field` with a decoder that requires the input `"MyTag"` and returns `"MyTag"`. The metadata of the `Field` also advertises that the tag value is `"MyTag"`, which `fieldsUnion` uses to know what to do. The `tag` function also lets you use a different common field in JSON than in TypeScript (similar to the `field` function for other fields).
+
+Here’s an example of how to upgrade:
+
+```ts
+fieldsUnion("tag", {
+  Circle: fieldsAuto({
+    tag: () => "Circle" as const,
+    radius: number,
+  }),
+  Rectangle: fields((field) => ({
+    tag: "Rectangle" as const,
+    width: field("width_px", number),
+    height: field("height_px", number),
+  })),
+});
+```
+
+After:
+
+```ts
+fieldsUnion("tag", [
+  {
+    tag: tag("Circle"),
+    radius: number,
+  },
+  {
+    tag: tag("Rectangle"),
+    width: field(number, { renameFrom: "width_px" }),
+    height: field(number, { renameFrom: "height_px" }),
+  },
+]);
+```
+
+And here’s an example of how to upgrade a case where the JSON and TypeScript names are different:
+
+```ts
+fieldsUnion("type", {
+  circle: fieldsAuto({
+    tag: () => "Circle" as const,
+    radius: number,
+  }),
+  square: fieldsAuto({
+    tag: () => "Square" as const,
+    size: number,
+  }),
+});
+```
+
+After:
+
+```ts
+fieldsUnion("tag", [
+  {
+    tag: tag("Circle", { renameTagFrom: "circle", renameFieldFrom: "type" }),
+    radius: number,
+  },
+  {
+    tag: tag("Square", { renameTagFrom: "square", renameFieldFrom: "type" }),
+    size: number,
+  },
+]);
+```
+
 ### Version 11.0.0 (2023-10-21)
 
 This release deprecates `fields`, and makes `fieldsAuto` more powerful so that it can do most of what only `fields` could before. Removing `fields` unlocks further changes that will come in future releases. It’s also nice to have just one way of decoding objects (`fieldsAuto`), instead of having two. Finally, the changes to `fieldsAuto` gets rid of a flawed design choice which solves several reported bugs: [#22](https://github.com/lydell/tiny-decoders/issues/22) and [#24](https://github.com/lydell/tiny-decoders/issues/24).
