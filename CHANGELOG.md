@@ -1,5 +1,50 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 13.0.0 (unreleased)
+
+> **Warning**  
+> This release contains a breaking change, but no TypeScript errors! Be careful!
+
+Version 11.0.0 made changes to `fieldsAuto`, but had a temporary behavior for backwards compatibility, awaiting the changes to `fieldsUnion` in version 12.0.0. This release (13.0.0) removes that temporary behavior.
+
+You need to be on the lookout for these two patterns:
+
+```ts
+fieldsAuto({
+  field1: undefinedOr(someDecoder),
+  field2: () => someValue,
+});
+```
+
+Previously, the above decoder would succeed even if `field1` or `field2` were missing.
+
+- If `field1` was missing, the temporary behavior in `fieldsAuto` would call the decoder at `field1` with `undefined`, which would succeed due to `undefinedOr`. If you did the version 11.0.0 migration perfectly, this shouldn’t matter. But upgrading to 13.0.0 might uncover some places where you use `undefinedOr(someDecoder)` but meant to use `field(someDecoder, { optional(true) })` or `field(undefinedOr(someDecoder), { optional(true) })` (the latter is the “safest” approach in that it is the most permissive).
+- If `field2` was missing, the temporary behavior in `fieldsAuto` would call the decoder at `field2` with `undefined`, which would succeed due to that decoder ignoring its input and always succeeding with the same value.
+
+Here’s an example of how to upgrade the “always succeed” pattern:
+
+```ts
+const productDecoder: Decoder<Product> = fieldsAuto({
+  name: string,
+  price: number,
+  version: () => 1,
+});
+```
+
+Use `chain` instead:
+
+```ts
+const productDecoder: Decoder<Product> = chain(
+  fieldsAuto({
+    name: string,
+    price: number,
+  }),
+  (props) => ({ ...props, version: 1 }),
+);
+```
+
+It’s a little bit more verbose, but unlocks further changes that will come in future releases.
+
 ### Version 12.0.0 (2023-10-22)
 
 This release changes how `fieldsUnion` works. The new way should be easier to use, and it looks more similar to the type definition of a tagged union.
