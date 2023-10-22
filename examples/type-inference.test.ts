@@ -16,6 +16,7 @@ import {
   number,
   string,
   stringUnion,
+  tag,
   undefinedOr,
 } from "..";
 
@@ -146,17 +147,17 @@ test("making a type from a decoder – unions", () => {
   // Let’s say we need to support two types of users – anonymous and registered
   // ones. This is where `fieldsUnion` shines! It’s both easier to use and gives
   // a better inferred type!
-  const userDecoder1 = fieldsUnion("type", {
-    anonymous: fieldsAuto({
-      type: () => "anonymous" as const,
+  const userDecoder1 = fieldsUnion("type", [
+    {
+      type: tag("anonymous"),
       sessionId: number,
-    }),
-    registered: fieldsAuto({
-      type: () => "registered" as const,
+    },
+    {
+      type: tag("registered"),
       id: number,
       name: string,
-    }),
-  });
+    },
+  ]);
   type InferredType1 = ReturnType<typeof userDecoder1>;
   type ExpectedType1 =
     | { type: "anonymous"; sessionId: number }

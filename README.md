@@ -219,16 +219,23 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 <tr>
 <th><a href="#fieldsunion">fieldsUnion</a></th>
 <td><pre>(
-  key: string,
-  mapping: {
-    key1: Decoder&lt;T1&gt;,
-    key2: Decoder&lt;T2&gt;,
-    keyN: Decoder&lt;TN&gt;
-  }
+  decodedCommonField: string,
+  variants: Array&lt;
+    Parameters&lt;typeof fieldsAuto&gt;[0]
+  &gt;,
 ) =&gt;
   Decoder&lt;T1 | T2 | TN&gt;</pre></td>
 <td>object</td>
 <td><code>T1 | T2 | TN</code></td>
+</tr>
+<tr>
+<th><a href="#tag">tag</a></th>
+<td><pre>(
+  decoded: "string literal",
+  options?: Options,
+): Field&lt;"string literal", Meta&gt;</pre></td>
+<td>string</td>
+<td><code>"string literal"</code></td>
 </tr>
 <tr>
 <th><a href="#tuple">tuple</a></th>
@@ -449,6 +456,7 @@ type Field<Decoded, Meta extends FieldMeta> = Meta & {
 type FieldMeta = {
   renameFrom?: string | undefined;
   optional?: boolean | undefined;
+  tag?: { decoded: string; encoded: string } | undefined;
 };
 
 type InferFields<Mapping extends FieldsMapping> = magic;
@@ -484,12 +492,12 @@ The `exact` option let’s you choose between ignoring extraneous data and makin
 See also the [Extra fields](examples/extra-fields.test.ts) example.
 
 > **Warning**  
-> Temporary behavior: If a field is missing and _not_ marked as optional, `fieldsAuto` still _tries_ the decoder at the field (passing `undefined` to it). If the decoder succeeds (because it allows `undefined` or succeeds for any input), that value is used. If it fails, the regular “missing field” error is thrown. This means that `fieldsAuto({ name: undefinedOr(string) })` successfully produces `{ name: undefined }` if given `{}` as input. It is supposed to fail in that case (because a required field is missing), but temporarily it does not fail. This is to support how `fieldsUnion` is used currently. When `fieldsUnion` is updated to a new API in an upcoming version of tiny-decoders, this temporary behavior in `fieldsAuto` will be removed.
+> Temporary behavior: If a field is missing and _not_ marked as optional, `fieldsAuto` still _tries_ the decoder at the field (passing `undefined` to it). If the decoder succeeds (because it allows `undefined` or succeeds for any input), that value is used. If it fails, the regular “missing field” error is thrown. This means that `fieldsAuto({ name: undefinedOr(string) })` successfully produces `{ name: undefined }` if given `{}` as input. It is supposed to fail in that case (because a required field is missing), but temporarily it does not fail. This is to support how a previous version of `fieldsUnion` was used. Now `fieldsUnion` has been updated to a new API, so this temporary behavior in `fieldsAuto` will be removed in an upcoming version of tiny-decoders.
 
 ### field
 
 ```ts
-function field<Decoded, const Meta extends FieldMeta>(
+function field<Decoded, const Meta extends Omit<FieldMeta, "tag">>(
   decoder: Decoder<Decoded>,
   meta: Meta,
 ): Field<Decoded, Meta>;
@@ -501,6 +509,7 @@ type Field<Decoded, Meta extends FieldMeta> = Meta & {
 type FieldMeta = {
   renameFrom?: string | undefined;
   optional?: boolean | undefined;
+  tag?: { decoded: string; encoded: string } | undefined;
 };
 ```
 
@@ -511,6 +520,8 @@ This function takes a decoder and lets you:
 - Both: `field(string, { optional: true, renameFrom: "some_name" })`
 
 Use it with [fieldsAuto](#fieldsAuto).
+
+The `tag` thing is handled by the [tag](#tag) function. It’s not something you’ll set manually using `field`. (That’s why the type annotation says `Omit<FieldMeta, "tag">`.)
 
 Here’s an example illustrating the difference between `field(string, { optional: true })` and `undefinedOr(string)`:
 
@@ -581,23 +592,34 @@ type Example = {
 ### fieldsUnion
 
 ```ts
-type Values<T> = T[keyof T];
+function fieldsUnion<
+  const DecodedCommonField extends keyof Variants[number],
+  Variants extends readonly [
+    Variant<DecodedCommonField>,
+    ...ReadonlyArray<Variant<DecodedCommonField>>,
+  ],
+>(
+  decodedCommonField: DecodedCommonField,
+  variants: Variants,
+  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+): Decoder<InferFieldsUnion<Variants[number]>>;
 
-function fieldsUnion<T extends Record<string, Decoder<unknown>>>(
-  key: string,
-  mapping: T,
-): Decoder<
-  Values<{ [P in keyof T]: T[P] extends Decoder<infer U, infer _> ? U : never }>
->;
+type Variant<DecodedCommonField extends string> = Record<
+  DecodedCommonField,
+  Field<any, { tag: { decoded: string; encoded: string } }>
+> &
+  Record<string, Decoder<any> | Field<any, FieldMeta>>;
+
+type InferFieldsUnion<MappingsUnion extends FieldsMapping> = magic;
+
+// See `fieldsAuto` for the definitions of `Field`, `FieldMeta` and `FieldsMapping`.
 ```
 
 Decodes JSON objects with a common string field (that tells them apart) into a TypeScript union type.
 
-The `key` is the name of the common string field.
+The `decodedCommonField` is the name of the common string field.
 
-The `mapping` is an object where the keys are the strings of the `key` field and the values are decoders. The decoders are usually `fields` or `fieldsAuto`. The keys must be strings (not numbers) and you must provide at least one key.
-
-You _can_ use [fields](#fields) to accomplish the same thing, but it’s easier with `fieldsUnion`. You also get better error messages and type inference with `fieldsUnion`.
+`variants` is an array of objects. Those objects are “`fieldsAuto` objects” – they fit when passed to `fieldsAuto` as well. All of those objects must have `decodedCommonField` as a key, and use the [tag](#tag) function on that key.
 
 ```ts
 type Shape =
@@ -606,11 +628,11 @@ type Shape =
 
 const shapeDecoder = fieldsUnion("tag", {
   Circle: fieldsAuto({
-    tag: () => "Circle" as const,
+    tag: tag("Circle"),
     radius: number,
   }),
   Rectangle: fieldsAuto({
-    tag: () => "Rectangle" as const,
+    tag: tag("Rectangle"),
     width: field(number, { renameFrom: "width_px" }),
     height: field(number, { renameFrom: "height_px" }),
   }),
@@ -618,6 +640,39 @@ const shapeDecoder = fieldsUnion("tag", {
 ```
 
 See also the [renaming union field example](examples/renaming-union-field.test.ts).
+
+### tag
+
+```ts
+export function tag<
+  const Decoded extends string,
+  const Encoded extends string,
+  const EncodedFieldName extends string,
+>(
+  decoded: Decoded,
+  {
+    renameTagFrom = decoded,
+    renameFieldFrom,
+  }: {
+    renameTagFrom?: Encoded;
+    renameFieldFrom?: EncodedFieldName;
+  } = {},
+): Field<
+  Decoded,
+  {
+    renameFrom: EncodedFieldName | undefined;
+    tag: { decoded: string; encoded: string };
+  }
+>;
+```
+
+Used with [fieldsUnion](#fieldsunion), once for each variant of the union.
+
+`tag("MyTag")` returns a `Field` with a decoder that requires the input `"MyTag"` and returns `"MyTag"`. The metadata of the `Field` also advertises that the tag value is `"MyTag"`, which `fieldsUnion` uses to know what to do.
+
+`tag("MyTag", { renameTagFrom: "my_tag" })` returns a `Field` with a decoder that requires the input `"my_tag"` but returns `"MyTag"`.
+
+For `renameFieldFrom`, see [fieldsUnion](#fieldsunion).
 
 ### tuple
 

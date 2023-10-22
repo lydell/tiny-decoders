@@ -21,6 +21,7 @@ import {
   repr,
   string,
   stringUnion,
+  tag,
   tuple,
   undefinedOr,
 } from "..";
@@ -579,6 +580,10 @@ describe("fieldsAuto", () => {
       followers: field(undefinedOr(number), {}),
     });
 
+    // @ts-expect-error Argument of type '{ tag: { decoded: string; encoded: string; }; }' is not assignable to parameter of type 'Omit<FieldMeta, "tag">'.
+    //   Object literal may only specify known properties, and 'tag' does not exist in type 'Omit<FieldMeta, "tag">'.
+    field(string, { tag: { decoded: "A", encoded: "a" } });
+
     expectType<
       TypeEqual<
         Person,
@@ -820,17 +825,17 @@ describe("fieldsAuto", () => {
 describe("fieldsUnion", () => {
   test("basic", () => {
     type Shape = ReturnType<typeof shapeDecoder>;
-    const shapeDecoder = fieldsUnion("tag", {
-      Circle: fieldsAuto({
-        tag: () => "Circle" as const,
+    const shapeDecoder = fieldsUnion("tag", [
+      {
+        tag: tag("Circle"),
         radius: number,
-      }),
-      Rectangle: fields((field) => ({
-        tag: "Rectangle" as const,
-        width: field("width_px", number),
-        height: field("height_px", number),
-      })),
-    });
+      },
+      {
+        tag: tag("Rectangle"),
+        width: field(number, { renameFrom: "width_px" }),
+        height: field(number, { renameFrom: "height_px" }),
+      },
+    ]);
 
     expectType<
       TypeEqual<
@@ -848,10 +853,13 @@ describe("fieldsUnion", () => {
 
     expect(run(shapeDecoder, { tag: "Rectangle", radius: 5 }))
       .toMatchInlineSnapshot(`
-        At root["width_px"]:
-        Expected a number
-        Got: undefined
-      `);
+      At root:
+      Expected an object with a field called: "width_px"
+      Got: {
+        "tag": "Rectangle",
+        "radius": 5
+      }
+    `);
 
     expect(run(shapeDecoder, { tag: "Square", size: 5 }))
       .toMatchInlineSnapshot(`
@@ -862,7 +870,8 @@ describe("fieldsUnion", () => {
         Got: "Square"
       `);
 
-    expect(run(fieldsUnion("0", { a: () => 0 }), ["a"])).toMatchInlineSnapshot(`
+    expect(run(fieldsUnion("0", [{ "0": tag("a") }]), ["a"]))
+      .toMatchInlineSnapshot(`
       At root:
       Expected an object
       Got: [
@@ -871,55 +880,91 @@ describe("fieldsUnion", () => {
     `);
   });
 
-  test("edge case keys", () => {
-    const edgeCaseDecoder = fieldsUnion("tag", {
-      constructor: (x) => x,
-      // Specifying `__proto__` is safe here.
-      __proto__: (x) => x,
-    });
-    expect(edgeCaseDecoder({ tag: "constructor" })).toStrictEqual({
-      tag: "constructor",
-    });
-    // But `__proto__` won’t work, because it’s not an “own” property for some reason.
-    // I haven’t been able to forbid `__proto__` using TypeScript.
-    // Notice how "__proto__" isn’t even in the expected keys.
-    expect(run(edgeCaseDecoder, { tag: "__proto__" })).toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags:
-        "constructor"
-      Got: "__proto__"
-    `);
-    expect(run(edgeCaseDecoder, { tag: "hasOwnProperty" }))
-      .toMatchInlineSnapshot(`
-        At root["tag"]:
-        Expected one of these tags:
-          "constructor"
-        Got: "hasOwnProperty"
-      `);
+  test("__proto__ is not allowed", () => {
+    expect(() =>
+      fieldsUnion("__proto__", [{ __proto__: tag("Test") }]),
+    ).toThrowErrorMatchingInlineSnapshot(
+      '"fieldsUnion: commonField cannot be __proto__"',
+    );
   });
 
   test("empty object is not allowed", () => {
-    // @ts-expect-error Argument of type '{}' is not assignable to parameter of type '"fieldsUnion must have at least one member"'.
-    const emptyDecoder = fieldsUnion("tag", {});
-    // @ts-expect-error Argument of type 'string' is not assignable to parameter of type 'Record<string, Decoder<unknown, unknown>>'.
-    fieldsUnion("tag", "fieldsUnion must have at least one member");
-    expectType<TypeEqual<ReturnType<typeof emptyDecoder>, never>>(true);
-    expect(run(emptyDecoder, { tag: "test" })).toMatchInlineSnapshot(`
-      At root["tag"]:
-      Expected one of these tags: (none)
-      Got: "test"
+    expect(() =>
+      // @ts-expect-error Argument of type '[]' is not assignable to parameter of type 'readonly [Variant<"tag">, ...Variant<"tag">[]]'.
+      //   Source has 0 element(s) but target requires 1.
+      fieldsUnion("tag", []),
+    ).toThrowErrorMatchingInlineSnapshot(
+      '"Codec.fieldsUnion: Got unusable encoded common field: undefined"',
+    );
+  });
+
+  test("decodedCommonField mismatch", () => {
+    expect(() =>
+      // @ts-expect-error Property 'tag' is missing in type '{ type: Field<"Test", { tag: { decoded: string; encoded: string; }; }>; }' but required in type 'Record<"tag", Field<any, { tag: { decoded: string; encoded: string; }; }>>'.
+      fieldsUnion("tag", [{ type: tag("Test") }]),
+    ).toThrow();
+  });
+
+  test("one variant uses wrong decodedCommonField", () => {
+    expect(() =>
+      // @ts-expect-error Property 'tag' is missing in type '{ type: Field<"B", { tag: { decoded: string; encoded: string; }; }>; }' but required in type 'Record<"tag", Field<any, { tag: { decoded: string; encoded: string; }; }>>'.
+      fieldsUnion("tag", [{ tag: tag("A") }, { type: tag("B") }]),
+    ).toThrow();
+  });
+
+  test("decodedCommonField does not use the tag function", () => {
+    expect(() =>
+      // @ts-expect-error Type '(value: unknown) => string' is not assignable to type 'Field<any, { tag: { decoded: string; encoded: string; }; }>'.
+      fieldsUnion("tag", [{ tag: string }]),
+    ).toThrow();
+  });
+
+  test("encodedCommonField mismatch", () => {
+    expect(() =>
+      // TODO: This will be a TypeScript error in an upcoming version of tiny-decoders.
+      fieldsUnion("tag", [
+        { tag: tag("A") },
+        { tag: tag("B", { renameFieldFrom: "type" }) },
+      ]),
+    ).toThrowErrorMatchingInlineSnapshot(
+      '"Codec.fieldsUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"tag\\")."',
+    );
+  });
+
+  test("same encodedCommonField correctly used on every variant", () => {
+    const decoder = fieldsUnion("tag", [
+      { tag: tag("A", { renameFieldFrom: "type" }) },
+      { tag: tag("B", { renameFieldFrom: "type" }) },
+    ]);
+    expectType<
+      TypeEqual<ReturnType<typeof decoder>, { tag: "A" } | { tag: "B" }>
+    >(true);
+    expect(decoder({ type: "A" })).toStrictEqual({ tag: "A" });
+    expect(decoder({ type: "B" })).toStrictEqual({ tag: "B" });
+  });
+});
+
+describe("tag", () => {
+  test("basic", () => {
+    const { decoder } = tag("Test");
+    expectType<TypeEqual<ReturnType<typeof decoder>, "Test">>(true);
+    expect(decoder("Test")).toBe("Test");
+    expect(run(decoder, "other")).toMatchInlineSnapshot(`
+      At root:
+      Expected this string: "Test"
+      Got: "other"
     `);
   });
 
-  test("keys must be strings", () => {
-    const innerDecoder = fieldsAuto({ tag: stringUnion(["1"]) });
-    // @ts-expect-error Type 'Decoder<{ 1: string; }, unknown>' is not assignable to type '"fieldsUnion keys must be strings, not numbers"'.
-    fieldsUnion("tag", { 1: innerDecoder });
-    // @ts-expect-error Type 'string' is not assignable to type 'Decoder<unknown, unknown>'.
-    fieldsUnion("tag", { 1: "fieldsUnion keys must be strings, not numbers" });
-    const goodDecoder = fieldsUnion("tag", { "1": innerDecoder });
-    expectType<TypeEqual<ReturnType<typeof goodDecoder>, { tag: "1" }>>(true);
-    expect(goodDecoder({ tag: "1" })).toStrictEqual({ tag: "1" });
+  test("renamed", () => {
+    const { decoder } = tag("Test", { renameTagFrom: "test" });
+    expectType<TypeEqual<ReturnType<typeof decoder>, "Test">>(true);
+    expect(decoder("test")).toBe("Test");
+    expect(run(decoder, "other")).toMatchInlineSnapshot(`
+      At root:
+      Expected this string: "test"
+      Got: "other"
+    `);
   });
 });
 
