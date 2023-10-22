@@ -13,13 +13,14 @@ test("adding extra fields to records", () => {
 
   const data: unknown = { name: "Comfortable Bed", price: 10e3 };
 
-  // One way is to add a decoder that always succeeds
-  // (a function that ignores its input and always returns the same value).
-  const productDecoder: Decoder<Product> = fieldsAuto({
-    name: string,
-    price: number,
-    version: () => 1,
-  });
+  // Use `chain` to add it:
+  const productDecoder: Decoder<Product> = chain(
+    fieldsAuto({
+      name: string,
+      price: number,
+    }),
+    (props) => ({ ...props, version: 1 }),
+  );
 
   expect(productDecoder(data)).toMatchInlineSnapshot(`
     {
@@ -29,28 +30,24 @@ test("adding extra fields to records", () => {
     }
   `);
 
-  // If you like, you can define this helper function:
-  const always =
-    <T>(value: T) =>
-    (): T =>
-      value;
-
-  const productDecoder2: Decoder<Product> = fieldsAuto({
+  // In previous versions of tiny-decoders, another way of doing this was to add
+  // a decoder that always succeeds (a function that ignores its input and
+  // always returns the same value).
+  const productDecoderBroken: Decoder<Product> = fieldsAuto({
     name: string,
     price: number,
-    version: always(1),
+    version: () => 1,
   });
 
-  expect(productDecoder2(data)).toEqual(productDecoder(data));
+  // It no longer works, because all the fields you mentioned are expected to exist.
+  expect(() => productDecoderBroken(data)).toThrowErrorMatchingInlineSnapshot(`
+    "Expected an object with a field called: \\"version\\"
+    Got: {
+      \\"name\\": string,
+      \\"price\\": number
+    }
+    (Actual values are hidden in sensitive mode.)
 
-  // Finally, you can do it with `chain`.
-  const productDecoder3: Decoder<Product> = chain(
-    fieldsAuto({
-      name: string,
-      price: number,
-    }),
-    (props) => ({ ...props, version: 1 }),
-  );
-
-  expect(productDecoder3(data)).toEqual(productDecoder2(data));
+    For better error messages, see https://github.com/lydell/tiny-decoders#error-messages"
+  `);
 });

@@ -1372,18 +1372,11 @@ describe("undefinedOr", () => {
       true,
     );
 
-    // TODO: This is supposed to be an error. It will be once the temporary behavior in `fieldsAuto` is removed.
-    // expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
-    //   At root:
-    //   Expected an object with a field called: "age"
-    //   Got: {
-    //     "name": "John"
-    //   }
-    // `);
     expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
-      {
-        "age": undefined,
-        "name": "John",
+      At root:
+      Expected an object with a field called: "age"
+      Got: {
+        "name": "John"
       }
     `);
 
