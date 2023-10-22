@@ -551,18 +551,20 @@ type Shape =
   | { tag: "Circle"; radius: number }
   | { tag: "Rectangle"; width: number; height: number };
 
-const shapeDecoder = fieldsUnion("tag", {
-  Circle: fieldsAuto({
+const shapeDecoder: Decoder<Shape> = fieldsUnion("tag", [
+  {
     tag: tag("Circle"),
     radius: number,
-  }),
-  Rectangle: fieldsAuto({
+  },
+  {
     tag: tag("Rectangle"),
     width: field(number, { renameFrom: "width_px" }),
     height: field(number, { renameFrom: "height_px" }),
-  }),
-});
+  },
+]);
 ```
+
+The `exact` option works just like for [fieldsAuto](#fieldsauto).
 
 See also the [renaming union field example](examples/renaming-union-field.test.ts).
 
