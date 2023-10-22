@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-shadow */ // TODO: Remove this line when removing the `fields` function.
 // This file shows how to infer types from decoders.
 
 import { expectType, TypeEqual } from "ts-expect";
@@ -7,17 +6,12 @@ import { expect, test } from "vitest";
 import {
   boolean,
   chain,
-  DecoderError,
   field,
-  fields,
   fieldsAuto,
-  fieldsUnion,
   multi,
   number,
   string,
   stringUnion,
-  tag,
-  undefinedOr,
 } from "..";
 
 test("making a type from a decoder", () => {
@@ -25,29 +19,14 @@ test("making a type from a decoder", () => {
   // typing the same thing again in the decoder (especially `fieldsAuto` decoders
   // look almost identical to `type` they decode to!), you can start with the
   // decoder and extract the type afterwards with TypeScript’s `ReturnType` utility.
-  const personDecoder1 = fields((field) => ({
-    name: field("name", string),
-    age: field("age", number),
-  }));
-  const personDecoder1Auto = fieldsAuto({
+  const personDecoder = fieldsAuto({
     name: string,
     age: number,
   });
 
-  // Hover over `Person1` to see what it looks like!
-  type Person1 = ReturnType<typeof personDecoder1>;
-  expectType<TypeEqual<Person1, { name: string; age: number }>>(true);
-
-  // Hover over `Person1Auto` to see what it looks like!
-  type Person1Auto = ReturnType<typeof personDecoder1Auto>;
-  expectType<TypeEqual<Person1Auto, { name: string; age: number }>>(true);
-
-  // A little sanity check that it actually works:
-  const testPerson: unknown = { name: "John", age: 30 };
-  function meet(personA: Person1, personB: Person1Auto): string {
-    return `${personA.name} meets ${personB.name}`;
-  }
-  meet(personDecoder1(testPerson), personDecoder1Auto(testPerson));
+  // Hover over `Person` to see what it looks like!
+  type Person = ReturnType<typeof personDecoder>;
+  expectType<TypeEqual<Person, { name: string; age: number }>>(true);
 
   // If it feels like you are specifying everything twice – once in a `type` or
   // `interface`, and once in the decoder – you might find this `ReturnType`
@@ -112,275 +91,6 @@ test("making a type from a decoder", () => {
     extra: "prop",
   };
   expect(user3).toMatchObject(user);
-
-  // Here’s the same decoder again, but written using `fields` instead of
-  // `fieldsAuto`. It should give the same inferred type.
-  const userDecoder2 = fields((field) => ({
-    id: field(
-      "id",
-      chain(multi(["string", "number"]), ({ value }) => value),
-    ),
-    name: field("name", string),
-    age: field("age", number),
-    active: field("active", boolean),
-    country: field("country", undefinedOr(string)),
-    type: field("type", stringUnion(["user"])),
-  }));
-
-  type User2 = ReturnType<typeof userDecoder2>;
-
-  expectType<TypeEqual<User, User2>>(true);
-
-  const user4: User2 = {
-    id: 1,
-    name: "John Doe",
-    age: 30,
-    active: true,
-    country: undefined,
-    // @ts-expect-error Type '"nope"' is not assignable to type '"user"'.
-    type: "nope",
-  };
-  expect({ ...user4, type: "user" }).toMatchObject(user);
-});
-
-test("making a type from a decoder – unions", () => {
-  // Let’s say we need to support two types of users – anonymous and registered
-  // ones. This is where `fieldsUnion` shines! It’s both easier to use and gives
-  // a better inferred type!
-  const userDecoder1 = fieldsUnion("type", [
-    {
-      type: tag("anonymous"),
-      sessionId: number,
-    },
-    {
-      type: tag("registered"),
-      id: number,
-      name: string,
-    },
-  ]);
-  type InferredType1 = ReturnType<typeof userDecoder1>;
-  type ExpectedType1 =
-    | { type: "anonymous"; sessionId: number }
-    | { type: "registered"; id: number; name: string };
-  expectType<TypeEqual<InferredType1, ExpectedType1>>(true);
-
-  // For comparison, let’s do the same decoder “manually”.
-  // This might not be super interesting – but I’ve kept this “TypeScript
-  // research” for my future self.
-  // Unfortunately, TypeScript doesn’t infer the type you might have expected:
-  const userDecoder2 = fields((field) => {
-    const type = field("type", string);
-
-    switch (type) {
-      case "anonymous":
-        return {
-          type: "anonymous",
-          sessionId: field("sessionId", number),
-        };
-
-      case "registered":
-        return {
-          type: "registered",
-          id: field("id", number),
-          name: field("name", string),
-        };
-
-      default:
-        throw new DecoderError({
-          message: "Unknown user type",
-          value: type,
-          key: "type",
-        });
-    }
-  });
-  type InferredType2 = ReturnType<typeof userDecoder2>;
-  type ActualType2 =
-    | {
-        type: string;
-        id: number;
-        name: string;
-        sessionId?: undefined;
-      }
-    | {
-        type: string;
-        sessionId: number;
-        id?: undefined;
-        name?: undefined;
-      };
-  expectType<TypeEqual<InferredType2, ActualType2>>(true);
-
-  // To turn `type: string` into `type: "anonymous"` and `type: "registered"`, add
-  // `as const`:
-  const userDecoder3 = fields((field) => {
-    const type = field("type", string);
-
-    switch (type) {
-      case "anonymous":
-        return {
-          type: "anonymous" as const,
-          sessionId: field("sessionId", number),
-        };
-
-      case "registered":
-        return {
-          type: "registered" as const,
-          id: field("id", number),
-          name: field("name", string),
-        };
-
-      default:
-        throw new DecoderError({
-          message: "Unknown user type",
-          value: type,
-          key: "type",
-        });
-    }
-  });
-  type InferredType3 = ReturnType<typeof userDecoder3>;
-  type ActualType3 =
-    | {
-        type: "anonymous";
-        sessionId: number;
-        id?: undefined;
-        name?: undefined;
-      }
-    | {
-        type: "registered";
-        id: number;
-        name: string;
-        sessionId?: undefined;
-      };
-  expectType<TypeEqual<InferredType3, ActualType3>>(true);
-
-  // However, `id?: undefined` and similar are still part of the type. They don’t
-  // hurt super much when it comes to type safety. They are optional fields that
-  // only are allowed to be set to `undefined` – you can’t do much with that.
-  // However, they do clutter tooltips and autocomplete in your editor.
-  const testUser = userDecoder3({ type: "anonymous", sessionId: 123 });
-  if (testUser.type === "anonymous") {
-    // Type `testUser.` above this line and check your editor’s autocomplete.
-    // You probably get something like this:
-    //
-    // - id?: undefined
-    // - name?: undefined
-    // - sessionId: number
-    // - type: "anonymous"
-    //
-    // And if you hover over `testUser` in the line you typed, the tooltip showing
-    // the type might say:
-    //
-    //     {
-    //       type: "anonymous";
-    //       sessionId: number;
-    //       id?: undefined;
-    //       name?: undefined;
-    //     }
-    //
-    // Those extra fields are just noisy. They exist because of this:
-    // https://github.com/microsoft/TypeScript/pull/19513
-    //
-    // But can we get rid of them?
-  }
-
-  // Turns out we can get rid of the extra properties by using the good old
-  // `identity` function! It’s just a function that returns whatever is passed to
-  // it. A bit of an ugly workaround, but it works.
-  const id = <T>(x: T): T => x;
-
-  // And when wrapping each `return` in `id(...)` the extra properties vanish!
-  const userDecoder4 = fields((field) => {
-    const type = field("type", string);
-
-    switch (type) {
-      case "anonymous":
-        return id({
-          type: "anonymous" as const,
-          sessionId: field("sessionId", number),
-        });
-
-      case "registered":
-        return id({
-          type: "registered" as const,
-          id: field("id", number),
-          name: field("name", string),
-        });
-
-      default:
-        throw new DecoderError({
-          message: "Unknown user type",
-          value: type,
-          key: "type",
-        });
-    }
-  });
-  type InferredType4 = ReturnType<typeof userDecoder4>;
-  type ActualType4 =
-    | {
-        type: "anonymous";
-        sessionId: number;
-      }
-    | {
-        type: "registered";
-        id: number;
-        name: string;
-      };
-  expectType<TypeEqual<InferredType4, ActualType4>>(true);
-
-  // Another way is to write separate decoders for each case.
-  // Note how I disabled the explicit-function-return-type rule – inferring the
-  // type is the whole point, and having to disable ESLint rules is annoying…
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  function getUserDecoder(type: unknown) {
-    switch (type) {
-      case "anonymous":
-        return fields((field) => ({
-          type: "anonymous" as const,
-          sessionId: field("sessionId", number),
-        }));
-
-      case "registered":
-        // You can also use `fieldsAuto`:
-        return fieldsAuto({
-          type: () => "registered" as const,
-          id: number,
-          name: string,
-        });
-
-      default:
-        throw new DecoderError({
-          message: "Unknown user type",
-          value: type,
-          key: "type",
-        });
-    }
-  }
-
-  // This “decodes” the "type" field using `getUserDecoder`. Remember that a
-  // decoder is allowed to return whatever it wants. `getUserDecoder` returns a
-  // _new_ decoder, which we immediately call.
-  const userDecoder5 = fields((field, obj) =>
-    field("type", getUserDecoder)(obj),
-  );
-  type InferredType5 = ReturnType<typeof userDecoder5>;
-  type ActualType5 =
-    | {
-        type: "anonymous";
-        sessionId: number;
-      }
-    | {
-        type: "registered";
-        id: number;
-        name: string;
-      };
-  expectType<TypeEqual<InferredType5, ActualType5>>(true);
-
-  expect(userDecoder5({ type: "anonymous", sessionId: 1 }))
-    .toMatchInlineSnapshot(`
-      {
-        "sessionId": 1,
-        "type": "anonymous",
-      }
-    `);
 });
 
 test("making a type from an object and stringUnion", () => {

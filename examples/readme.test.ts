@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-shadow */ // TODO: Remove this line when removing the `fields` function.
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
@@ -8,7 +7,6 @@ import {
   Decoder,
   DecoderError,
   field,
-  fields,
   fieldsAuto,
   number,
   repr,
@@ -136,51 +134,6 @@ test("default vs sensitive error messages", () => {
     Got: number
     (Actual values are hidden in sensitive mode.)
   `);
-});
-
-test("fields", () => {
-  type User = {
-    age: number;
-    active: boolean;
-    name: string;
-    description?: string | undefined;
-    version: 1;
-  };
-
-  const userDecoder = fields(
-    (field): User => ({
-      // Simple field:
-      age: field("age", number),
-      // Renaming a field:
-      active: field("is_active", boolean),
-      // Combining two fields:
-      name: `${field("first_name", string)} ${field("last_name", string)}`,
-      // Optional field:
-      description: field("description", undefinedOr(string)),
-      // Hardcoded field:
-      version: 1,
-    }),
-  );
-
-  expect(
-    userDecoder({
-      age: 30,
-      is_active: true,
-      first_name: "John",
-      last_name: "Doe",
-    }),
-  ).toStrictEqual({
-    active: true,
-    age: 30,
-    description: undefined,
-    name: "John Doe",
-    version: 1,
-  });
-
-  // Plucking a single field out of an object:
-  const ageDecoder: Decoder<number> = fields((field) => field("age", number));
-
-  expect(ageDecoder({ age: 30 })).toBe(30);
 });
 
 test("fieldsAuto", () => {

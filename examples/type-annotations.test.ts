@@ -3,7 +3,7 @@
 
 import { expect, test } from "vitest";
 
-import { Decoder, fields, fieldsAuto, number, string } from "../";
+import { Decoder, fieldsAuto, number, string } from "../";
 
 test("type annotations", () => {
   // First, a small test type and a function that receives it:
@@ -20,43 +20,29 @@ test("type annotations", () => {
    * MISSPELLED PROPERTY
    */
 
-  // Here are two decoders for `Person`, but without explicit type annotations.
+  // Here’s a decoder for `Person`, but without an explicit type annotation.
   // TypeScript will infer what they decode into (try hovering `personDecoder1`
-  // and `personDecoder1Auto` in your editor!), but it won’t know that you
-  // intended to decode a `Person`. As you can see, I’ve misspelled `age` as `aye`.
-  const personDecoder1 = fields((field) => ({
-    name: field("name", string),
-    aye: field("age", number),
-  }));
-  const personDecoder1Auto = fieldsAuto({
+  // in your editor!), but it won’t know that you intended to decode a `Person`.
+  // As you can see, I’ve misspelled `age` as `aye`.
+  const personDecoder1 = fieldsAuto({
     name: string,
     aye: number,
   });
-  // Since TypeScript has inferred legit decoders above, it marks the following
-  // two calls as errors (you can’t pass an object with `aye` as a `Person`),
-  // while the _real_ errors of course are in the decoders themselves.
+  // Since TypeScript has inferred a legit decoder above, it marks the following
+  // call as an error (you can’t pass an object with `aye` as a `Person`),
+  // while the _real_ error of course is in the decoder itself.
   // @ts-expect-error Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.
   greet(personDecoder1(testPerson));
-  // @ts-expect-error Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.
-  greet(personDecoder1Auto(testPerson));
 
-  // The way to make the above type errors more clear is to provide explicit type
-  // annotations, so that TypeScript knows what you’re trying to do.
-  const personDecoder2 = fields(
-    (field): Person => ({
-      name: field("name", string),
-      // @ts-expect-error Object literal may only specify known properties, and 'aye' does not exist in type 'Person'.
-      aye: field("age", number),
-    }),
-  );
+  // The way to make the above type error more clear is to provide an explicit type
+  // annotation, so that TypeScript knows what you’re trying to do.
   // @ts-expect-error Type 'Decoder<{ name: string; aye: number; }, unknown>' is not assignable to type 'Decoder<Person>'.
   //   Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.ts(2322)
-  const personDecoder2Auto: Decoder<Person> = fieldsAuto({
+  const personDecoder2: Decoder<Person> = fieldsAuto({
     name: string,
     aye: number,
   });
   greet(personDecoder2(testPerson));
-  greet(personDecoder2Auto(testPerson));
 
   /*
    * EXTRA PROPERTY
@@ -64,76 +50,42 @@ test("type annotations", () => {
 
   // TypeScript allows passing extra properties, so without type annotations
   // there are no errors:
-  const personDecoder5 = fields((field) => ({
-    name: field("name", string),
-    age: field("age", number),
-    extra: field("extra", string),
-  }));
-  const personDecoder5Auto = fieldsAuto({
+  const personDecoder3 = fieldsAuto({
     name: string,
     age: number,
     extra: string,
   });
-  // These would ideally complain about the extra property, but they don’t.
-  greet(personDecoder5(testPerson));
-  greet(personDecoder5Auto(testPerson));
+  // This would ideally complain about the extra property, but it doesn’t.
+  greet(personDecoder3(testPerson));
 
   // Adding `Decoder<Person>` does not seem to help TypeScript find any errors:
-  const personDecoder6: Decoder<Person> = fields((field) => ({
-    name: field("name", string),
-    age: field("age", number),
-    extra: field("extra", string),
-  }));
-  const personDecoder6Auto: Decoder<Person> = fieldsAuto({
+  const personDecoder4: Decoder<Person> = fieldsAuto({
     name: string,
     age: number,
     extra: string,
   });
-  greet(personDecoder6(testPerson));
-  greet(personDecoder6Auto(testPerson));
+  greet(personDecoder4(testPerson));
 
-  // The recommended type annotation for `fields` does produce errors!
-  const personDecoder7 = fields(
-    (field): Person => ({
-      name: field("name", string),
-      age: field("age", number),
-      // @ts-expect-error Object literal may only specify known properties, and 'extra' does not exist in type 'Person'.
-      extra: field("extra", string),
-    }),
-  );
-  const personDecoder7Auto: Decoder<Person> = fieldsAuto({
+  // This is currently not an error unfortunately, but in a future version of tiny-decoders it will be.
+  const personDecoder5: Decoder<Person> = fieldsAuto({
     name: string,
     age: number,
-    // This is currently not an error unfortunately, but in a future version of tiny-decoders it will be.
+    // Here is where the error will be.
     extra: string,
   });
-  greet(personDecoder7(testPerson));
-  greet(personDecoder7Auto(testPerson));
+  greet(personDecoder5(testPerson));
   // See these TypeScript issues for more information:
   // https://github.com/microsoft/TypeScript/issues/7547
   // https://github.com/microsoft/TypeScript/issues/18020
 
-  // Finally, some compiling decoders.
-  const personDecoder8 = fields(
-    (field): Person => ({
-      name: field("name", string),
-      age: field("age", number),
-    }),
-  );
-  const personDecoder8Auto: Decoder<Person> = fieldsAuto({
+  // Finally, a compiling decoder.
+  const personDecoder6: Decoder<Person> = fieldsAuto({
     name: string,
     age: number,
   });
-  greet(personDecoder8(testPerson));
-  greet(personDecoder8Auto(testPerson));
+  greet(personDecoder6(testPerson));
 
-  expect(personDecoder8(testPerson)).toMatchInlineSnapshot(`
-    {
-      "age": 30,
-      "name": "John",
-    }
-  `);
-  expect(personDecoder8Auto(testPerson)).toMatchInlineSnapshot(`
+  expect(personDecoder6(testPerson)).toMatchInlineSnapshot(`
     {
       "age": 30,
       "name": "John",
