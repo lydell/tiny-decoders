@@ -1,6 +1,6 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
-### Version 12.0.0 (unreleased)
+### Version 12.0.0 (2023-10-22)
 
 This release changes how `fieldsUnion` works. The new way should be easier to use, and it looks more similar to the type definition of a tagged union.
 
