@@ -181,8 +181,8 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 <th><a href="#fieldsauto">fieldsAuto</a></th>
 <td><pre>(mapping: {
   field1: Decoder&lt;T1&gt;,
-  field2: Field&lt;T2, { optional: true }&gt;,
-  field3: Field&lt;T3, { renameFrom: "field_3" }&gt;,
+  field2: Field&lt;T2, {optional: true}&gt;,
+  field3: Field&lt;T3, {renameFrom: "field_3"}&gt;,
   fieldN: Decoder&lt;TN&gt;
 }) =&gt;
   Decoder&lt;{
@@ -203,7 +203,8 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 }</pre></td>
 <td><pre>{
   field1: T1,
-  field2: T2,
+  field2?: T2,
+  field3: T3,
   fieldN: TN
 }</pre></td>
 </tr>
