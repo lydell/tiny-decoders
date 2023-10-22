@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-shadow */ // TODO: Remove this line when removing the `fields` function.
-
 import { expectType, TypeEqual } from "ts-expect";
 import { describe, expect, test } from "vitest";
 
@@ -10,7 +8,6 @@ import {
   Decoder,
   DecoderError,
   field,
-  fields,
   fieldsAuto,
   fieldsUnion,
   multi,
@@ -262,265 +259,6 @@ describe("record", () => {
     expect(
       run(record(number), JSON.parse(`{"a": 1, "__proto__": 2, "b": 3}`)),
     ).toStrictEqual({ a: 1, b: 3 });
-  });
-});
-
-describe("fields", () => {
-  test("basic", () => {
-    type Person = ReturnType<typeof personDecoder>;
-    const personDecoder = fields((field) => ({
-      id: field("id", number),
-      firstName: field("first_name", string),
-    }));
-
-    expectType<TypeEqual<Person, { id: number; firstName: string }>>(true);
-    expectType<Person>(personDecoder({ id: 1, first_name: "John" }));
-
-    expect(personDecoder({ id: 1, first_name: "John" })).toStrictEqual({
-      id: 1,
-      firstName: "John",
-    });
-
-    expect(run(personDecoder, { id: "1", first_name: "John" }))
-      .toMatchInlineSnapshot(`
-        At root["id"]:
-        Expected a number
-        Got: "1"
-      `);
-
-    expect(run(personDecoder, { id: 1, firstName: "John" }))
-      .toMatchInlineSnapshot(`
-        At root["first_name"]:
-        Expected a string
-        Got: undefined
-      `);
-
-    expect(
-      run(
-        fields((field) => field("0", number)),
-        [1],
-      ),
-    ).toMatchInlineSnapshot(`
-      At root:
-      Expected an object
-      Got: [
-        1
-      ]
-    `);
-  });
-
-  describe("exact", () => {
-    test("allows excess properties by default", () => {
-      expect(
-        run(
-          fields((field) => [field("one", string), field("two", boolean)]),
-          { one: "a", two: true, three: 3, four: {} },
-        ),
-      ).toStrictEqual(["a", true]);
-      expect(
-        run(
-          fields((field) => [field("one", string), field("two", boolean)], {
-            exact: "allow extra",
-          }),
-          { one: "a", two: true, three: 3, four: {} },
-        ),
-      ).toStrictEqual(["a", true]);
-    });
-
-    test("throw on excess properties", () => {
-      expect(
-        run(
-          fields((field) => [field("one", string), field("two", boolean)], {
-            exact: "throw",
-          }),
-          { one: "a", two: true, three: 3, four: {} },
-        ),
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected only these fields:
-          "one",
-          "two"
-        Found extra fields:
-          "three",
-          "four"
-      `);
-    });
-
-    test("large number of excess properties", () => {
-      expect(
-        run(
-          fields((field) => [field("1", boolean), field("2", boolean)], {
-            exact: "throw",
-          }),
-          Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false])),
-        ),
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected only these fields:
-          "1",
-          "2"
-        Found extra fields:
-          "0",
-          "3",
-          "4",
-          "5",
-          "6",
-          (93 more)
-      `);
-    });
-
-    test("different fields based on one field", () => {
-      const userDecoder = fields(
-        (field) =>
-          field("isAdmin", boolean)
-            ? {
-                isAdmin: true,
-                name: field("name", string),
-                access: field("access", array(string)),
-              }
-            : {
-                isAdmin: false,
-                name: field("name", string),
-                location: undefinedOr(string),
-              },
-        { exact: "throw" },
-      );
-
-      expect(
-        run(userDecoder, {
-          isAdmin: true,
-          name: "John",
-          access: [],
-          age: 12,
-        }),
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected only these fields:
-          "isAdmin",
-          "name",
-          "access"
-        Found extra fields:
-          "age"
-      `);
-
-      expect(
-        run(userDecoder, {
-          isAdmin: false,
-          name: "Jane",
-          access: [],
-          age: 12,
-        }),
-      ).toMatchInlineSnapshot(`
-        At root:
-        Expected only these fields:
-          "isAdmin",
-          "name"
-        Found extra fields:
-          "access",
-          "age"
-      `);
-    });
-  });
-
-  describe("allow", () => {
-    test("object", () => {
-      const decoder = fields((field) => field("length", number), {
-        allow: "object",
-      });
-      expect(decoder({ length: 0 })).toBe(0);
-      expect(run(decoder, [])).toMatchInlineSnapshot(`
-        At root:
-        Expected an object
-        Got: []
-      `);
-    });
-
-    test("array", () => {
-      const decoder = fields(
-        (field) => [field("length", number), field("0", boolean)],
-        { allow: "array" },
-      );
-      expect(decoder([true])).toStrictEqual([1, true]);
-      expect(run(decoder, { length: 0 })).toMatchInlineSnapshot(`
-        At root:
-        Expected an array
-        Got: {
-          "length": 0
-        }
-      `);
-      expect(run(decoder, [])).toMatchInlineSnapshot(`
-        At root["0"]:
-        Expected a boolean
-        Got: undefined
-      `);
-
-      // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'string'.
-      fields((field) => field(0, string));
-    });
-  });
-
-  test("obj", () => {
-    const objInput = {};
-    const result = fields((_field, obj) => {
-      expect(obj).toBe(objInput);
-      return 1;
-    })(objInput);
-    expect(result).toBe(1);
-  });
-
-  test("empty object", () => {
-    const decoder = fields(() => 1, { exact: "throw" });
-    expect(decoder({})).toBe(1);
-    expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
-      At root:
-      Expected only these fields: (none)
-      Found extra fields:
-        "a"
-    `);
-  });
-
-  test("return a class", () => {
-    class Person {
-      constructor(
-        public firstName: string,
-        public lastName: string,
-        public age?: number,
-      ) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.age = age;
-      }
-
-      getFullName(): string {
-        return `${this.firstName} ${this.lastName}`;
-      }
-    }
-
-    const decoder = fields(
-      (field) =>
-        new Person(
-          field("first_name", string),
-          field("last_name", string),
-          field("age", undefinedOr(number)),
-        ),
-    );
-
-    const person = decoder({ first_name: "John", last_name: "Doe" });
-
-    if (person.firstName !== "John") {
-      // @ts-expect-error Object is possibly 'undefined'.
-      person.age.toFixed(2);
-    }
-
-    expect(person).toMatchInlineSnapshot(`
-      Person {
-        "age": undefined,
-        "firstName": "John",
-        "lastName": "Doe",
-      }
-    `);
-
-    expect(person.getFullName()).toMatchInlineSnapshot(`"John Doe"`);
   });
 });
 
@@ -1326,41 +1064,6 @@ describe("undefinedOr", () => {
     expect(decoder("a")).toBe("a");
   });
 
-  test("using with fields results in an optional field", () => {
-    type Person = ReturnType<typeof personDecoder>;
-    const personDecoder = fields((field) => ({
-      name: field("name", string),
-      age: field("age", undefinedOr(number)),
-    }));
-
-    expectType<TypeEqual<Person, { name: string; age?: number }>>(true);
-
-    expect(personDecoder({ name: "John" })).toStrictEqual({
-      name: "John",
-      age: undefined,
-    });
-
-    expect(personDecoder({ name: "John", age: undefined })).toStrictEqual({
-      name: "John",
-      age: undefined,
-    });
-
-    expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
-      name: "John",
-      age: 45,
-    });
-
-    expect(run(personDecoder, { name: "John", age: "old" }))
-      .toMatchInlineSnapshot(`
-        At root["age"] (optional):
-        Expected a number
-        Got: "old"
-      `);
-
-    const person: Person = { name: "John" };
-    void person;
-  });
-
   test("using with fieldsAuto does NOT result in an optional field", () => {
     type Person = ReturnType<typeof personDecoder>;
     const personDecoder = fieldsAuto({
@@ -1489,17 +1192,19 @@ describe("nullable", () => {
 
   test("nullable field", () => {
     type Person = ReturnType<typeof personDecoder>;
-    const personDecoder = fields((field) => ({
-      name: field("name", string),
-      age: field("age", nullable(number)),
-    }));
+    const personDecoder = fieldsAuto({
+      name: string,
+      age: nullable(number),
+    });
 
     expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
 
     expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
-      At root["age"] (nullable):
-      Expected a number
-      Got: undefined
+      At root:
+      Expected an object with a field called: "age"
+      Got: {
+        "name": "John"
+      }
     `);
 
     expect(run(personDecoder, { name: "John", age: undefined }))

@@ -4,18 +4,6 @@
 
 export type Decoder<T, U = unknown> = (value: U) => T;
 
-type WithUndefinedAsOptional<T> = T extends Record<string, unknown>
-  ? Expand<{ [P in OptionalKeys<T>]?: T[P] } & { [P in RequiredKeys<T>]: T[P] }>
-  : T;
-
-type RequiredKeys<T> = {
-  [P in keyof T]: undefined extends T[P] ? never : P;
-}[keyof T];
-
-type OptionalKeys<T> = {
-  [P in keyof T]: undefined extends T[P] ? P : never;
-}[keyof T];
-
 // Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
 // https://stackoverflow.com/a/57683652/2010616
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
@@ -104,58 +92,6 @@ export function record<T>(decoder: Decoder<T>): Decoder<Record<string, T>> {
     }
 
     return result;
-  };
-}
-
-/**
- * @deprecated Use `fieldsAuto` instead.
- */
-export function fields<T>(
-  callback: (
-    field: <U>(key: string, decoder: Decoder<U>) => U,
-    object: Record<string, unknown>,
-  ) => T,
-  {
-    exact = "allow extra",
-    allow = "object",
-  }: {
-    exact?: "allow extra" | "throw";
-    allow?: "array" | "object";
-  } = {},
-): Decoder<WithUndefinedAsOptional<T>> {
-  return function fieldsDecoder(value: unknown): WithUndefinedAsOptional<T> {
-    const object: Record<string, unknown> =
-      allow === "array"
-        ? (unknownArray(value) as unknown as Record<string, unknown>)
-        : unknownRecord(value);
-    const knownFields = Object.create(null) as Record<string, null>;
-
-    function field_<U>(key: string, decoder: Decoder<U>): U {
-      try {
-        const result = decoder(object[key]);
-        knownFields[key] = null;
-        return result;
-      } catch (error) {
-        throw DecoderError.at(error, key);
-      }
-    }
-
-    const result = callback(field_, object);
-
-    if (exact !== "allow extra") {
-      const unknownFields = Object.keys(object).filter(
-        (key) => !Object.prototype.hasOwnProperty.call(knownFields, key),
-      );
-      if (unknownFields.length > 0) {
-        throw new DecoderError({
-          tag: "exact fields",
-          knownFields: Object.keys(knownFields),
-          got: unknownFields,
-        });
-      }
-    }
-
-    return result as WithUndefinedAsOptional<T>;
   };
 }
 

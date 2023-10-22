@@ -1,5 +1,9 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 14.0.0 (unreleased)
+
+This release removes the `fields` function, which was deprecated in version 11.0.0. See the release notes for version 11.0.0 for how to replace `fields` with `fieldsAuto`, `chain` and custom decoders.
+
 ### Version 13.0.0 (2023-10-22)
 
 > **Warning**  

@@ -171,13 +171,6 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 <td><code>Record&lt;string, T&gt;</code></td>
 </tr>
 <tr>
-<th><a href="#fields">fields</a></th>
-<td><pre>(callback: Function) =&gt;
-  Decoder&lt;T&gt;</pre></td>
-<td>object</td>
-<td><code>T</code></td>
-</tr>
-<tr>
 <th><a href="#fieldsauto">fieldsAuto</a></th>
 <td><pre>(mapping: {
   field1: Decoder&lt;T1&gt;,
@@ -373,72 +366,6 @@ Decodes a JSON object into a TypeScript `Record`. (Yes, this function is named a
 The passed `decoder` is for each value of the object.
 
 For example, `record(number)` decodes an object where the keys can be anything and the values are numbers (into `Record<string, number>`).
-
-### fields
-
-> **Warning**  
-> This function is deprecated. Use [fieldsAuto](#fieldsAuto) instead.
-
-```ts
-function fields<T>(
-  callback: (
-    field: <U>(key: string, decoder: Decoder<U>) => U,
-    object: Record<string, unknown>,
-  ) => T,
-  {
-    exact = "allow extra",
-    allow = "object",
-  }: {
-    exact?: "allow extra" | "throw";
-    allow?: "array" | "object";
-  } = {},
-): Decoder<T>;
-```
-
-Decodes a JSON object (or array) into any TypeScript you’d like (`T`), usually an object/interface with known fields.
-
-The type annotation is a bit overwhelming, but using `fields` isn’t super complicated. In a callback, you get a `field` function that you use to pluck out stuff from the JSON object. For example:
-
-```ts
-type User = {
-  age: number;
-  active: boolean;
-  name: string;
-  description?: string | undefined;
-  version: 1;
-};
-
-const userDecoder = fields(
-  (field): User => ({
-    // Simple field:
-    age: field("age", number),
-    // Renaming a field:
-    active: field("is_active", boolean),
-    // Combining two fields:
-    name: `${field("first_name", string)} ${field("last_name", string)}`,
-    // Optional field:
-    description: field("description", undefinedOr(string)),
-    // Hardcoded field:
-    version: 1,
-  }),
-);
-
-// Plucking a single field out of an object:
-const ageDecoder: Decoder<number> = fields((field) => field("age", number));
-```
-
-`field("key", decoder)` essentially runs `decoder(obj["key"])` but with better error messages. The nice thing about `field` is that it does _not_ return a new decoder – but the value of that field! This means that you can do for instance `const type: string = field("type", string)` and then use `type` however you want inside your callback.
-
-`object` is passed in case you need to check stuff like `"my-key" in object`.
-
-Also note that you can return any type from the callback, not just objects. If you’d rather have a tuple you could return that – see the [tuples example](examples/tuples.test.ts).
-
-The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
-
-- `"allow extra"` (default) allows extra properties on the object (or extra indexes on an array).
-- `"throw"` throws a `DecoderError` for extra properties.
-
-The `allow` option defaults to only allowing JSON objects. Set it to `"array"` if you are decoding an array.
 
 ### fieldsAuto
 
@@ -779,7 +706,7 @@ Returns a new decoder that also accepts `undefined`. Alternatively, supply a `de
 
 Notes:
 
-- Using `undefinedOr` does _not_ make a field in an object optional (except in the deprecated [fields](#fields) function). It only allows the field to be `undefined`. Similarly, using the [field](#field) function to mark a field as optional does not allow setting the field to `undefined`, only omitting it.
+- Using `undefinedOr` does _not_ make a field in an object optional. It only allows the field to be `undefined`. Similarly, using the [field](#field) function to mark a field as optional does not allow setting the field to `undefined`, only omitting it.
 - JSON does not have `undefined` (only `null`). So `undefinedOr` is more useful when you are decoding something that does not come from JSON. However, even when working with JSON `undefinedOr` still has a use: If you infer types from decoders, using `undefinedOr` on object fields results in `| undefined` for the type of the field, which allows you to assign `undefined` to it which is occasionally useful.
 
 ### nullable
@@ -1082,6 +1009,6 @@ export function either<T, U>(
 This decoder would try `decoder1` first. If it fails, go on and try `decoder2`. If that fails, present both errors. I consider this a blunt tool.
 
 - If you want either a string or a number, use [multi](#multi). This let’s you switch between any JSON types.
-- For objects that can be decoded in different ways, use [fieldsUnion](#fieldsunion). If that’s not possible, use [fields](#fields) and look for the field(s) that tell which variant you’ve got. Then run the appropriate decoder for the rest of the object.
+- For objects that can be decoded in different ways, use [fieldsUnion](#fieldsunion). If that’s not possible, see the [untagged union example](examples/untagged-union.test.ts) for how you can approach the problem.
 
 The above approaches result in a much simpler [DecoderError](#decodererror) type, and also results in much better error messages, since there’s never a need to present something like “decoding failed in the following 2 ways: …”
