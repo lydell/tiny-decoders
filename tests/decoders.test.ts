@@ -462,7 +462,7 @@ describe("fieldsAuto", () => {
     `);
   });
 
-  describe("exact", () => {
+  describe("allowExtraFields", () => {
     test("allows excess properties by default", () => {
       expect(
         run(fieldsAuto({ one: string, two: boolean }), {
@@ -474,20 +474,26 @@ describe("fieldsAuto", () => {
       ).toStrictEqual({ one: "a", two: true });
       expect(
         run(
-          fieldsAuto({ one: string, two: boolean }, { exact: "allow extra" }),
+          fieldsAuto({ one: string, two: boolean }, { allowExtraFields: true }),
           { one: "a", two: true, three: 3, four: {} },
         ),
       ).toStrictEqual({ one: "a", two: true });
     });
 
-    test("throw on excess properties", () => {
+    test("fail on excess properties", () => {
       expect(
-        run(fieldsAuto({ one: string, two: boolean }, { exact: "throw" }), {
-          one: "a",
-          two: true,
-          three: 3,
-          four: {},
-        }),
+        run(
+          fieldsAuto(
+            { one: string, two: boolean },
+            { allowExtraFields: false },
+          ),
+          {
+            one: "a",
+            two: true,
+            three: 3,
+            four: {},
+          },
+        ),
       ).toMatchInlineSnapshot(`
         At root:
         Expected only these fields:
@@ -502,7 +508,10 @@ describe("fieldsAuto", () => {
     test("large number of excess properties", () => {
       expect(
         run(
-          fieldsAuto({ "1": boolean, "2": boolean }, { exact: "throw" }),
+          fieldsAuto(
+            { "1": boolean, "2": boolean },
+            { allowExtraFields: false },
+          ),
           Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false])),
         ),
       ).toMatchInlineSnapshot(`
@@ -549,7 +558,7 @@ describe("fieldsAuto", () => {
   });
 
   test("empty object", () => {
-    const decoder = fieldsAuto({}, { exact: "throw" });
+    const decoder = fieldsAuto({}, { allowExtraFields: false });
     expect(decoder({})).toStrictEqual({});
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
@@ -681,7 +690,7 @@ describe("fieldsUnion", () => {
     expect(decoder({ type: "B" })).toStrictEqual({ tag: "B" });
   });
 
-  describe("exact", () => {
+  describe("allowExtraFields", () => {
     test("allows excess properties by default", () => {
       expect(
         run(
@@ -700,7 +709,7 @@ describe("fieldsUnion", () => {
           fieldsUnion(
             "tag",
             [{ tag: tag("Test"), one: string, two: boolean }],
-            { exact: "allow extra" },
+            { allowExtraFields: true },
           ),
           {
             tag: "Test",
@@ -713,15 +722,13 @@ describe("fieldsUnion", () => {
       ).toStrictEqual({ tag: "Test", one: "a", two: true });
     });
 
-    test("throw on excess properties", () => {
+    test("fail on excess properties", () => {
       expect(
         run(
           fieldsUnion(
             "tag",
             [{ tag: tag("Test"), one: string, two: boolean }],
-            {
-              exact: "throw",
-            },
+            { allowExtraFields: false },
           ),
           {
             tag: "Test",
@@ -749,7 +756,7 @@ describe("fieldsUnion", () => {
           fieldsUnion(
             "tag",
             [{ tag: tag("Test"), "1": boolean, "2": boolean }],
-            { exact: "throw" },
+            { allowExtraFields: false },
           ),
           {
             tag: "Test",

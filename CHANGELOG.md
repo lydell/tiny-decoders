@@ -1,5 +1,24 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 15.0.0 (unreleased)
+
+This release changes the options parameter of `fieldsAuto` and `fieldsUnion` from:
+
+```ts
+{ exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {}
+```
+
+To:
+
+```ts
+{ allowExtraFields = true }: { allowExtraFields?: boolean } = {}
+```
+
+This is because:
+
+- A future tiny-decoders version will be return value based instead of throwing errors, so `"throw"` will not make sense anymore.
+- tiny-decoders used to have a third alternative for that option – that’s why it’s currently a string union rather than a boolean. While at it, we could just as well simplify into a boolean.
+
 ### Version 14.0.0 (2023-10-22)
 
 This release removes the `fields` function, which was deprecated in version 11.0.0. See the release notes for version 11.0.0 for how to replace `fields` with `fieldsAuto`, `chain` and custom decoders.
