@@ -680,6 +680,100 @@ describe("fieldsUnion", () => {
     expect(decoder({ type: "A" })).toStrictEqual({ tag: "A" });
     expect(decoder({ type: "B" })).toStrictEqual({ tag: "B" });
   });
+
+  describe("exact", () => {
+    test("allows excess properties by default", () => {
+      expect(
+        run(
+          fieldsUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }]),
+          {
+            tag: "Test",
+            one: "a",
+            two: true,
+            three: 3,
+            four: {},
+          },
+        ),
+      ).toStrictEqual({ tag: "Test", one: "a", two: true });
+      expect(
+        run(
+          fieldsUnion(
+            "tag",
+            [{ tag: tag("Test"), one: string, two: boolean }],
+            { exact: "allow extra" },
+          ),
+          {
+            tag: "Test",
+            one: "a",
+            two: true,
+            three: 3,
+            four: {},
+          },
+        ),
+      ).toStrictEqual({ tag: "Test", one: "a", two: true });
+    });
+
+    test("throw on excess properties", () => {
+      expect(
+        run(
+          fieldsUnion(
+            "tag",
+            [{ tag: tag("Test"), one: string, two: boolean }],
+            {
+              exact: "throw",
+            },
+          ),
+          {
+            tag: "Test",
+            one: "a",
+            two: true,
+            three: 3,
+            four: {},
+          },
+        ),
+      ).toMatchInlineSnapshot(`
+      At root:
+      Expected only these fields:
+        "tag",
+        "one",
+        "two"
+      Found extra fields:
+        "three",
+        "four"
+    `);
+    });
+
+    test("large number of excess properties", () => {
+      expect(
+        run(
+          fieldsUnion(
+            "tag",
+            [{ tag: tag("Test"), "1": boolean, "2": boolean }],
+            { exact: "throw" },
+          ),
+          {
+            tag: "Test",
+            ...Object.fromEntries(
+              Array.from({ length: 100 }, (_, i) => [i, false]),
+            ),
+          },
+        ),
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields:
+          "1",
+          "2",
+          "tag"
+        Found extra fields:
+          "0",
+          "3",
+          "4",
+          "5",
+          "6",
+          (93 more)
+      `);
+    });
+  });
 });
 
 describe("tag", () => {
