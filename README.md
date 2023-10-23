@@ -372,7 +372,7 @@ For example, `record(number)` decodes an object where the keys can be anything a
 ```ts
 function fieldsAuto<Mapping extends FieldsMapping>(
   mapping: Mapping,
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+  { allowExtraFields = true }: { allowExtraFields?: boolean } = {},
 ): Decoder<InferFields<Mapping>>;
 
 type FieldsMapping = Record<string, Decoder<any> | Field<any, FieldMeta>>;
@@ -412,10 +412,10 @@ const userDecoder: Decoder<User> = fieldsAuto({
 });
 ```
 
-The `exact` option let’s you choose between ignoring extraneous data and making it a hard error.
+The `allowExtraFields` option lets you choose between ignoring extraneous fields and making it an error.
 
-- `"allow extra"` (default) allows extra properties on the object.
-- `"throw"` throws a `DecoderError` for extra properties.
+- `true` (default) allows extra fields on the object.
+- `false` throws a `DecoderError` for extra fields.
 
 See also the [Extra fields](examples/extra-fields.test.ts) example.
 
@@ -526,7 +526,7 @@ function fieldsUnion<
 >(
   decodedCommonField: DecodedCommonField,
   variants: Variants,
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+  { allowExtraFields = true }: { allowExtraFields?: boolean } = {},
 ): Decoder<InferFieldsUnion<Variants[number]>>;
 
 type Variant<DecodedCommonField extends string> = Record<
@@ -564,7 +564,7 @@ const shapeDecoder: Decoder<Shape> = fieldsUnion("tag", [
 ]);
 ```
 
-The `exact` option works just like for [fieldsAuto](#fieldsauto).
+The `allowExtraFields` option works just like for [fieldsAuto](#fieldsauto).
 
 See also the [renaming union field example](examples/renaming-union-field.test.ts).
 

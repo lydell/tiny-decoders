@@ -129,7 +129,7 @@ type InferFields<Mapping extends FieldsMapping> = Expand<
 
 export function fieldsAuto<Mapping extends FieldsMapping>(
   mapping: Mapping,
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+  { allowExtraFields = true }: { allowExtraFields?: boolean } = {},
 ): Decoder<InferFields<Mapping>> {
   return function fieldsAutoDecoder(value): InferFields<Mapping> {
     const object = unknownRecord(value);
@@ -172,7 +172,7 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
       }
     }
 
-    if (exact !== "allow extra") {
+    if (!allowExtraFields) {
       const unknownFields = Object.keys(object).filter(
         (key) => !knownFields.has(key),
       );
@@ -217,7 +217,7 @@ export function fieldsUnion<
 >(
   decodedCommonField: DecodedCommonField,
   variants: Variants,
-  { exact = "allow extra" }: { exact?: "allow extra" | "throw" } = {},
+  { allowExtraFields = true }: { allowExtraFields?: boolean } = {},
 ): Decoder<InferFieldsUnion<Variants[number]>> {
   if (decodedCommonField === "__proto__") {
     throw new Error("fieldsUnion: commonField cannot be __proto__");
@@ -244,7 +244,7 @@ export function fieldsUnion<
         )}) than before (${JSON.stringify(maybeEncodedCommonField)}).`,
       );
     }
-    const fullDecoder = fieldsAuto(variant, { exact });
+    const fullDecoder = fieldsAuto(variant, { allowExtraFields });
     decoderMap.set(field_.tag.encoded, fullDecoder);
   }
 
