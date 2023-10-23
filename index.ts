@@ -4,6 +4,8 @@
 
 export type Decoder<T, U = unknown> = (value: U) => T;
 
+export type Infer<T extends Decoder<any>> = ReturnType<T>;
+
 // Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
 // https://stackoverflow.com/a/57683652/2010616
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
@@ -109,9 +111,9 @@ type FieldsMapping = Record<string, Decoder<any> | Field<any, FieldMeta>>;
 
 type InferField<T extends Decoder<any> | Field<any, FieldMeta>> =
   T extends Field<any, FieldMeta>
-    ? ReturnType<T["decoder"]>
+    ? Infer<T["decoder"]>
     : T extends Decoder<any>
-    ? ReturnType<T>
+    ? Infer<T>
     : never;
 
 type InferFields<Mapping extends FieldsMapping> = Expand<

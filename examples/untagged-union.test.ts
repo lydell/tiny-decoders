@@ -6,6 +6,7 @@ import {
   chain,
   Decoder,
   fieldsAuto,
+  Infer,
   number,
   string,
   undefinedOr,
@@ -85,9 +86,7 @@ test("tagged union, but using boolean instead of string", () => {
     }),
   );
 
-  type User =
-    | ReturnType<typeof adminDecoder>
-    | ReturnType<typeof notAdminDecoder>;
+  type User = Infer<typeof adminDecoder> | Infer<typeof notAdminDecoder>;
 
   const userDecoder: Decoder<User> = (value) => {
     const { isAdmin } = fieldsAuto({ isAdmin: boolean })(value);

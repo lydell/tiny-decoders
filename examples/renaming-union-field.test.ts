@@ -1,7 +1,7 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { fieldsUnion, number, tag } from "../";
+import { fieldsUnion, Infer, number, tag } from "../";
 
 test("using different tags in JSON and in TypeScript", () => {
   // Here’s how to use different keys and values in JSON and TypeScript.
@@ -17,7 +17,7 @@ test("using different tags in JSON and in TypeScript", () => {
     },
   ]);
 
-  type InferredType = ReturnType<typeof decoder>;
+  type InferredType = Infer<typeof decoder>;
   type ExpectedType =
     | { tag: "Circle"; radius: number }
     | { tag: "Square"; size: number };

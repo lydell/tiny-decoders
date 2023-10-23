@@ -8,6 +8,7 @@ import {
   DecoderError,
   field,
   fieldsAuto,
+  Infer,
   number,
   repr,
   ReprOptions,
@@ -143,7 +144,7 @@ test("fieldsAuto", () => {
 
   type Example = { name?: string };
 
-  expectType<TypeEqual<ReturnType<typeof exampleDecoder>, Example>>(true);
+  expectType<TypeEqual<Infer<typeof exampleDecoder>, Example>>(true);
 
   const exampleDecoder2 = fieldsAuto({
     name: field(undefinedOr(string), { optional: true }),
@@ -156,7 +157,7 @@ test("fieldsAuto", () => {
 
   type Example2 = { name?: string | undefined };
 
-  expectType<TypeEqual<ReturnType<typeof exampleDecoder2>, Example2>>(true);
+  expectType<TypeEqual<Infer<typeof exampleDecoder2>, Example2>>(true);
 
   expect(exampleDecoder2({ name: undefined })).toStrictEqual({
     name: undefined,
@@ -185,7 +186,7 @@ test("field", () => {
     d?: string | undefined;
   };
 
-  expectType<TypeEqual<ReturnType<typeof exampleDecoder>, Example>>(true);
+  expectType<TypeEqual<Infer<typeof exampleDecoder>, Example>>(true);
 
   expect(exampleDecoder({ a: "", c: undefined })).toStrictEqual({
     a: "",

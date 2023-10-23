@@ -1,5 +1,9 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 15.1.0 (unreleased)
+
+This release adds the `Infer` utility type. It’s currently basically just an alias to the TypeScript built-in `ReturnType` utility type, but in a future version of tiny-decoders it’ll need to do a little bit more than just `ReturnType`. If you’d like to reduce the amount of migration work when upgrading to that future version, change all your `ReturnType<typeof myDecoder>` to `Infer<typeof myDecoder>` now!
+
 ### Version 15.0.0 (2023-10-23)
 
 This release changes the options parameter of `fieldsAuto` and `fieldsUnion` from:

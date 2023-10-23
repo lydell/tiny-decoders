@@ -91,7 +91,7 @@ test("string", () => {
 
 describe("stringUnion", () => {
   test("basic", () => {
-    type Color = ReturnType<typeof colorDecoder>;
+    type Color = Infer<typeof colorDecoder>;
     const colorDecoder = stringUnion(["red", "green", "blue"]);
 
     expectType<TypeEqual<Color, "blue" | "green" | "red">>(true);
@@ -136,14 +136,14 @@ describe("stringUnion", () => {
     // @ts-expect-error Type 'number' is not assignable to type 'string'.
     stringUnion([1]);
     const goodDecoder = stringUnion(["1"]);
-    expectType<TypeEqual<ReturnType<typeof goodDecoder>, "1">>(true);
+    expectType<TypeEqual<Infer<typeof goodDecoder>, "1">>(true);
     expect(goodDecoder("1")).toBe("1");
   });
 });
 
 describe("array", () => {
   test("basic", () => {
-    type Bits = ReturnType<typeof bitsDecoder>;
+    type Bits = Infer<typeof bitsDecoder>;
     const bitsDecoder = array(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Bits, Array<"0" | "1">>>(true);
@@ -183,7 +183,7 @@ describe("array", () => {
 
 describe("record", () => {
   test("basic", () => {
-    type Registers = ReturnType<typeof registersDecoder>;
+    type Registers = Infer<typeof registersDecoder>;
     const registersDecoder = record(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Registers, Record<string, "0" | "1">>>(true);
@@ -223,7 +223,7 @@ describe("record", () => {
     );
 
     expectType<
-      TypeEqual<ReturnType<typeof decoder>, Array<readonly [RegExp, string]>>
+      TypeEqual<Infer<typeof decoder>, Array<readonly [RegExp, string]>>
     >(true);
 
     const good = { "\\d{4}:\\d{2}": "Year/month", ".*": "Rest" };
@@ -267,7 +267,7 @@ describe("fieldsAuto", () => {
   fieldsAuto([string]);
 
   test("basic", () => {
-    type Person = ReturnType<typeof personDecoder>;
+    type Person = Infer<typeof personDecoder>;
     const personDecoder = fieldsAuto({
       id: number,
       firstName: string,
@@ -308,7 +308,7 @@ describe("fieldsAuto", () => {
   });
 
   test("optional and renamed fields", () => {
-    type Person = ReturnType<typeof personDecoder>;
+    type Person = Infer<typeof personDecoder>;
     const personDecoder = fieldsAuto({
       id: number,
       firstName: field(string, { renameFrom: "first_name" }),
@@ -571,7 +571,7 @@ describe("fieldsAuto", () => {
 
 describe("fieldsUnion", () => {
   test("basic", () => {
-    type Shape = ReturnType<typeof shapeDecoder>;
+    type Shape = Infer<typeof shapeDecoder>;
     const shapeDecoder = fieldsUnion("tag", [
       {
         tag: tag("Circle"),
@@ -683,9 +683,9 @@ describe("fieldsUnion", () => {
       { tag: tag("A", { renameFieldFrom: "type" }) },
       { tag: tag("B", { renameFieldFrom: "type" }) },
     ]);
-    expectType<
-      TypeEqual<ReturnType<typeof decoder>, { tag: "A" } | { tag: "B" }>
-    >(true);
+    expectType<TypeEqual<Infer<typeof decoder>, { tag: "A" } | { tag: "B" }>>(
+      true,
+    );
     expect(decoder({ type: "A" })).toStrictEqual({ tag: "A" });
     expect(decoder({ type: "B" })).toStrictEqual({ tag: "B" });
   });
@@ -786,7 +786,7 @@ describe("fieldsUnion", () => {
 describe("tag", () => {
   test("basic", () => {
     const { decoder } = tag("Test");
-    expectType<TypeEqual<ReturnType<typeof decoder>, "Test">>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, "Test">>(true);
     expect(decoder("Test")).toBe("Test");
     expect(run(decoder, "other")).toMatchInlineSnapshot(`
       At root:
@@ -797,7 +797,7 @@ describe("tag", () => {
 
   test("renamed", () => {
     const { decoder } = tag("Test", { renameTagFrom: "test" });
-    expectType<TypeEqual<ReturnType<typeof decoder>, "Test">>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, "Test">>(true);
     expect(decoder("test")).toBe("Test");
     expect(run(decoder, "other")).toMatchInlineSnapshot(`
       At root:
@@ -814,7 +814,7 @@ describe("tuple", () => {
   tuple(number);
 
   test("0 items", () => {
-    type Type = ReturnType<typeof decoder>;
+    type Type = Infer<typeof decoder>;
     const decoder = tuple([]);
 
     expectType<TypeEqual<Type, []>>(true);
@@ -830,7 +830,7 @@ describe("tuple", () => {
   });
 
   test("1 item", () => {
-    type Type = ReturnType<typeof decoder>;
+    type Type = Infer<typeof decoder>;
     const decoder = tuple([number]);
 
     expectType<TypeEqual<Type, [number]>>(true);
@@ -852,7 +852,7 @@ describe("tuple", () => {
   });
 
   test("2 items", () => {
-    type Type = ReturnType<typeof decoder>;
+    type Type = Infer<typeof decoder>;
     const decoder = tuple([number, string]);
 
     expectType<TypeEqual<Type, [number, string]>>(true);
@@ -880,7 +880,7 @@ describe("tuple", () => {
   });
 
   test("3 items", () => {
-    type Type = ReturnType<typeof decoder>;
+    type Type = Infer<typeof decoder>;
     const decoder = tuple([number, string, boolean]);
 
     expectType<TypeEqual<Type, [number, string, boolean]>>(true);
@@ -902,7 +902,7 @@ describe("tuple", () => {
   });
 
   test("4 items", () => {
-    type Type = ReturnType<typeof decoder>;
+    type Type = Infer<typeof decoder>;
     const decoder = tuple([number, string, boolean, number]);
 
     expectType<TypeEqual<Type, [number, string, boolean, number]>>(true);
@@ -944,7 +944,7 @@ describe("tuple", () => {
 
 describe("multi", () => {
   test("basic", () => {
-    type Id = ReturnType<typeof idDecoder>;
+    type Id = Infer<typeof idDecoder>;
     const idDecoder = multi(["string", "number"]);
 
     expectType<
@@ -973,7 +973,7 @@ describe("multi", () => {
   });
 
   test("basic – mapped", () => {
-    type Id = ReturnType<typeof idDecoder>;
+    type Id = Infer<typeof idDecoder>;
     const idDecoder = chain(multi(["string", "number"]), (value) => {
       switch (value.type) {
         case "string":
@@ -1006,7 +1006,7 @@ describe("multi", () => {
   });
 
   test("basic – variation", () => {
-    type Id = ReturnType<typeof idDecoder>;
+    type Id = Infer<typeof idDecoder>;
     const idDecoder = chain(multi(["string", "number"]), (value) => {
       switch (value.type) {
         case "string":
@@ -1135,7 +1135,7 @@ describe("undefinedOr", () => {
   test("undefined or string", () => {
     const decoder = undefinedOr(string);
 
-    expectType<TypeEqual<ReturnType<typeof decoder>, string | undefined>>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, string | undefined>>(true);
 
     expect(decoder(undefined)).toBeUndefined();
     expect(decoder("a")).toBe("a");
@@ -1150,7 +1150,7 @@ describe("undefinedOr", () => {
   test("with default", () => {
     const decoder = undefinedOr(string, "def");
 
-    expectType<TypeEqual<ReturnType<typeof decoder>, string>>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, string>>(true);
 
     expect(decoder(undefined)).toBe("def");
     expect(decoder("a")).toBe("a");
@@ -1159,14 +1159,14 @@ describe("undefinedOr", () => {
   test("with other type default", () => {
     const decoder = undefinedOr(string, 0);
 
-    expectType<TypeEqual<ReturnType<typeof decoder>, number | string>>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, number | string>>(true);
 
     expect(decoder(undefined)).toBe(0);
     expect(decoder("a")).toBe("a");
   });
 
   test("using with fieldsAuto does NOT result in an optional field", () => {
-    type Person = ReturnType<typeof personDecoder>;
+    type Person = Infer<typeof personDecoder>;
     const personDecoder = fieldsAuto({
       name: string,
       age: undefinedOr(number),
@@ -1252,7 +1252,7 @@ describe("nullable", () => {
   test("nullable string", () => {
     const decoder = nullable(string);
 
-    expectType<TypeEqual<ReturnType<typeof decoder>, string | null>>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, string | null>>(true);
 
     expect(decoder(null)).toBeNull();
     expect(decoder("a")).toBe("a");
@@ -1267,7 +1267,7 @@ describe("nullable", () => {
   test("with default", () => {
     const decoder = nullable(string, "def");
 
-    expectType<TypeEqual<ReturnType<typeof decoder>, string>>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, string>>(true);
 
     expect(decoder(null)).toBe("def");
     expect(decoder("a")).toBe("a");
@@ -1276,7 +1276,7 @@ describe("nullable", () => {
   test("with other type default", () => {
     const decoder = nullable(string, 0);
 
-    expectType<TypeEqual<ReturnType<typeof decoder>, number | string>>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, number | string>>(true);
 
     expect(decoder(null)).toBe(0);
     expect(decoder("a")).toBe("a");
@@ -1285,14 +1285,14 @@ describe("nullable", () => {
   test("with undefined instead of null", () => {
     const decoder = nullable(string, undefined);
 
-    expectType<TypeEqual<ReturnType<typeof decoder>, string | undefined>>(true);
+    expectType<TypeEqual<Infer<typeof decoder>, string | undefined>>(true);
 
     expect(decoder(null)).toBeUndefined();
     expect(decoder("a")).toBe("a");
   });
 
   test("nullable field", () => {
-    type Person = ReturnType<typeof personDecoder>;
+    type Person = Infer<typeof personDecoder>;
     const personDecoder = fieldsAuto({
       name: string,
       age: nullable(number),
@@ -1338,7 +1338,7 @@ describe("nullable", () => {
   });
 
   test("nullable autoField", () => {
-    type Person = ReturnType<typeof personDecoder>;
+    type Person = Infer<typeof personDecoder>;
     const personDecoder = fieldsAuto({
       name: string,
       age: nullable(number),
