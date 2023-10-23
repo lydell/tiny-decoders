@@ -8,6 +8,7 @@ import {
   chain,
   field,
   fieldsAuto,
+  Infer,
   multi,
   number,
   string,
@@ -18,21 +19,21 @@ test("making a type from a decoder", () => {
   // Rather than first typing out a `type` for `Person` and then essentially
   // typing the same thing again in the decoder (especially `fieldsAuto` decoders
   // look almost identical to `type` they decode to!), you can start with the
-  // decoder and extract the type afterwards with TypeScript’s `ReturnType` utility.
+  // decoder and extract the type afterwards with tiny-decoder’s `Infer` utility.
   const personDecoder = fieldsAuto({
     name: string,
     age: number,
   });
 
   // Hover over `Person` to see what it looks like!
-  type Person = ReturnType<typeof personDecoder>;
+  type Person = Infer<typeof personDecoder>;
   expectType<TypeEqual<Person, { name: string; age: number }>>(true);
 
   // If it feels like you are specifying everything twice – once in a `type` or
-  // `interface`, and once in the decoder – you might find this `ReturnType`
-  // technique interesting. But this `ReturnType` approach you don’t have to
+  // `interface`, and once in the decoder – you might find this `Infer`
+  // technique interesting. But this `Infer` approach you don’t have to
   // write what your records look like “twice.” Personally I don’t always mind
-  // the “duplication,” but when you do – try out the `ReturnType` approach!
+  // the “duplication,” but when you do – try out the `Infer` approach!
 
   // Here’s a more complex example for trying out TypeScript’s inference.
   const userDecoder = fieldsAuto({
@@ -45,7 +46,7 @@ test("making a type from a decoder", () => {
   });
 
   // Then, let TypeScript infer the `User` type!
-  type User = ReturnType<typeof userDecoder>;
+  type User = Infer<typeof userDecoder>;
   // Try hovering over `User` in the line above – your editor should reveal the
   // exact shape of the type.
 
@@ -116,7 +117,7 @@ test("making a type from an object and stringUnion", () => {
   expectType<TypeEqual<Severity, "Critical" | "High" | "Low" | "Medium">>(true);
 
   const severityDecoder = stringUnion(SEVERITIES);
-  expectType<TypeEqual<Severity, ReturnType<typeof severityDecoder>>>(true);
+  expectType<TypeEqual<Severity, Infer<typeof severityDecoder>>>(true);
   expect(severityDecoder("High")).toBe("High");
 
   function coloredSeverity(severity: Severity): string {

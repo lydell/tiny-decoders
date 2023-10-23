@@ -30,6 +30,7 @@ import {
   DecoderError,
   field,
   fieldsAuto,
+  type Infer,
   number,
   string,
 } from "tiny-decoders";
@@ -76,7 +77,7 @@ Got: "30"
 You can even [infer the type from the decoder](#type-inference) instead of writing it manually!
 
 ```ts
-type User2 = ReturnType<typeof userDecoder2>;
+type User2 = Infer<typeof userDecoder2>;
 ```
 
 `User2` above is equivalent to the `User` type already shown earlier.
@@ -963,13 +964,15 @@ const personDecoder = fieldsAuto({
   age: number,
 });
 
-type Person = ReturnType<typeof personDecoder>;
+type Person = Infer<typeof personDecoder>;
 // equivalent to:
 type Person = {
   name: string;
   age: number;
 };
 ```
+
+The `Infer` utility type is currently basically just an alias to the TypeScript built-in `ReturnType` utility type, but it’s recommended to use `Infer` because in a future version of tiny-decoders it’ll need to do a little bit more than just `ReturnType` and then you don’t need to migrate.
 
 See the [type inference example](examples/type-inference.test.ts) for more details.
 
