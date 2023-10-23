@@ -1,6 +1,6 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
-### Version 15.0.0 (unreleased)
+### Version 15.0.0 (2023-10-23)
 
 This release changes the options parameter of `fieldsAuto` and `fieldsUnion` from:
 
