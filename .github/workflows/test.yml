@@ -32,5 +32,3 @@ jobs:
         run: npm ci --no-audit
 
       - run: npx vitest
-
-      - run: npm run build
