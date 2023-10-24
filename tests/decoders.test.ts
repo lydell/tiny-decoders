@@ -10,6 +10,7 @@ import {
   field,
   fieldsAuto,
   fieldsUnion,
+  Infer,
   multi,
   nullable,
   number,
