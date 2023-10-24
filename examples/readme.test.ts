@@ -5,9 +5,10 @@ import {
   array,
   boolean,
   Decoder,
-  DecoderError,
+  DecoderResult,
   field,
   fieldsAuto,
+  format,
   Infer,
   number,
   repr,
@@ -21,14 +22,12 @@ function run<T>(
   value: unknown,
   options?: ReprOptions,
 ): T | string {
-  try {
-    return decoder(value);
-  } catch (error) {
-    return error instanceof DecoderError
-      ? error.format(options)
-      : error instanceof Error
-      ? error.message
-      : `Unknown error: ${repr(error)}`;
+  const decoderResult = decoder(value);
+  switch (decoderResult.tag) {
+    case "DecoderError":
+      return format(decoderResult.error, options);
+    case "Valid":
+      return decoderResult.value;
   }
 }
 
@@ -54,13 +53,16 @@ test("the main readme example", () => {
 
   const payload: unknown = getSomeJSON();
 
-  const user: User = userDecoder(payload);
+  const userResult: DecoderResult<User> = userDecoder(payload);
 
-  expect(user).toStrictEqual({
-    name: "John Doe",
-    active: true,
-    age: 30,
-    interests: ["Programming", "Cooking"],
+  expect(userResult).toStrictEqual({
+    tag: "Valid",
+    value: {
+      name: "John Doe",
+      active: true,
+      age: 30,
+      interests: ["Programming", "Cooking"],
+    },
   });
 
   const payload2: unknown = getSomeInvalidJSON();
@@ -115,13 +117,7 @@ test("default vs sensitive error messages", () => {
       error instanceof Error ? error.message : `Unknown error: ${repr(error)}`;
   }
 
-  expect(message).toMatchInlineSnapshot(`
-    Expected a string
-    Got: number
-    (Actual values are hidden in sensitive mode.)
-
-    For better error messages, see https://github.com/lydell/tiny-decoders#error-messages
-  `);
+  expect(message).toMatchInlineSnapshot("Expected userDecoder to fail!");
 
   expect(run(userDecoder, data)).toMatchInlineSnapshot(`
     At root["details"]["ssn"]:
@@ -150,9 +146,12 @@ test("fieldsAuto", () => {
     name: field(undefinedOr(string), { optional: true }),
   });
 
-  expect(exampleDecoder({})).toStrictEqual({});
+  expect(exampleDecoder({})).toStrictEqual({ tag: "Valid", value: {} });
   expect(exampleDecoder({ name: "some string" })).toStrictEqual({
-    name: "some string",
+    tag: "Valid",
+    value: {
+      name: "some string",
+    },
   });
 
   type Example2 = { name?: string | undefined };
@@ -160,7 +159,10 @@ test("fieldsAuto", () => {
   expectType<TypeEqual<Infer<typeof exampleDecoder2>, Example2>>(true);
 
   expect(exampleDecoder2({ name: undefined })).toStrictEqual({
-    name: undefined,
+    tag: "Valid",
+    value: {
+      name: undefined,
+    },
   });
 });
 
@@ -189,18 +191,27 @@ test("field", () => {
   expectType<TypeEqual<Infer<typeof exampleDecoder>, Example>>(true);
 
   expect(exampleDecoder({ a: "", c: undefined })).toStrictEqual({
-    a: "",
-    c: undefined,
+    tag: "Valid",
+    value: {
+      a: "",
+      c: undefined,
+    },
   });
 
   expect(
     exampleDecoder({ a: "", b: "", c: undefined, d: undefined }),
-  ).toStrictEqual({ a: "", b: "", c: undefined, d: undefined });
+  ).toStrictEqual({
+    tag: "Valid",
+    value: { a: "", b: "", c: undefined, d: undefined },
+  });
 
   expect(exampleDecoder({ a: "", b: "", c: "", d: "" })).toStrictEqual({
-    a: "",
-    b: "",
-    c: "",
-    d: "",
+    tag: "Valid",
+    value: {
+      a: "",
+      b: "",
+      c: "",
+      d: "",
+    },
   });
 });

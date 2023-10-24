@@ -14,18 +14,20 @@ test("decoding unknown values", () => {
   const messageDecoder1: Decoder<Message> = fieldsAuto({
     text: string,
     // All fields are already `unknown` so you can pass them through as-is.
-    data: (value) => value,
+    data: (value) => ({ tag: "Valid", value }),
   });
   expect(messageDecoder1(message)).toMatchInlineSnapshot(`
     {
-      "data": 15,
-      "text": "Hello, world!",
+      "tag": "Valid",
+      "value": {
+        "data": 15,
+        "text": "Hello, world!",
+      },
     }
   `);
 
-  // If you like, you can define one of these helper functions:
-  const identity = <T>(value: T): T => value;
-  const unknown = identity;
+  // If you like, you can define this helper function:
+  const unknown: Decoder<unknown> = (value) => ({ tag: "Valid", value });
 
   const messageDecoder2: Decoder<Message> = fieldsAuto({
     text: string,
@@ -33,8 +35,11 @@ test("decoding unknown values", () => {
   });
   expect(messageDecoder2(message)).toMatchInlineSnapshot(`
     {
-      "data": 15,
-      "text": "Hello, world!",
+      "tag": "Valid",
+      "value": {
+        "data": 15,
+        "text": "Hello, world!",
+      },
     }
   `);
 });

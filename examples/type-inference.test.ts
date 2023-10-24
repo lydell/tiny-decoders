@@ -5,10 +5,11 @@ import { expect, test } from "vitest";
 
 import {
   boolean,
-  chain,
+  DecoderResult,
   field,
   fieldsAuto,
   Infer,
+  map,
   multi,
   number,
   string,
@@ -37,7 +38,7 @@ test("making a type from a decoder", () => {
 
   // Here’s a more complex example for trying out TypeScript’s inference.
   const userDecoder = fieldsAuto({
-    id: chain(multi(["string", "number"]), ({ value }) => value),
+    id: map(multi(["string", "number"]), ({ value }) => value),
     name: string,
     age: number,
     active: boolean,
@@ -58,14 +59,17 @@ test("making a type from a decoder", () => {
     type: "user",
   };
 
-  const user: User = userDecoder(data);
-  expect(user).toMatchInlineSnapshot(`
+  const userResult: DecoderResult<User> = userDecoder(data);
+  expect(userResult).toMatchInlineSnapshot(`
     {
-      "active": true,
-      "age": 30,
-      "id": 1,
-      "name": "John Doe",
-      "type": "user",
+      "tag": "Valid",
+      "value": {
+        "active": true,
+        "age": 30,
+        "id": 1,
+        "name": "John Doe",
+        "type": "user",
+      },
     }
   `);
 
@@ -78,7 +82,9 @@ test("making a type from a decoder", () => {
     // @ts-expect-error Type '"nope"' is not assignable to type '"user"'.
     type: "nope",
   };
-  expect({ ...user2, type: "user" }).toMatchObject(user);
+  expect({ tag: "Valid", value: { ...user2, type: "user" } }).toMatchObject(
+    userResult,
+  );
 
   // `extra: "prop"` is not allowed:
   const user3: User = {
@@ -91,7 +97,7 @@ test("making a type from a decoder", () => {
     // @ts-expect-error Object literal may only specify known properties, and 'extra' does not exist in type '{ id: unknown; name: string; age: number; active: boolean; country: string | undefined; type: "user"; }'.
     extra: "prop",
   };
-  expect(user3).toMatchObject(user);
+  expect({ tag: "Valid", value: user3 }).toMatchObject(userResult);
 });
 
 test("making a type from an object and stringUnion", () => {
@@ -118,7 +124,10 @@ test("making a type from an object and stringUnion", () => {
 
   const severityDecoder = stringUnion(SEVERITIES);
   expectType<TypeEqual<Severity, Infer<typeof severityDecoder>>>(true);
-  expect(severityDecoder("High")).toBe("High");
+  expect(severityDecoder("High")).toStrictEqual({
+    tag: "Valid",
+    value: "High",
+  });
 
   function coloredSeverity(severity: Severity): string {
     return chalk.hex(SEVERITY_COLORS[severity])(severity);

@@ -25,8 +25,11 @@ test("using different tags in JSON and in TypeScript", () => {
 
   expect(decoder({ type: "circle", radius: 5 })).toMatchInlineSnapshot(`
     {
-      "radius": 5,
-      "tag": "Circle",
+      "tag": "Valid",
+      "value": {
+        "radius": 5,
+        "tag": "Circle",
+      },
     }
   `);
 });

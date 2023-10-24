@@ -2,9 +2,10 @@ import { expect, test, vi } from "vitest";
 
 import {
   array,
-  chain,
   Decoder,
+  DecoderResult,
   fieldsAuto,
+  flatMap,
   multi,
   record,
   recursive,
@@ -55,22 +56,25 @@ test("recursive data structure", () => {
 
   expect(personDecoder(data)).toMatchInlineSnapshot(`
     {
-      "friends": [
-        {
-          "friends": [],
-          "name": "Alice",
-        },
-        {
-          "friends": [
-            {
-              "friends": [],
-              "name": "Charlie",
-            },
-          ],
-          "name": "Bob",
-        },
-      ],
-      "name": "John",
+      "tag": "Valid",
+      "value": {
+        "friends": [
+          {
+            "friends": [],
+            "name": "Alice",
+          },
+          {
+            "friends": [
+              {
+                "friends": [],
+                "name": "Charlie",
+              },
+            ],
+            "name": "Bob",
+          },
+        ],
+        "name": "John",
+      },
     }
   `);
 });
@@ -79,16 +83,19 @@ test("recurse non-record", () => {
   type Dict = { [key: string]: Dict | number };
 
   const dictDecoder: Decoder<Dict> = record(
-    chain(multi(["number", "object"]), (value) => {
-      switch (value.type) {
-        case "number":
-          return value.value;
-        case "object":
-          // Thanks to the arrow function we’re in, the reference to
-          // `dictDecoder` is delayed and therefore works.
-          return dictDecoder(value.value);
-      }
-    }),
+    flatMap(
+      multi(["number", "object"]),
+      (value): DecoderResult<Dict | number> => {
+        switch (value.type) {
+          case "number":
+            return { tag: "Valid", value: value.value };
+          case "object":
+            // Thanks to the arrow function we’re in, the reference to
+            // `dictDecoder` is delayed and therefore works.
+            return dictDecoder(value.value);
+        }
+      },
+    ),
   );
 
   const data: unknown = {
@@ -105,12 +112,15 @@ test("recurse non-record", () => {
 
   expect(dictDecoder(data)).toMatchInlineSnapshot(`
     {
-      "t": {
-        "i": {
-          "e": 3,
-          "n": {
-            "t": 2,
-            "y": 1,
+      "tag": "Valid",
+      "value": {
+        "t": {
+          "i": {
+            "e": 3,
+            "n": {
+              "t": 2,
+              "y": 1,
+            },
           },
         },
       },
@@ -146,7 +156,7 @@ test("circular objects", () => {
 
   // Calling the decoder would cause infinite recursion!
   // So be careful when working with recursive data!
-  const wouldCauseInfiniteRecursion1: () => Person = vi.fn(() =>
+  const wouldCauseInfiniteRecursion1: () => DecoderResult<Person> = vi.fn(() =>
     personDecoder(alice),
   );
 

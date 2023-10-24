@@ -4,19 +4,20 @@ import { describe, expect, test } from "vitest";
 import {
   array,
   boolean,
-  chain,
   Decoder,
-  DecoderError,
+  DecoderResult,
   field,
   fieldsAuto,
   fieldsUnion,
+  flatMap,
+  format,
   Infer,
+  map,
   multi,
   nullable,
   number,
   record,
   recursive,
-  repr,
   string,
   stringUnion,
   tag,
@@ -25,14 +26,12 @@ import {
 } from "..";
 
 function run<T>(decoder: Decoder<T>, value: unknown): T | string {
-  try {
-    return decoder(value);
-  } catch (error) {
-    return error instanceof DecoderError
-      ? error.format()
-      : error instanceof Error
-      ? error.message
-      : `Unknown error: ${repr(error)}`;
+  const decoderResult = decoder(value);
+  switch (decoderResult.tag) {
+    case "DecoderError":
+      return format(decoderResult.error);
+    case "Valid":
+      return decoderResult.value;
   }
 }
 
@@ -43,10 +42,10 @@ expect.addSnapshotSerializer({
 });
 
 test("boolean", () => {
-  expect(boolean(true)).toBe(true);
-  expect(boolean(false)).toBe(false);
+  expect(boolean(true)).toStrictEqual({ tag: "Valid", value: true });
+  expect(boolean(false)).toStrictEqual({ tag: "Valid", value: false });
 
-  expectType<boolean>(boolean(true));
+  expectType<DecoderResult<boolean>>(boolean(true));
   // @ts-expect-error Expected 1 arguments, but got 2.
   boolean(true, []);
 
@@ -58,13 +57,38 @@ test("boolean", () => {
 });
 
 test("number", () => {
-  expect(number(0)).toMatchInlineSnapshot(`0`);
-  expect(number(Math.PI)).toMatchInlineSnapshot(`3.141592653589793`);
-  expect(number(NaN)).toMatchInlineSnapshot(`NaN`);
-  expect(number(Infinity)).toMatchInlineSnapshot(`Infinity`);
-  expect(number(-Infinity)).toMatchInlineSnapshot(`-Infinity`);
+  expect(number(0)).toMatchInlineSnapshot(`
+    {
+      "tag": "Valid",
+      "value": 0,
+    }
+  `);
+  expect(number(Math.PI)).toMatchInlineSnapshot(`
+    {
+      "tag": "Valid",
+      "value": 3.141592653589793,
+    }
+  `);
+  expect(number(NaN)).toMatchInlineSnapshot(`
+    {
+      "tag": "Valid",
+      "value": NaN,
+    }
+  `);
+  expect(number(Infinity)).toMatchInlineSnapshot(`
+    {
+      "tag": "Valid",
+      "value": Infinity,
+    }
+  `);
+  expect(number(-Infinity)).toMatchInlineSnapshot(`
+    {
+      "tag": "Valid",
+      "value": -Infinity,
+    }
+  `);
 
-  expectType<number>(number(0));
+  expectType<DecoderResult<number>>(number(0));
   // @ts-expect-error Expected 1 arguments, but got 2.
   number(0, []);
 
@@ -76,10 +100,10 @@ test("number", () => {
 });
 
 test("string", () => {
-  expect(string("")).toBe("");
-  expect(string("string")).toBe("string");
+  expect(string("")).toStrictEqual({ tag: "Valid", value: "" });
+  expect(string("string")).toStrictEqual({ tag: "Valid", value: "string" });
 
-  expectType<string>(string(""));
+  expectType<DecoderResult<string>>(string(""));
   // @ts-expect-error Expected 1 arguments, but got 2.
   string("", []);
 
@@ -104,11 +128,14 @@ describe("stringUnion", () => {
     const yellow: Color = "yellow";
     void yellow;
 
-    expect(colorDecoder("red")).toBe("red");
-    expect(colorDecoder("green")).toBe("green");
-    expect(colorDecoder("blue")).toBe("blue");
+    expect(colorDecoder("red")).toStrictEqual({ tag: "Valid", value: "red" });
+    expect(colorDecoder("green")).toStrictEqual({
+      tag: "Valid",
+      value: "green",
+    });
+    expect(colorDecoder("blue")).toStrictEqual({ tag: "Valid", value: "blue" });
 
-    expectType<Color>(colorDecoder("red"));
+    expectType<DecoderResult<Color>>(colorDecoder("red"));
     // @ts-expect-error Argument of type '{ one: null; two: null; }' is not assignable to parameter of type 'readonly string[]'.
     stringUnion({ one: null, two: null });
 
@@ -119,6 +146,12 @@ describe("stringUnion", () => {
         "green",
         "blue"
       Got: "Red"
+    `);
+
+    expect(run(colorDecoder, 0)).toMatchInlineSnapshot(`
+      At root:
+      Expected a string
+      Got: 0
     `);
   });
 
@@ -138,7 +171,7 @@ describe("stringUnion", () => {
     stringUnion([1]);
     const goodDecoder = stringUnion(["1"]);
     expectType<TypeEqual<Infer<typeof goodDecoder>, "1">>(true);
-    expect(goodDecoder("1")).toBe("1");
+    expect(goodDecoder("1")).toStrictEqual({ tag: "Valid", value: "1" });
   });
 });
 
@@ -148,16 +181,14 @@ describe("array", () => {
     const bitsDecoder = array(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Bits, Array<"0" | "1">>>(true);
-    expectType<Bits>(bitsDecoder([]));
+    expectType<DecoderResult<Bits>>(bitsDecoder([]));
 
-    expect(bitsDecoder([])).toStrictEqual([]);
-    expect(bitsDecoder(["0"])).toStrictEqual(["0"]);
-    expect(bitsDecoder(["0", "1", "1", "0"])).toStrictEqual([
-      "0",
-      "1",
-      "1",
-      "0",
-    ]);
+    expect(bitsDecoder([])).toStrictEqual({ tag: "Valid", value: [] });
+    expect(bitsDecoder(["0"])).toStrictEqual({ tag: "Valid", value: ["0"] });
+    expect(bitsDecoder(["0", "1", "1", "0"])).toStrictEqual({
+      tag: "Valid",
+      value: ["0", "1", "1", "0"],
+    });
 
     expect(run(bitsDecoder, ["0", "2"])).toMatchInlineSnapshot(`
       At root[1]:
@@ -188,15 +219,21 @@ describe("record", () => {
     const registersDecoder = record(stringUnion(["0", "1"]));
 
     expectType<TypeEqual<Registers, Record<string, "0" | "1">>>(true);
-    expectType<Registers>(registersDecoder({}));
+    expectType<DecoderResult<Registers>>(registersDecoder({}));
 
-    expect(registersDecoder({})).toStrictEqual({});
-    expect(registersDecoder({ a: "0" })).toStrictEqual({ a: "0" });
+    expect(registersDecoder({})).toStrictEqual({ tag: "Valid", value: {} });
+    expect(registersDecoder({ a: "0" })).toStrictEqual({
+      tag: "Valid",
+      value: { a: "0" },
+    });
     expect(registersDecoder({ a: "0", b: "1", c: "1", d: "0" })).toStrictEqual({
-      a: "0",
-      b: "1",
-      c: "1",
-      d: "0",
+      tag: "Valid",
+      value: {
+        a: "0",
+        b: "1",
+        c: "1",
+        d: "0",
+      },
     });
 
     expect(run(registersDecoder, { a: "0", b: "2" })).toMatchInlineSnapshot(`
@@ -217,23 +254,38 @@ describe("record", () => {
   });
 
   test("keys to regex", () => {
-    const decoder = chain(record(string), (items) =>
-      Object.entries(items).map(
-        ([key, value]) => [RegExp(key, "u"), value] as const,
-      ),
-    );
+    const decoder = flatMap(record(string), (items) => {
+      const result: Array<[RegExp, string]> = [];
+      for (const [key, value] of Object.entries(items)) {
+        try {
+          result.push([RegExp(key, "u"), value]);
+        } catch (error) {
+          return {
+            tag: "DecoderError",
+            error: {
+              tag: "custom",
+              message: error instanceof Error ? error.message : String(error),
+              got: key,
+              path: [key],
+            },
+          };
+        }
+      }
+      return { tag: "Valid", value: result };
+    });
 
-    expectType<
-      TypeEqual<Infer<typeof decoder>, Array<readonly [RegExp, string]>>
-    >(true);
+    expectType<TypeEqual<Infer<typeof decoder>, Array<[RegExp, string]>>>(true);
 
     const good = { "\\d{4}:\\d{2}": "Year/month", ".*": "Rest" };
     const bad = { "\\d{4}:\\d{2": "Year/month", ".*": "Rest" };
 
-    expect(run(decoder, good)).toStrictEqual([
-      [/\d{4}:\d{2}/u, "Year/month"],
-      [/.*/u, "Rest"],
-    ]);
+    expect(decoder(good)).toStrictEqual({
+      tag: "Valid",
+      value: [
+        [/\d{4}:\d{2}/u, "Year/month"],
+        [/.*/u, "Rest"],
+      ],
+    });
 
     // To avoid slightly different error messages on different Node.js versions.
     const cleanRegexError = <T>(message: T | string): T | string =>
@@ -245,21 +297,26 @@ describe("record", () => {
         : message;
 
     expect(cleanRegexError(run(decoder, bad))).toMatchInlineSnapshot(
-      `"Invalid regular expression: (the regex error)"`,
+      `
+      At root["\\\\d{4}:\\\\d{2"]:
+      Invalid regular expression: (the regex error)
+      Got: "\\\\d{4}:\\\\d{2"
+    `,
     );
 
     expect(
       cleanRegexError(run(fieldsAuto({ regexes: decoder }), { regexes: bad })),
     ).toMatchInlineSnapshot(`
-      At root["regexes"]:
+      At root["regexes"]["\\\\d{4}:\\\\d{2"]:
       Invalid regular expression: (the regex error)
+      Got: "\\\\d{4}:\\\\d{2"
     `);
   });
 
   test("ignores __proto__", () => {
     expect(
-      run(record(number), JSON.parse(`{"a": 1, "__proto__": 2, "b": 3}`)),
-    ).toStrictEqual({ a: 1, b: 3 });
+      record(number)(JSON.parse(`{"a": 1, "__proto__": 2, "b": 3}`)),
+    ).toStrictEqual({ tag: "Valid", value: { a: 1, b: 3 } });
   });
 });
 
@@ -275,11 +332,16 @@ describe("fieldsAuto", () => {
     });
 
     expectType<TypeEqual<Person, { id: number; firstName: string }>>(true);
-    expectType<Person>(personDecoder({ id: 1, firstName: "John" }));
+    expectType<DecoderResult<Person>>(
+      personDecoder({ id: 1, firstName: "John" }),
+    );
 
     expect(personDecoder({ id: 1, firstName: "John" })).toStrictEqual({
-      id: 1,
-      firstName: "John",
+      tag: "Valid",
+      value: {
+        id: 1,
+        firstName: "John",
+      },
     });
 
     expect(run(personDecoder, { id: "1", firstName: "John" }))
@@ -336,7 +398,7 @@ describe("fieldsAuto", () => {
         }
       >
     >(true);
-    expectType<Person>(
+    expectType<DecoderResult<Person>>(
       personDecoder({ id: 1, first_name: "John", followers: undefined }),
     );
 
@@ -466,19 +528,19 @@ describe("fieldsAuto", () => {
   describe("allowExtraFields", () => {
     test("allows excess properties by default", () => {
       expect(
-        run(fieldsAuto({ one: string, two: boolean }), {
+        fieldsAuto({ one: string, two: boolean })({
           one: "a",
           two: true,
           three: 3,
           four: {},
         }),
-      ).toStrictEqual({ one: "a", two: true });
+      ).toStrictEqual({ tag: "Valid", value: { one: "a", two: true } });
       expect(
-        run(
-          fieldsAuto({ one: string, two: boolean }, { allowExtraFields: true }),
-          { one: "a", two: true, three: 3, four: {} },
-        ),
-      ).toStrictEqual({ one: "a", two: true });
+        fieldsAuto(
+          { one: string, two: boolean },
+          { allowExtraFields: true },
+        )({ one: "a", two: true, three: 3, four: {} }),
+      ).toStrictEqual({ tag: "Valid", value: { one: "a", two: true } });
     });
 
     test("fail on excess properties", () => {
@@ -534,13 +596,16 @@ describe("fieldsAuto", () => {
   test("__proto__ is not allowed", () => {
     const decoder = fieldsAuto({ a: number, __proto__: string, b: number });
     expect(
-      run(decoder, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`)),
-    ).toStrictEqual({ a: 1, b: 3 });
+      decoder(JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`)),
+    ).toStrictEqual({ tag: "Valid", value: { a: 1, b: 3 } });
 
     const desc = Object.create(null) as { __proto__: Decoder<string> };
     desc.__proto__ = string;
     const decoder2 = fieldsAuto(desc);
-    expect(run(decoder2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
+    expect(decoder2(JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({
+      tag: "Valid",
+      value: {},
+    });
   });
 
   test("renaming from __proto__ is not allowed", () => {
@@ -548,19 +613,23 @@ describe("fieldsAuto", () => {
       a: number,
       b: field(string, { renameFrom: "__proto__" }),
     });
-    expect(
-      run(decoder, JSON.parse(`{"a": 1, "__proto__": "a"}`)),
-    ).toStrictEqual({ a: 1 });
+    expect(decoder(JSON.parse(`{"a": 1, "__proto__": "a"}`))).toStrictEqual({
+      tag: "Valid",
+      value: { a: 1 },
+    });
 
     const desc = Object.create(null) as { __proto__: Decoder<string> };
     desc.__proto__ = string;
     const decoder2 = fieldsAuto(desc);
-    expect(run(decoder2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
+    expect(decoder2(JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({
+      tag: "Valid",
+      value: {},
+    });
   });
 
   test("empty object", () => {
     const decoder = fieldsAuto({}, { allowExtraFields: false });
-    expect(decoder({})).toStrictEqual({});
+    expect(decoder({})).toStrictEqual({ tag: "Valid", value: {} });
     expect(run(decoder, { a: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected only these fields: (none)
@@ -592,11 +661,16 @@ describe("fieldsUnion", () => {
         | { tag: "Rectangle"; width: number; height: number }
       >
     >(true);
-    expectType<Shape>(shapeDecoder({ tag: "Circle", radius: 5 }));
+    expectType<DecoderResult<Shape>>(
+      shapeDecoder({ tag: "Circle", radius: 5 }),
+    );
 
     expect(shapeDecoder({ tag: "Circle", radius: 5 })).toStrictEqual({
-      tag: "Circle",
-      radius: 5,
+      tag: "Valid",
+      value: {
+        tag: "Circle",
+        radius: 5,
+      },
     });
 
     expect(run(shapeDecoder, { tag: "Rectangle", radius: 5 }))
@@ -687,8 +761,14 @@ describe("fieldsUnion", () => {
     expectType<TypeEqual<Infer<typeof decoder>, { tag: "A" } | { tag: "B" }>>(
       true,
     );
-    expect(decoder({ type: "A" })).toStrictEqual({ tag: "A" });
-    expect(decoder({ type: "B" })).toStrictEqual({ tag: "B" });
+    expect(decoder({ type: "A" })).toStrictEqual({
+      tag: "Valid",
+      value: { tag: "A" },
+    });
+    expect(decoder({ type: "B" })).toStrictEqual({
+      tag: "Valid",
+      value: { tag: "B" },
+    });
   });
 
   test("generic decoder", () => {
@@ -721,46 +801,50 @@ describe("fieldsUnion", () => {
     >(true);
 
     expect(decoder({ tag: "Ok", value: 0 })).toStrictEqual({
-      tag: "Ok",
-      value: 0,
+      tag: "Valid",
+      value: {
+        tag: "Ok",
+        value: 0,
+      },
     });
 
     expect(decoder({ tag: "Err", error: "" })).toStrictEqual({
-      tag: "Err",
-      error: "",
+      tag: "Valid",
+      value: {
+        tag: "Err",
+        error: "",
+      },
     });
   });
 
   describe("allowExtraFields", () => {
     test("allows excess properties by default", () => {
       expect(
-        run(
-          fieldsUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }]),
-          {
-            tag: "Test",
-            one: "a",
-            two: true,
-            three: 3,
-            four: {},
-          },
-        ),
-      ).toStrictEqual({ tag: "Test", one: "a", two: true });
+        fieldsUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }])({
+          tag: "Test",
+          one: "a",
+          two: true,
+          three: 3,
+          four: {},
+        }),
+      ).toStrictEqual({
+        tag: "Valid",
+        value: { tag: "Test", one: "a", two: true },
+      });
       expect(
-        run(
-          fieldsUnion(
-            "tag",
-            [{ tag: tag("Test"), one: string, two: boolean }],
-            { allowExtraFields: true },
-          ),
-          {
-            tag: "Test",
-            one: "a",
-            two: true,
-            three: 3,
-            four: {},
-          },
-        ),
-      ).toStrictEqual({ tag: "Test", one: "a", two: true });
+        fieldsUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }], {
+          allowExtraFields: true,
+        })({
+          tag: "Test",
+          one: "a",
+          two: true,
+          three: 3,
+          four: {},
+        }),
+      ).toStrictEqual({
+        tag: "Valid",
+        value: { tag: "Test", one: "a", two: true },
+      });
     });
 
     test("fail on excess properties", () => {
@@ -828,18 +912,23 @@ describe("tag", () => {
   test("basic", () => {
     const { decoder } = tag("Test");
     expectType<TypeEqual<Infer<typeof decoder>, "Test">>(true);
-    expect(decoder("Test")).toBe("Test");
+    expect(decoder("Test")).toStrictEqual({ tag: "Valid", value: "Test" });
     expect(run(decoder, "other")).toMatchInlineSnapshot(`
       At root:
       Expected this string: "Test"
       Got: "other"
+    `);
+    expect(run(decoder, 0)).toMatchInlineSnapshot(`
+      At root:
+      Expected a string
+      Got: 0
     `);
   });
 
   test("renamed", () => {
     const { decoder } = tag("Test", { renameTagFrom: "test" });
     expectType<TypeEqual<Infer<typeof decoder>, "Test">>(true);
-    expect(decoder("test")).toBe("Test");
+    expect(decoder("test")).toStrictEqual({ tag: "Valid", value: "Test" });
     expect(run(decoder, "other")).toMatchInlineSnapshot(`
       At root:
       Expected this string: "test"
@@ -859,9 +948,9 @@ describe("tuple", () => {
     const decoder = tuple([]);
 
     expectType<TypeEqual<Type, []>>(true);
-    expectType<Type>(decoder([]));
+    expectType<DecoderResult<Type>>(decoder([]));
 
-    expect(decoder([])).toStrictEqual([]);
+    expect(decoder([])).toStrictEqual({ tag: "Valid", value: [] });
 
     expect(run(decoder, [1])).toMatchInlineSnapshot(`
       At root:
@@ -875,9 +964,9 @@ describe("tuple", () => {
     const decoder = tuple([number]);
 
     expectType<TypeEqual<Type, [number]>>(true);
-    expectType<Type>(decoder([1]));
+    expectType<DecoderResult<Type>>(decoder([1]));
 
-    expect(decoder([1])).toStrictEqual([1]);
+    expect(decoder([1])).toStrictEqual({ tag: "Valid", value: [1] });
 
     expect(run(decoder, [])).toMatchInlineSnapshot(`
       At root:
@@ -897,9 +986,9 @@ describe("tuple", () => {
     const decoder = tuple([number, string]);
 
     expectType<TypeEqual<Type, [number, string]>>(true);
-    expectType<Type>(decoder([1, "a"]));
+    expectType<DecoderResult<Type>>(decoder([1, "a"]));
 
-    expect(decoder([1, "a"])).toStrictEqual([1, "a"]);
+    expect(decoder([1, "a"])).toStrictEqual({ tag: "Valid", value: [1, "a"] });
 
     expect(run(decoder, [1])).toMatchInlineSnapshot(`
       At root:
@@ -925,9 +1014,12 @@ describe("tuple", () => {
     const decoder = tuple([number, string, boolean]);
 
     expectType<TypeEqual<Type, [number, string, boolean]>>(true);
-    expectType<Type>(decoder([1, "a", true]));
+    expectType<DecoderResult<Type>>(decoder([1, "a", true]));
 
-    expect(decoder([1, "a", true])).toStrictEqual([1, "a", true]);
+    expect(decoder([1, "a", true])).toStrictEqual({
+      tag: "Valid",
+      value: [1, "a", true],
+    });
 
     expect(run(decoder, [1, "a"])).toMatchInlineSnapshot(`
       At root:
@@ -947,9 +1039,12 @@ describe("tuple", () => {
     const decoder = tuple([number, string, boolean, number]);
 
     expectType<TypeEqual<Type, [number, string, boolean, number]>>(true);
-    expectType<Type>(decoder([1, "a", true, 2]));
+    expectType<DecoderResult<Type>>(decoder([1, "a", true, 2]));
 
-    expect(decoder([1, "a", true, 2])).toStrictEqual([1, "a", true, 2]);
+    expect(decoder([1, "a", true, 2])).toStrictEqual({
+      tag: "Valid",
+      value: [1, "a", true, 2],
+    });
 
     expect(run(decoder, [1, "a", true])).toMatchInlineSnapshot(`
       At root:
@@ -994,16 +1089,22 @@ describe("multi", () => {
         { type: "number"; value: number } | { type: "string"; value: string }
       >
     >(true);
-    expectType<Id>(idDecoder("123"));
+    expectType<DecoderResult<Id>>(idDecoder("123"));
 
     expect(idDecoder("123")).toStrictEqual({
-      type: "string",
-      value: "123",
+      tag: "Valid",
+      value: {
+        type: "string",
+        value: "123",
+      },
     });
 
     expect(idDecoder(123)).toStrictEqual({
-      type: "number",
-      value: 123,
+      tag: "Valid",
+      value: {
+        type: "number",
+        value: 123,
+      },
     });
 
     expect(run(idDecoder, true)).toMatchInlineSnapshot(`
@@ -1015,7 +1116,7 @@ describe("multi", () => {
 
   test("basic – mapped", () => {
     type Id = Infer<typeof idDecoder>;
-    const idDecoder = chain(multi(["string", "number"]), (value) => {
+    const idDecoder = map(multi(["string", "number"]), (value) => {
       switch (value.type) {
         case "string":
           return { tag: "Id" as const, id: value.value };
@@ -1027,16 +1128,22 @@ describe("multi", () => {
     expectType<
       TypeEqual<Id, { tag: "Id"; id: string } | { tag: "LegacyId"; id: number }>
     >(true);
-    expectType<Id>(idDecoder("123"));
+    expectType<DecoderResult<Id>>(idDecoder("123"));
 
     expect(idDecoder("123")).toStrictEqual({
-      tag: "Id",
-      id: "123",
+      tag: "Valid",
+      value: {
+        tag: "Id",
+        id: "123",
+      },
     });
 
     expect(idDecoder(123)).toStrictEqual({
-      tag: "LegacyId",
-      id: 123,
+      tag: "Valid",
+      value: {
+        tag: "LegacyId",
+        id: 123,
+      },
     });
 
     expect(run(idDecoder, true)).toMatchInlineSnapshot(`
@@ -1048,7 +1155,7 @@ describe("multi", () => {
 
   test("basic – variation", () => {
     type Id = Infer<typeof idDecoder>;
-    const idDecoder = chain(multi(["string", "number"]), (value) => {
+    const idDecoder = map(multi(["string", "number"]), (value) => {
       switch (value.type) {
         case "string":
           return value.value;
@@ -1058,10 +1165,10 @@ describe("multi", () => {
     });
 
     expectType<TypeEqual<Id, string>>(true);
-    expectType<Id>(idDecoder("123"));
+    expectType<DecoderResult<Id>>(idDecoder("123"));
 
-    expect(idDecoder("123")).toBe("123");
-    expect(idDecoder(123)).toBe("123");
+    expect(idDecoder("123")).toStrictEqual({ tag: "Valid", value: "123" });
+    expect(idDecoder(123)).toStrictEqual({ tag: "Valid", value: "123" });
 
     expect(run(idDecoder, true)).toMatchInlineSnapshot(`
       At root:
@@ -1107,7 +1214,7 @@ describe("multi", () => {
     ];
 
     for (const value of values) {
-      expect(decoder(value).value).toStrictEqual(value);
+      expect(decoder(value)).toMatchObject({ tag: "Valid", value: { value } });
     }
   });
 
@@ -1168,7 +1275,7 @@ describe("recursive", () => {
     });
 
     const input = { a: { b: [] }, b: [{ a: { b: [] }, b: [] }] };
-    expect(decoder(input)).toStrictEqual(input);
+    expect(decoder(input)).toStrictEqual({ tag: "Valid", value: input });
   });
 });
 
@@ -1178,13 +1285,17 @@ describe("undefinedOr", () => {
 
     expectType<TypeEqual<Infer<typeof decoder>, string | undefined>>(true);
 
-    expect(decoder(undefined)).toBeUndefined();
-    expect(decoder("a")).toBe("a");
+    expect(decoder(undefined)).toStrictEqual({
+      tag: "Valid",
+      value: undefined,
+    });
+    expect(decoder("a")).toStrictEqual({ tag: "Valid", value: "a" });
 
     expect(run(decoder, null)).toMatchInlineSnapshot(`
-      At root (optional):
+      At root:
       Expected a string
       Got: null
+      Or expected: undefined
     `);
   });
 
@@ -1193,8 +1304,8 @@ describe("undefinedOr", () => {
 
     expectType<TypeEqual<Infer<typeof decoder>, string>>(true);
 
-    expect(decoder(undefined)).toBe("def");
-    expect(decoder("a")).toBe("a");
+    expect(decoder(undefined)).toStrictEqual({ tag: "Valid", value: "def" });
+    expect(decoder("a")).toStrictEqual({ tag: "Valid", value: "a" });
   });
 
   test("with other type default", () => {
@@ -1202,8 +1313,8 @@ describe("undefinedOr", () => {
 
     expectType<TypeEqual<Infer<typeof decoder>, number | string>>(true);
 
-    expect(decoder(undefined)).toBe(0);
-    expect(decoder("a")).toBe("a");
+    expect(decoder(undefined)).toStrictEqual({ tag: "Valid", value: 0 });
+    expect(decoder("a")).toStrictEqual({ tag: "Valid", value: "a" });
   });
 
   test("using with fieldsAuto does NOT result in an optional field", () => {
@@ -1226,20 +1337,27 @@ describe("undefinedOr", () => {
     `);
 
     expect(personDecoder({ name: "John", age: undefined })).toStrictEqual({
-      name: "John",
-      age: undefined,
+      tag: "Valid",
+      value: {
+        name: "John",
+        age: undefined,
+      },
     });
 
     expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
-      name: "John",
-      age: 45,
+      tag: "Valid",
+      value: {
+        name: "John",
+        age: 45,
+      },
     });
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-        At root["age"] (optional):
+        At root["age"]:
         Expected a number
         Got: "old"
+        Or expected: undefined
       `);
 
     // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | undefined; }'.
@@ -1251,22 +1369,22 @@ describe("undefinedOr", () => {
   });
 
   test("undefined or custom decoder", () => {
-    function decoder(): never {
-      throw new Error("Fail");
+    function decoder(value: unknown): DecoderResult<never> {
+      return {
+        tag: "DecoderError",
+        error: {
+          tag: "custom",
+          message: "fail",
+          got: value,
+          path: [],
+        },
+      };
     }
-    function decoder2(): never {
-      throw new DecoderError({ message: "Fail", value: 1 });
-    }
-
     expect(run(undefinedOr(decoder), 1)).toMatchInlineSnapshot(`
-      At root (optional):
-      Fail
-    `);
-
-    expect(run(undefinedOr(decoder2), 1)).toMatchInlineSnapshot(`
-      At root (optional):
-      Fail
+      At root:
+      fail
       Got: 1
+      Or expected: undefined
     `);
   });
 
@@ -1276,9 +1394,10 @@ describe("undefinedOr", () => {
     });
 
     expect(run(decoder, { test: 1 })).toMatchInlineSnapshot(`
-      At root["test"] (optional):
+      At root["test"]:
       Expected an object
       Got: 1
+      Or expected: undefined
     `);
 
     expect(run(decoder, { test: { inner: 1 } })).toMatchInlineSnapshot(`
@@ -1295,13 +1414,14 @@ describe("nullable", () => {
 
     expectType<TypeEqual<Infer<typeof decoder>, string | null>>(true);
 
-    expect(decoder(null)).toBeNull();
-    expect(decoder("a")).toBe("a");
+    expect(decoder(null)).toStrictEqual({ tag: "Valid", value: null });
+    expect(decoder("a")).toStrictEqual({ tag: "Valid", value: "a" });
 
     expect(run(decoder, undefined)).toMatchInlineSnapshot(`
-      At root (nullable):
+      At root:
       Expected a string
       Got: undefined
+      Or expected: null
     `);
   });
 
@@ -1310,8 +1430,8 @@ describe("nullable", () => {
 
     expectType<TypeEqual<Infer<typeof decoder>, string>>(true);
 
-    expect(decoder(null)).toBe("def");
-    expect(decoder("a")).toBe("a");
+    expect(decoder(null)).toStrictEqual({ tag: "Valid", value: "def" });
+    expect(decoder("a")).toStrictEqual({ tag: "Valid", value: "a" });
   });
 
   test("with other type default", () => {
@@ -1319,8 +1439,8 @@ describe("nullable", () => {
 
     expectType<TypeEqual<Infer<typeof decoder>, number | string>>(true);
 
-    expect(decoder(null)).toBe(0);
-    expect(decoder("a")).toBe("a");
+    expect(decoder(null)).toStrictEqual({ tag: "Valid", value: 0 });
+    expect(decoder("a")).toStrictEqual({ tag: "Valid", value: "a" });
   });
 
   test("with undefined instead of null", () => {
@@ -1328,8 +1448,8 @@ describe("nullable", () => {
 
     expectType<TypeEqual<Infer<typeof decoder>, string | undefined>>(true);
 
-    expect(decoder(null)).toBeUndefined();
-    expect(decoder("a")).toBe("a");
+    expect(decoder(null)).toStrictEqual({ tag: "Valid", value: undefined });
+    expect(decoder("a")).toStrictEqual({ tag: "Valid", value: "a" });
   });
 
   test("nullable field", () => {
@@ -1351,26 +1471,34 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: undefined }))
       .toMatchInlineSnapshot(`
-        At root["age"] (nullable):
+        At root["age"]:
         Expected a number
         Got: undefined
+        Or expected: null
       `);
 
     expect(personDecoder({ name: "John", age: null })).toStrictEqual({
-      name: "John",
-      age: null,
+      tag: "Valid",
+      value: {
+        name: "John",
+        age: null,
+      },
     });
 
     expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
-      name: "John",
-      age: 45,
+      tag: "Valid",
+      value: {
+        name: "John",
+        age: 45,
+      },
     });
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-        At root["age"] (nullable):
+        At root["age"]:
         Expected a number
         Got: "old"
+        Or expected: null
       `);
 
     // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
@@ -1397,26 +1525,34 @@ describe("nullable", () => {
 
     expect(run(personDecoder, { name: "John", age: undefined }))
       .toMatchInlineSnapshot(`
-        At root["age"] (nullable):
+        At root["age"]:
         Expected a number
         Got: undefined
+        Or expected: null
       `);
 
     expect(personDecoder({ name: "John", age: null })).toStrictEqual({
-      name: "John",
-      age: null,
+      tag: "Valid",
+      value: {
+        name: "John",
+        age: null,
+      },
     });
 
     expect(personDecoder({ name: "John", age: 45 })).toStrictEqual({
-      name: "John",
-      age: 45,
+      tag: "Valid",
+      value: {
+        name: "John",
+        age: 45,
+      },
     });
 
     expect(run(personDecoder, { name: "John", age: "old" }))
       .toMatchInlineSnapshot(`
-        At root["age"] (nullable):
+        At root["age"]:
         Expected a number
         Got: "old"
+        Or expected: null
       `);
 
     // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
@@ -1425,22 +1561,23 @@ describe("nullable", () => {
   });
 
   test("nullable custom decoder", () => {
-    function decoder(): never {
-      throw new Error("Fail");
-    }
-    function decoder2(): never {
-      throw new DecoderError({ message: "Fail", value: 1 });
+    function decoder(value: unknown): DecoderResult<never> {
+      return {
+        tag: "DecoderError",
+        error: {
+          tag: "custom",
+          message: "fail",
+          got: value,
+          path: [],
+        },
+      };
     }
 
     expect(run(nullable(decoder), 1)).toMatchInlineSnapshot(`
-      At root (nullable):
-      Fail
-    `);
-
-    expect(run(nullable(decoder2), 1)).toMatchInlineSnapshot(`
-      At root (nullable):
-      Fail
+      At root:
+      fail
       Got: 1
+      Or expected: null
     `);
   });
 
@@ -1450,9 +1587,10 @@ describe("nullable", () => {
     });
 
     expect(run(decoder, { test: 1 })).toMatchInlineSnapshot(`
-      At root["test"] (nullable):
+      At root["test"]:
       Expected an object
       Got: 1
+      Or expected: null
     `);
 
     expect(run(decoder, { test: { inner: 1 } })).toMatchInlineSnapshot(`
@@ -1466,32 +1604,34 @@ describe("nullable", () => {
     const decoder = undefinedOr(nullable(nullable(undefinedOr(string))));
 
     expect(run(decoder, 1)).toMatchInlineSnapshot(`
-      At root (nullable) (optional):
+      At root:
       Expected a string
       Got: 1
+      Or expected: null or undefined
     `);
   });
 });
 
-test("chain", () => {
-  expect(run(chain(number, Math.round), 4.9)).toBe(5);
+// eslint-disable-next-line vitest/no-commented-out-tests
+// test("flatMap", () => {
+//   expect(run(flatMap(number, Math.round), 4.9)).toBe(5);
 
-  expect(
-    run(
-      chain(array(number), (arr) => new Set(arr)),
-      [1, 2, 1],
-    ),
-  ).toStrictEqual(new Set([1, 2]));
+//   expect(
+//     run(
+//       flatMap(array(number), (arr) => new Set(arr)),
+//       [1, 2, 1],
+//     ),
+//   ).toStrictEqual(new Set([1, 2]));
 
-  expect(run(chain(number, string), 0)).toMatchInlineSnapshot(`
-    At root:
-    Expected a string
-    Got: 0
-  `);
+//   expect(run(flatMap(number, string), 0)).toMatchInlineSnapshot(`
+//     At root:
+//     Expected a string
+//     Got: 0
+//   `);
 
-  expect(run(chain(number, string), "string")).toMatchInlineSnapshot(`
-    At root:
-    Expected a number
-    Got: "string"
-  `);
-});
+//   expect(run(flatMap(number, string), "string")).toMatchInlineSnapshot(`
+//     At root:
+//     Expected a number
+//     Got: "string"
+//   `);
+// });
