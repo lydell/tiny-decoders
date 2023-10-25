@@ -1612,26 +1612,73 @@ describe("nullable", () => {
   });
 });
 
-// eslint-disable-next-line vitest/no-commented-out-tests
-// test("flatMap", () => {
-//   expect(run(flatMap(number, Math.round), 4.9)).toBe(5);
+test("map", () => {
+  expect(run(map(number, Math.round), 4.9)).toBe(5);
 
-//   expect(
-//     run(
-//       flatMap(array(number), (arr) => new Set(arr)),
-//       [1, 2, 1],
-//     ),
-//   ).toStrictEqual(new Set([1, 2]));
+  expect(
+    run(
+      map(array(number), (arr) => new Set(arr)),
+      [1, 2, 1],
+    ),
+  ).toStrictEqual(new Set([1, 2]));
 
-//   expect(run(flatMap(number, string), 0)).toMatchInlineSnapshot(`
-//     At root:
-//     Expected a string
-//     Got: 0
-//   `);
+  expect(map(number, string)(0)).toMatchInlineSnapshot(`
+    {
+      "tag": "Valid",
+      "value": {
+        "error": {
+          "got": 0,
+          "path": [],
+          "tag": "string",
+        },
+        "tag": "DecoderError",
+      },
+    }
+  `);
 
-//   expect(run(flatMap(number, string), "string")).toMatchInlineSnapshot(`
-//     At root:
-//     Expected a number
-//     Got: "string"
-//   `);
-// });
+  expect(run(map(number, string), "string")).toMatchInlineSnapshot(`
+    At root:
+    Expected a number
+    Got: "string"
+  `);
+});
+
+test("flatMap", () => {
+  expect(
+    run(
+      flatMap(number, (n) => ({ tag: "Valid", value: Math.round(n) })),
+      4.9,
+    ),
+  ).toBe(5);
+
+  expect(
+    run(
+      flatMap(number, (n) => ({
+        tag: "DecoderError",
+        error: {
+          tag: "custom",
+          message: "The error message",
+          got: n,
+          path: ["some", "path", 0],
+        },
+      })),
+      4.9,
+    ),
+  ).toMatchInlineSnapshot(`
+    At root["some"]["path"][0]:
+    The error message
+    Got: 4.9
+  `);
+
+  expect(run(flatMap(number, string), 0)).toMatchInlineSnapshot(`
+    At root:
+    Expected a string
+    Got: 0
+  `);
+
+  expect(run(flatMap(number, string), "string")).toMatchInlineSnapshot(`
+    At root:
+    Expected a number
+    Got: "string"
+  `);
+});
