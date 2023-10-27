@@ -15,6 +15,7 @@ import {
   string,
   stringUnion,
 } from "..";
+import { run } from "../tests/helpers";
 
 test("making a type from a decoder", () => {
   // Rather than first typing out a `type` for `Person` and then essentially
@@ -124,10 +125,7 @@ test("making a type from an object and stringUnion", () => {
 
   const severityDecoder = stringUnion(SEVERITIES);
   expectType<TypeEqual<Severity, Infer<typeof severityDecoder>>>(true);
-  expect(severityDecoder("High")).toStrictEqual({
-    tag: "Valid",
-    value: "High",
-  });
+  expect(run(severityDecoder, "High")).toBe("High");
 
   function coloredSeverity(severity: Severity): string {
     return chalk.hex(SEVERITY_COLORS[severity])(severity);

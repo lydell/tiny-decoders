@@ -126,23 +126,17 @@ test("fieldsAuto", () => {
     name: field(undefinedOr(string), { optional: true }),
   });
 
-  expect(exampleDecoder({})).toStrictEqual({ tag: "Valid", value: {} });
-  expect(exampleDecoder({ name: "some string" })).toStrictEqual({
-    tag: "Valid",
-    value: {
-      name: "some string",
-    },
+  expect(run(exampleDecoder, {})).toStrictEqual({});
+  expect(run(exampleDecoder, { name: "some string" })).toStrictEqual({
+    name: "some string",
   });
 
   type Example2 = { name?: string | undefined };
 
   expectType<TypeEqual<Infer<typeof exampleDecoder2>, Example2>>(true);
 
-  expect(exampleDecoder2({ name: undefined })).toStrictEqual({
-    tag: "Valid",
-    value: {
-      name: undefined,
-    },
+  expect(run(exampleDecoder2, { name: undefined })).toStrictEqual({
+    name: undefined,
   });
 });
 
@@ -170,28 +164,19 @@ test("field", () => {
 
   expectType<TypeEqual<Infer<typeof exampleDecoder>, Example>>(true);
 
-  expect(exampleDecoder({ a: "", c: undefined })).toStrictEqual({
-    tag: "Valid",
-    value: {
-      a: "",
-      c: undefined,
-    },
+  expect(run(exampleDecoder, { a: "", c: undefined })).toStrictEqual({
+    a: "",
+    c: undefined,
   });
 
   expect(
-    exampleDecoder({ a: "", b: "", c: undefined, d: undefined }),
-  ).toStrictEqual({
-    tag: "Valid",
-    value: { a: "", b: "", c: undefined, d: undefined },
-  });
+    run(exampleDecoder, { a: "", b: "", c: undefined, d: undefined }),
+  ).toStrictEqual({ a: "", b: "", c: undefined, d: undefined });
 
-  expect(exampleDecoder({ a: "", b: "", c: "", d: "" })).toStrictEqual({
-    tag: "Valid",
-    value: {
-      a: "",
-      b: "",
-      c: "",
-      d: "",
-    },
+  expect(run(exampleDecoder, { a: "", b: "", c: "", d: "" })).toStrictEqual({
+    a: "",
+    b: "",
+    c: "",
+    d: "",
   });
 });

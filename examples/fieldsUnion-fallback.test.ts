@@ -56,13 +56,9 @@ test("fieldsUnion with fallback for unknown tags", () => {
     >
   >(true);
 
-  expect(decoder({ tag: "One" })).toStrictEqual({
-    tag: "Valid",
-    value: { tag: "One" },
-  });
-  expect(decoderWithFallback({ tag: "One" })).toStrictEqual({
-    tag: "Valid",
-    value: { tag: "One" },
+  expect(run(decoder, { tag: "One" })).toStrictEqual({ tag: "One" });
+  expect(run(decoderWithFallback, { tag: "One" })).toStrictEqual({
+    tag: "One",
   });
 
   // The original decoder fails on unknown tags, while the other one returns `undefined`.
@@ -73,15 +69,11 @@ test("fieldsUnion with fallback for unknown tags", () => {
       "Two"
     Got: "Three"
   `);
-  expect(decoderWithFallback({ tag: "Three" })).toStrictEqual({
-    tag: "Valid",
-    value: undefined,
-  });
+  expect(run(decoderWithFallback, { tag: "Three" })).toBeUndefined();
 
   // A nested `fieldsUnion` still fails on unknown tags:
-  expect(
-    run(decoderWithFallback, { tag: "Two", value: { tag: "Rectangle" } }),
-  ).toMatchInlineSnapshot(`
+  expect(run(decoderWithFallback, { tag: "Two", value: { tag: "Rectangle" } }))
+    .toMatchInlineSnapshot(`
     At root["value"]["tag"]:
     Expected one of these tags:
       "Circle",
