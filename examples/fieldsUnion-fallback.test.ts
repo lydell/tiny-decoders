@@ -2,6 +2,7 @@ import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
 import { Decoder, fieldsUnion, Infer, number, tag } from "../";
+import { run } from "../tests/helpers";
 
 test("fieldsUnion with fallback for unknown tags", () => {
   // Here’s a helper function that takes a decoder – which is supposed to be a
@@ -65,21 +66,12 @@ test("fieldsUnion with fallback for unknown tags", () => {
   });
 
   // The original decoder fails on unknown tags, while the other one returns `undefined`.
-  expect(decoder({ tag: "Three" })).toMatchInlineSnapshot(`
-    {
-      "error": {
-        "got": "Three",
-        "knownTags": [
-          "One",
-          "Two",
-        ],
-        "path": [
-          "tag",
-        ],
-        "tag": "unknown fieldsUnion tag",
-      },
-      "tag": "DecoderError",
-    }
+  expect(run(decoder, { tag: "Three" })).toMatchInlineSnapshot(`
+    At root["tag"]:
+    Expected one of these tags:
+      "One",
+      "Two"
+    Got: "Three"
   `);
   expect(decoderWithFallback({ tag: "Three" })).toStrictEqual({
     tag: "Valid",
@@ -87,22 +79,13 @@ test("fieldsUnion with fallback for unknown tags", () => {
   });
 
   // A nested `fieldsUnion` still fails on unknown tags:
-  expect(decoderWithFallback({ tag: "Two", value: { tag: "Rectangle" } }))
-    .toMatchInlineSnapshot(`
-    {
-      "error": {
-        "got": "Rectangle",
-        "knownTags": [
-          "Circle",
-          "Square",
-        ],
-        "path": [
-          "value",
-          "tag",
-        ],
-        "tag": "unknown fieldsUnion tag",
-      },
-      "tag": "DecoderError",
-    }
+  expect(
+    run(decoderWithFallback, { tag: "Two", value: { tag: "Rectangle" } }),
+  ).toMatchInlineSnapshot(`
+    At root["value"]["tag"]:
+    Expected one of these tags:
+      "Circle",
+      "Square"
+    Got: "Rectangle"
   `);
 });

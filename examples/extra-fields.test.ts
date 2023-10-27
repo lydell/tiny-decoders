@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 
-import { Decoder, fieldsAuto, format, map, number, string } from "..";
+import { Decoder, fieldsAuto, map, number, string } from "..";
+import { run } from "../tests/helpers";
 
 test("adding extra fields to records", () => {
   // Want to add an extra field to a record, that doesn’t look at the input at
@@ -43,17 +44,12 @@ test("adding extra fields to records", () => {
   });
 
   // It no longer works, because all the fields you mentioned are expected to exist.
-  const decoderResult = productDecoderBroken(data);
-  expect(
-    decoderResult.tag === "DecoderError"
-      ? format(decoderResult.error)
-      : decoderResult,
-  ).toMatchInlineSnapshot(`
-    "At root:
-    Expected an object with a field called: \\"version\\"
+  expect(run(productDecoderBroken, data)).toMatchInlineSnapshot(`
+    At root:
+    Expected an object with a field called: "version"
     Got: {
-      \\"name\\": \\"Comfortable Bed\\",
-      \\"price\\": 10000
-    }"
+      "name": "Comfortable Bed",
+      "price": 10000
+    }
   `);
 });

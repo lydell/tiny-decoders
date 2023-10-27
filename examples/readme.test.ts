@@ -8,33 +8,13 @@ import {
   DecoderResult,
   field,
   fieldsAuto,
-  format,
   Infer,
   number,
   repr,
-  ReprOptions,
   string,
   undefinedOr,
 } from "..";
-
-function run<T>(
-  decoder: Decoder<T>,
-  value: unknown,
-  options?: ReprOptions,
-): T | string {
-  const decoderResult = decoder(value);
-  switch (decoderResult.tag) {
-    case "DecoderError":
-      return format(decoderResult.error, options);
-    case "Valid":
-      return decoderResult.value;
-  }
-}
-
-expect.addSnapshotSerializer({
-  test: (value: unknown): boolean => typeof value === "string",
-  print: String,
-});
+import { run } from "../tests/helpers";
 
 test("the main readme example", () => {
   type User = {
@@ -117,7 +97,7 @@ test("default vs sensitive error messages", () => {
       error instanceof Error ? error.message : `Unknown error: ${repr(error)}`;
   }
 
-  expect(message).toMatchInlineSnapshot("Expected userDecoder to fail!");
+  expect(message).toMatchInlineSnapshot('"Expected userDecoder to fail!"');
 
   expect(run(userDecoder, data)).toMatchInlineSnapshot(`
     At root["details"]["ssn"]:
