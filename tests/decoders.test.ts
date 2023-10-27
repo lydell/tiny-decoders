@@ -642,7 +642,7 @@ describe("fieldsUnion", () => {
       //   Source has 0 element(s) but target requires 1.
       fieldsUnion("tag", []),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"Codec.fieldsUnion: Got unusable encoded common field: undefined"',
+      '"fieldsUnion: Got unusable encoded common field: undefined"',
     );
   });
 
@@ -675,7 +675,7 @@ describe("fieldsUnion", () => {
         { tag: tag("B", { renameFieldFrom: "type" }) },
       ]),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"Codec.fieldsUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"tag\\")."',
+      '"fieldsUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"tag\\")."',
     );
   });
 

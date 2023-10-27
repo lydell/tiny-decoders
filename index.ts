@@ -239,7 +239,7 @@ export function fieldsUnion<
       maybeEncodedCommonField = encodedFieldName;
     } else if (maybeEncodedCommonField !== encodedFieldName) {
       throw new Error(
-        `Codec.fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
+        `fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
           decodedCommonField,
         )}: Got a different encoded field name (${JSON.stringify(
           encodedFieldName,
@@ -252,7 +252,7 @@ export function fieldsUnion<
 
   if (typeof maybeEncodedCommonField !== "string") {
     throw new Error(
-      `Codec.fieldsUnion: Got unusable encoded common field: ${repr(
+      `fieldsUnion: Got unusable encoded common field: ${repr(
         maybeEncodedCommonField,
       )}`,
     );
