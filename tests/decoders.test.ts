@@ -691,6 +691,46 @@ describe("fieldsUnion", () => {
     expect(decoder({ type: "B" })).toStrictEqual({ tag: "B" });
   });
 
+  test("generic decoder", () => {
+    type Result<Ok, Err> =
+      | { tag: "Err"; error: Err }
+      | { tag: "Ok"; value: Ok };
+
+    const resultDecoder = <Ok, Err>(
+      okDecoder: Decoder<Ok>,
+      errDecoder: Decoder<Err>,
+    ): Decoder<Result<Ok, Err>> =>
+      fieldsUnion("tag", [
+        {
+          tag: tag("Ok"),
+          value: okDecoder,
+        },
+        {
+          tag: tag("Err"),
+          error: errDecoder,
+        },
+      ]);
+
+    const decoder = resultDecoder(number, string);
+
+    expectType<
+      TypeEqual<
+        Infer<typeof decoder>,
+        { tag: "Err"; error: string } | { tag: "Ok"; value: number }
+      >
+    >(true);
+
+    expect(decoder({ tag: "Ok", value: 0 })).toStrictEqual({
+      tag: "Ok",
+      value: 0,
+    });
+
+    expect(decoder({ tag: "Err", error: "" })).toStrictEqual({
+      tag: "Err",
+      error: "",
+    });
+  });
+
   describe("allowExtraFields", () => {
     test("allows excess properties by default", () => {
       expect(
