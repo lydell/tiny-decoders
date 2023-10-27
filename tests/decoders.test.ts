@@ -41,36 +41,11 @@ test("boolean", () => {
 });
 
 test("number", () => {
-  expect(number(0)).toMatchInlineSnapshot(`
-    {
-      "tag": "Valid",
-      "value": 0,
-    }
-  `);
-  expect(number(Math.PI)).toMatchInlineSnapshot(`
-    {
-      "tag": "Valid",
-      "value": 3.141592653589793,
-    }
-  `);
-  expect(number(NaN)).toMatchInlineSnapshot(`
-    {
-      "tag": "Valid",
-      "value": NaN,
-    }
-  `);
-  expect(number(Infinity)).toMatchInlineSnapshot(`
-    {
-      "tag": "Valid",
-      "value": Infinity,
-    }
-  `);
-  expect(number(-Infinity)).toMatchInlineSnapshot(`
-    {
-      "tag": "Valid",
-      "value": -Infinity,
-    }
-  `);
+  expect(run(number, 0)).toBe(0);
+  expect(run(number, Math.PI)).toBe(3.141592653589793);
+  expect(run(number, NaN)).toBeNaN();
+  expect(run(number, Infinity)).toBe(Infinity);
+  expect(run(number, -Infinity)).toBe(-Infinity);
 
   expectType<DecoderResult<number>>(number(0));
   // @ts-expect-error Expected 1 arguments, but got 2.
