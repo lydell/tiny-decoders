@@ -18,6 +18,7 @@ import {
   number,
   record,
   recursive,
+  ReprOptions,
   string,
   stringUnion,
   tag,
@@ -25,11 +26,15 @@ import {
   undefinedOr,
 } from "..";
 
-function run<T>(decoder: Decoder<T>, value: unknown): T | string {
+function run<T>(
+  decoder: Decoder<T>,
+  value: unknown,
+  options?: ReprOptions,
+): T | string {
   const decoderResult = decoder(value);
   switch (decoderResult.tag) {
     case "DecoderError":
-      return format(decoderResult.error);
+      return format(decoderResult.error, options);
     case "Valid":
       return decoderResult.value;
   }
@@ -172,6 +177,24 @@ describe("stringUnion", () => {
     const goodDecoder = stringUnion(["1"]);
     expectType<TypeEqual<Infer<typeof goodDecoder>, "1">>(true);
     expect(goodDecoder("1")).toStrictEqual({ tag: "Valid", value: "1" });
+  });
+
+  test("always print the expected tags in full", () => {
+    const decoder = stringUnion(["PrettyLongTagName1", "PrettyLongTagName2"]);
+
+    expect(
+      run(decoder, "PrettyLongTagNameButWrong", {
+        maxLength: 8,
+        maxArrayChildren: 1,
+        indent: " ".repeat(8),
+      }),
+    ).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these variants:
+              "PrettyLongTagName1",
+              "PrettyLongTagName2"
+      Got: "Pre…ong"
+    `);
   });
 });
 
@@ -591,6 +614,39 @@ describe("fieldsAuto", () => {
           (93 more)
       `);
     });
+
+    test("always print the expected keys in full", () => {
+      const decoder = fieldsAuto(
+        {
+          PrettyLongTagName1: string,
+          PrettyLongTagName2: string,
+        },
+        { allowExtraFields: false },
+      );
+
+      expect(
+        run(
+          decoder,
+          {
+            PrettyLongTagName1: "",
+            PrettyLongTagName2: "",
+            PrettyLongTagButWrong: "",
+          },
+          {
+            maxLength: 8,
+            maxArrayChildren: 1,
+            indent: " ".repeat(8),
+          },
+        ),
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields:
+                "PrettyLongTagName1",
+                "PrettyLongTagName2"
+        Found extra fields:
+                "Pre…ong"
+      `);
+    });
   });
 
   test("__proto__ is not allowed", () => {
@@ -817,6 +873,27 @@ describe("fieldsUnion", () => {
     });
   });
 
+  test("always print the expected tags in full", () => {
+    const decoder = fieldsUnion("tag", [
+      { tag: tag("PrettyLongTagName1"), value: string },
+      { tag: tag("PrettyLongTagName2"), value: string },
+    ]);
+
+    expect(
+      run(
+        decoder,
+        { tag: "PrettyLongTagNameButWrong" },
+        { maxLength: 8, maxArrayChildren: 1, indent: " ".repeat(8) },
+      ),
+    ).toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags:
+              "PrettyLongTagName1",
+              "PrettyLongTagName2"
+      Got: "Pre…ong"
+    `);
+  });
+
   describe("allowExtraFields", () => {
     test("allows excess properties by default", () => {
       expect(
@@ -903,6 +980,45 @@ describe("fieldsUnion", () => {
           "5",
           "6",
           (93 more)
+      `);
+    });
+
+    test("always print the expected keys in full", () => {
+      const decoder = fieldsUnion(
+        "tag",
+        [
+          {
+            tag: tag("Test"),
+            PrettyLongTagName1: string,
+            PrettyLongTagName2: string,
+          },
+        ],
+        { allowExtraFields: false },
+      );
+
+      expect(
+        run(
+          decoder,
+          {
+            tag: "Test",
+            PrettyLongTagName1: "",
+            PrettyLongTagName2: "",
+            PrettyLongTagButWrong: "",
+          },
+          {
+            maxLength: 8,
+            maxArrayChildren: 1,
+            indent: " ".repeat(8),
+          },
+        ),
+      ).toMatchInlineSnapshot(`
+        At root:
+        Expected only these fields:
+                "tag",
+                "PrettyLongTagName1",
+                "PrettyLongTagName2"
+        Found extra fields:
+                "Pre…ong"
       `);
     });
   });
