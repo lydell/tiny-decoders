@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 
 import {
   array,
-  Decoder,
+  Codec,
   DecoderResult,
   fieldsAuto,
   flatMap,
@@ -22,7 +22,7 @@ test("recursive data structure", () => {
   // This wouldn’t work to decode it, because we’re trying to use
   // `personDecoder` in the definition of `personDecoder` itself.
   /*
-  const personDecoder = fieldsAuto<Person>({
+  const personCodec = fieldsAuto<Person>({
     name: string,
     friends: array(personDecoder2), // ReferenceError: Cannot access 'personDecoder2' before initialization
   });
@@ -30,9 +30,9 @@ test("recursive data structure", () => {
 
   // `recursive` lets us delay when `personDecoder` is referenced, solving the
   // issue.
-  const personDecoder: Decoder<Person> = fieldsAuto({
+  const personCodec: Codec<Person> = fieldsAuto({
     name: string,
-    friends: array(recursive(() => personDecoder)),
+    friends: array(recursive(() => personCodec)),
   });
 
   const data: unknown = {
@@ -54,7 +54,7 @@ test("recursive data structure", () => {
     ],
   };
 
-  expect(personDecoder(data)).toMatchInlineSnapshot(`
+  expect(personCodec.decoder(data)).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": {
@@ -82,20 +82,23 @@ test("recursive data structure", () => {
 test("recurse non-record", () => {
   type Dict = { [key: string]: Dict | number };
 
-  const dictDecoder: Decoder<Dict> = record(
-    flatMap(
-      multi(["number", "object"]),
-      (value): DecoderResult<Dict | number> => {
+  const dictCodec: Codec<Dict> = record(
+    flatMap(multi(["number", "object"]), {
+      decoder: (value): DecoderResult<Dict | number> => {
         switch (value.type) {
           case "number":
             return { tag: "Valid", value: value.value };
           case "object":
             // Thanks to the arrow function we’re in, the reference to
-            // `dictDecoder` is delayed and therefore works.
-            return dictDecoder(value.value);
+            // `dictCodec` is delayed and therefore works.
+            return dictCodec.decoder(value.value);
         }
       },
-    ),
+      encoder: (value) =>
+        typeof value === "number"
+          ? { type: "number", value }
+          : { type: "object", value },
+    }),
   );
 
   const data: unknown = {
@@ -110,7 +113,7 @@ test("recurse non-record", () => {
     },
   };
 
-  expect(dictDecoder(data)).toMatchInlineSnapshot(`
+  expect(dictCodec.decoder(data)).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": {
@@ -136,9 +139,9 @@ test("circular objects", () => {
     likes: Person;
   };
 
-  const personDecoder: Decoder<Person> = fieldsAuto({
+  const personCodec: Codec<Person> = fieldsAuto({
     name: string,
-    likes: recursive(() => personDecoder),
+    likes: recursive(() => personCodec),
   });
 
   const alice: Record<string, unknown> = {
@@ -157,7 +160,7 @@ test("circular objects", () => {
   // Calling the decoder would cause infinite recursion!
   // So be careful when working with recursive data!
   const wouldCauseInfiniteRecursion1: () => DecoderResult<Person> = vi.fn(() =>
-    personDecoder(alice),
+    personCodec.decoder(alice),
   );
 
   expect(wouldCauseInfiniteRecursion1).not.toHaveBeenCalled();

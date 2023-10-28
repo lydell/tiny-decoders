@@ -1,12 +1,12 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { fieldsUnion, Infer, number, tag } from "../";
+import { fieldsUnion, Infer, InferEncoded, number, tag } from "../";
 
 test("using different tags in JSON and in TypeScript", () => {
   // Here’s how to use different keys and values in JSON and TypeScript.
   // For example, `"type": "circle"` → `tag: "Circle"`.
-  const decoder = fieldsUnion("tag", [
+  const shapeCodec = fieldsUnion("tag", [
     {
       tag: tag("Circle", { renameTagFrom: "circle", renameFieldFrom: "type" }),
       radius: number,
@@ -17,19 +17,34 @@ test("using different tags in JSON and in TypeScript", () => {
     },
   ]);
 
-  type InferredType = Infer<typeof decoder>;
+  type InferredType = Infer<typeof shapeCodec>;
   type ExpectedType =
     | { tag: "Circle"; radius: number }
     | { tag: "Square"; size: number };
   expectType<TypeEqual<InferredType, ExpectedType>>(true);
 
-  expect(decoder({ type: "circle", radius: 5 })).toMatchInlineSnapshot(`
+  type InferredEncodedType = InferEncoded<typeof shapeCodec>;
+  type ExpectedEncodedType =
+    | { type: "circle"; radius: number }
+    | { type: "square"; size: number };
+  expectType<TypeEqual<InferredEncodedType, ExpectedEncodedType>>(true);
+
+  expect(shapeCodec.decoder({ type: "circle", radius: 5 }))
+    .toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": {
         "radius": 5,
         "tag": "Circle",
       },
+    }
+  `);
+
+  expect(shapeCodec.encoder({ tag: "Circle", radius: 5 }))
+    .toMatchInlineSnapshot(`
+    {
+      "radius": 5,
+      "type": "circle",
     }
   `);
 });

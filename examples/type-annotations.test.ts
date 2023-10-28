@@ -1,9 +1,6 @@
-// This file shows how best to annotate your `fields` and `fieldsAuto` decoders
-// to maximize the help you get from TypeScript.
-
 import { expect, test } from "vitest";
 
-import { Decoder, DecoderResult, fieldsAuto, number, string } from "../";
+import { Codec, DecoderResult, fieldsAuto, number, string } from "../";
 
 test("type annotations", () => {
   // First, a small test type and a function that receives it:
@@ -25,29 +22,28 @@ test("type annotations", () => {
    * MISSPELLED PROPERTY
    */
 
-  // Here’s a decoder for `Person`, but without an explicit type annotation.
-  // TypeScript will infer what they decode into (try hovering `personDecoder1`
+  // Here’s a codec for `Person`, but without an explicit type annotation.
+  // TypeScript will infer what it decodes into (try hovering `personCodec1`
   // in your editor!), but it won’t know that you intended to decode a `Person`.
   // As you can see, I’ve misspelled `age` as `aye`.
-  const personDecoder1 = fieldsAuto({
+  const personCodec1 = fieldsAuto({
     name: string,
     aye: number,
   });
-  // Since TypeScript has inferred a legit decoder above, it marks the following
+  // Since TypeScript has inferred a legit codec above, it marks the following
   // call as an error (you can’t pass an object with `aye` as a `Person`),
-  // while the _real_ error of course is in the decoder itself.
+  // while the _real_ error of course is in the codec itself.
   // @ts-expect-error Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.
-  greet(personDecoder1(testPerson));
+  greet(personCodec1.decoder(testPerson));
 
   // The way to make the above type error more clear is to provide an explicit type
   // annotation, so that TypeScript knows what you’re trying to do.
-  // @ts-expect-error Type 'Decoder<{ name: string; aye: number; }>' is not assignable to type 'Decoder<Person>'.
-  //   Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.
-  const personDecoder2: Decoder<Person> = fieldsAuto({
+  // @ts-expect-error Type '{ name: string; aye: number; }' is not assignable to type 'Person'.
+  const personCodec2: Codec<Person> = fieldsAuto({
     name: string,
     aye: number,
   });
-  greet(personDecoder2(testPerson));
+  greet(personCodec2.decoder(testPerson));
 
   /*
    * EXTRA PROPERTY
@@ -55,42 +51,31 @@ test("type annotations", () => {
 
   // TypeScript allows passing extra properties, so without type annotations
   // there are no errors:
-  const personDecoder3 = fieldsAuto({
+  const personCodec3 = fieldsAuto({
     name: string,
     age: number,
     extra: string,
   });
   // This would ideally complain about the extra property, but it doesn’t.
-  greet(personDecoder3(testPerson));
+  greet(personCodec3.decoder(testPerson));
 
-  // Adding `Decoder<Person>` does not seem to help TypeScript find any errors:
-  const personDecoder4: Decoder<Person> = fieldsAuto({
+  // Adding `Codec<Person>` helps TypeScript find the error:
+  // @ts-expect-error Type 'Person' is not assignable to type '{ name: string; age: number; extra: string; }'.
+  const personCodec4: Codec<Person> = fieldsAuto({
     name: string,
     age: number,
     extra: string,
   });
-  greet(personDecoder4(testPerson));
+  greet(personCodec4.decoder(testPerson));
 
-  // This is currently not an error unfortunately, but in a future version of tiny-decoders it will be.
-  const personDecoder5: Decoder<Person> = fieldsAuto({
-    name: string,
-    age: number,
-    // Here is where the error will be.
-    extra: string,
-  });
-  greet(personDecoder5(testPerson));
-  // See these TypeScript issues for more information:
-  // https://github.com/microsoft/TypeScript/issues/7547
-  // https://github.com/microsoft/TypeScript/issues/18020
-
-  // Finally, a compiling decoder.
-  const personDecoder6: Decoder<Person> = fieldsAuto({
+  // Finally, a compiling codec.
+  const personCodec5: Codec<Person> = fieldsAuto({
     name: string,
     age: number,
   });
-  greet(personDecoder6(testPerson));
+  greet(personCodec5.decoder(testPerson));
 
-  expect(personDecoder6(testPerson)).toMatchInlineSnapshot(`
+  expect(personCodec5.decoder(testPerson)).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": {

@@ -1,4 +1,4 @@
-// This file shows how to infer types from decoders.
+// This file shows how to infer types from codecs.
 
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
@@ -17,29 +17,35 @@ import {
 } from "..";
 import { run } from "../tests/helpers";
 
-test("making a type from a decoder", () => {
+test("making a type from a codec", () => {
   // Rather than first typing out a `type` for `Person` and then essentially
-  // typing the same thing again in the decoder (especially `fieldsAuto` decoders
-  // look almost identical to `type` they decode to!), you can start with the
-  // decoder and extract the type afterwards with tiny-decoder’s `Infer` utility.
-  const personDecoder = fieldsAuto({
+  // typing the same thing again in the codec (especially `fieldsAuto` codecs
+  // look almost identical to the `type` they decode to!), you can start with the
+  // codec and extract the type afterwards with tiny-decoder’s `Infer` utility.
+  const personCodec = fieldsAuto({
     name: string,
     age: number,
   });
 
   // Hover over `Person` to see what it looks like!
-  type Person = Infer<typeof personDecoder>;
+  type Person = Infer<typeof personCodec>;
   expectType<TypeEqual<Person, { name: string; age: number }>>(true);
 
   // If it feels like you are specifying everything twice – once in a `type` or
-  // `interface`, and once in the decoder – you might find this `Infer`
-  // technique interesting. But this `Infer` approach you don’t have to
-  // write what your records look like “twice.” Personally I don’t always mind
+  // `interface`, and once in the codec – you might find this `Infer`
+  // technique interesting. With this `Infer` approach you don’t have to
+  // write what your objects look like “twice.” Personally I don’t always mind
   // the “duplication,” but when you do – try out the `Infer` approach!
 
   // Here’s a more complex example for trying out TypeScript’s inference.
-  const userDecoder = fieldsAuto({
-    id: map(multi(["string", "number"]), ({ value }) => value),
+  const userCodec = fieldsAuto({
+    id: map(multi(["string", "number"]), {
+      decoder: ({ value }) => value,
+      encoder: (value) =>
+        typeof value === "string"
+          ? { type: "string", value }
+          : { type: "number", value },
+    }),
     name: string,
     age: number,
     active: boolean,
@@ -48,7 +54,7 @@ test("making a type from a decoder", () => {
   });
 
   // Then, let TypeScript infer the `User` type!
-  type User = Infer<typeof userDecoder>;
+  type User = Infer<typeof userCodec>;
   // Try hovering over `User` in the line above – your editor should reveal the
   // exact shape of the type.
 
@@ -60,7 +66,7 @@ test("making a type from a decoder", () => {
     type: "user",
   };
 
-  const userResult: DecoderResult<User> = userDecoder(data);
+  const userResult: DecoderResult<User> = userCodec.decoder(data);
   expect(userResult).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
@@ -123,9 +129,9 @@ test("making a type from an object and stringUnion", () => {
 
   expectType<TypeEqual<Severity, "Critical" | "High" | "Low" | "Medium">>(true);
 
-  const severityDecoder = stringUnion(SEVERITIES);
-  expectType<TypeEqual<Severity, Infer<typeof severityDecoder>>>(true);
-  expect(run(severityDecoder, "High")).toBe("High");
+  const severityCodec = stringUnion(SEVERITIES);
+  expectType<TypeEqual<Severity, Infer<typeof severityCodec>>>(true);
+  expect(run(severityCodec, "High")).toBe("High");
 
   function coloredSeverity(severity: Severity): string {
     return chalk.hex(SEVERITY_COLORS[severity])(severity);
