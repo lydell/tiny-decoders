@@ -1,6 +1,6 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
-### Version 16.0.0 (2023-10-29)
+### Version 16.0.0 (2023-10-28)
 
 This release changes decoders from throwing errors to returning a `DecoderResult`:
 
