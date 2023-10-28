@@ -2,83 +2,130 @@
 // No `any` “leaks” when _using_ the library, though.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export type Decoder<T, U = unknown> = (value: U) => T;
+export type Decoder<T, U = unknown> = (value: U) => DecoderResult<T>;
 
-export type Infer<T extends Decoder<any>> = ReturnType<T>;
+export type DecoderResult<T> =
+  | {
+      tag: "DecoderError";
+      error: DecoderError;
+    }
+  | {
+      tag: "Valid";
+      value: T;
+    };
+
+export type Infer<T extends Decoder<any>> = Extract<
+  ReturnType<T>,
+  { tag: "Valid" }
+>["value"];
 
 // Make VSCode show `{ a: string; b?: number }` instead of `{ a: string } & { b?: number }`.
 // https://stackoverflow.com/a/57683652/2010616
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
-export function boolean(value: unknown): boolean {
-  if (typeof value !== "boolean") {
-    throw new DecoderError({ tag: "boolean", got: value });
-  }
-  return value;
+export function boolean(value: unknown): DecoderResult<boolean> {
+  return typeof value === "boolean"
+    ? { tag: "Valid", value }
+    : {
+        tag: "DecoderError",
+        error: { tag: "boolean", got: value, path: [] },
+      };
 }
 
-export function number(value: unknown): number {
-  if (typeof value !== "number") {
-    throw new DecoderError({ tag: "number", got: value });
-  }
-  return value;
+export function number(value: unknown): DecoderResult<number> {
+  return typeof value === "number"
+    ? { tag: "Valid", value }
+    : {
+        tag: "DecoderError",
+        error: { tag: "number", got: value, path: [] },
+      };
 }
 
-export function string(value: unknown): string {
-  if (typeof value !== "string") {
-    throw new DecoderError({ tag: "string", got: value });
-  }
-  return value;
+export function string(value: unknown): DecoderResult<string> {
+  return typeof value === "string"
+    ? { tag: "Valid", value }
+    : {
+        tag: "DecoderError",
+        error: { tag: "string", got: value, path: [] },
+      };
 }
 
 export function stringUnion<
   const T extends readonly [string, ...Array<string>],
 >(variants: T): Decoder<T[number]> {
-  return function stringUnionDecoder(value: unknown): T[number] {
-    const str = string(value);
-    if (!variants.includes(str)) {
-      throw new DecoderError({
-        tag: "unknown stringUnion variant",
-        knownVariants: variants as unknown as Array<string>,
-        got: str,
-      });
+  return (value) => {
+    const stringResult = string(value);
+    if (stringResult.tag === "DecoderError") {
+      return stringResult;
     }
-    return str;
+    const str = stringResult.value;
+    return variants.includes(str)
+      ? { tag: "Valid", value: str }
+      : {
+          tag: "DecoderError",
+          error: {
+            tag: "unknown stringUnion variant",
+            knownVariants: variants as unknown as Array<string>,
+            got: str,
+            path: [],
+          },
+        };
   };
 }
 
-function unknownArray(value: unknown): Array<unknown> {
-  if (!Array.isArray(value)) {
-    throw new DecoderError({ tag: "array", got: value });
-  }
-  return value;
+function unknownArray(value: unknown): DecoderResult<Array<unknown>> {
+  return Array.isArray(value)
+    ? { tag: "Valid", value }
+    : {
+        tag: "DecoderError",
+        error: { tag: "array", got: value, path: [] },
+      };
 }
 
-function unknownRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new DecoderError({ tag: "object", got: value });
-  }
-  return value as Record<string, unknown>;
+function unknownRecord(value: unknown): DecoderResult<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? { tag: "Valid", value: value as Record<string, unknown> }
+    : {
+        tag: "DecoderError",
+        error: { tag: "object", got: value, path: [] },
+      };
 }
 
 export function array<T>(decoder: Decoder<T>): Decoder<Array<T>> {
-  return function arrayDecoder(value: unknown): Array<T> {
-    const arr = unknownArray(value);
+  return (value) => {
+    const arrResult = unknownArray(value);
+    if (arrResult.tag === "DecoderError") {
+      return arrResult;
+    }
+    const arr = arrResult.value;
     const result = [];
     for (let index = 0; index < arr.length; index++) {
-      try {
-        result.push(decoder(arr[index]));
-      } catch (error) {
-        throw DecoderError.at(error, index);
+      const decoderResult = decoder(arr[index]);
+      switch (decoderResult.tag) {
+        case "DecoderError":
+          return {
+            tag: "DecoderError",
+            error: {
+              ...decoderResult.error,
+              path: [index, ...decoderResult.error.path],
+            },
+          };
+        case "Valid":
+          result.push(decoderResult.value);
+          break;
       }
     }
-    return result;
+    return { tag: "Valid", value: result };
   };
 }
 
 export function record<T>(decoder: Decoder<T>): Decoder<Record<string, T>> {
-  return function recordDecoder(value: unknown): Record<string, T> {
-    const object = unknownRecord(value);
+  return (value) => {
+    const objectResult = unknownRecord(value);
+    if (objectResult.tag === "DecoderError") {
+      return objectResult;
+    }
+    const object = objectResult.value;
     const keys = Object.keys(object);
     const result: Record<string, T> = {};
 
@@ -86,14 +133,23 @@ export function record<T>(decoder: Decoder<T>): Decoder<Record<string, T>> {
       if (key === "__proto__") {
         continue;
       }
-      try {
-        result[key] = decoder(object[key]);
-      } catch (error) {
-        throw DecoderError.at(error, key);
+      const decoderResult = decoder(object[key]);
+      switch (decoderResult.tag) {
+        case "DecoderError":
+          return {
+            tag: "DecoderError",
+            error: {
+              ...decoderResult.error,
+              path: [key, ...decoderResult.error.path],
+            },
+          };
+        case "Valid":
+          result[key] = decoderResult.value;
+          break;
       }
     }
 
-    return result;
+    return { tag: "Valid", value: result };
   };
 }
 
@@ -133,8 +189,12 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
   mapping: Mapping,
   { allowExtraFields = true }: { allowExtraFields?: boolean } = {},
 ): Decoder<InferFields<Mapping>> {
-  return function fieldsAutoDecoder(value): InferFields<Mapping> {
-    const object = unknownRecord(value);
+  return (value) => {
+    const objectResult = unknownRecord(value);
+    if (objectResult.tag === "DecoderError") {
+      return objectResult;
+    }
+    const object = objectResult.value;
     const keys = Object.keys(mapping);
     const knownFields = new Set<string>();
     const result: Record<string, unknown> = {};
@@ -159,18 +219,31 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
       knownFields.add(encodedFieldName);
       if (!(encodedFieldName in object)) {
         if (!isOptional) {
-          throw new DecoderError({
-            tag: "missing field",
-            field: encodedFieldName,
-            got: object,
-          });
+          return {
+            tag: "DecoderError",
+            error: {
+              tag: "missing field",
+              field: encodedFieldName,
+              got: object,
+              path: [],
+            },
+          };
         }
         continue;
       }
-      try {
-        result[key] = decoder(object[encodedFieldName]);
-      } catch (error) {
-        throw DecoderError.at(error, key);
+      const decoderResult = decoder(object[encodedFieldName]);
+      switch (decoderResult.tag) {
+        case "DecoderError":
+          return {
+            tag: "DecoderError",
+            error: {
+              ...decoderResult.error,
+              path: [key, ...decoderResult.error.path],
+            },
+          };
+        case "Valid":
+          result[key] = decoderResult.value;
+          break;
       }
     }
 
@@ -179,15 +252,19 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
         (key) => !knownFields.has(key),
       );
       if (unknownFields.length > 0) {
-        throw new DecoderError({
-          tag: "exact fields",
-          knownFields: Array.from(knownFields),
-          got: unknownFields,
-        });
+        return {
+          tag: "DecoderError",
+          error: {
+            tag: "exact fields",
+            knownFields: Array.from(knownFields),
+            got: unknownFields,
+            path: [],
+          },
+        };
       }
     }
 
-    return result as InferFields<Mapping>;
+    return { tag: "Valid", value: result as InferFields<Mapping> };
   };
 }
 
@@ -260,22 +337,27 @@ export function fieldsUnion<
 
   const encodedCommonField = maybeEncodedCommonField;
 
-  return function fieldsUnionDecoder(
-    value: unknown,
-  ): InferFieldsUnion<Variants[number]> {
-    const encodedName = fieldsAuto({ [encodedCommonField]: string })(value)[
-      encodedCommonField
-    ];
+  return (value) => {
+    const encodedNameResult = fieldsAuto({ [encodedCommonField]: string })(
+      value,
+    );
+    if (encodedNameResult.tag === "DecoderError") {
+      return encodedNameResult;
+    }
+    const encodedName = encodedNameResult.value[encodedCommonField];
     const decoder = decoderMap.get(encodedName);
     if (decoder === undefined) {
-      throw new DecoderError({
-        tag: "unknown fieldsUnion tag",
-        knownTags: Array.from(decoderMap.keys()),
-        got: encodedName,
-        key: encodedCommonField,
-      });
+      return {
+        tag: "DecoderError",
+        error: {
+          tag: "unknown fieldsUnion tag",
+          knownTags: Array.from(decoderMap.keys()),
+          got: encodedName,
+          path: [encodedCommonField],
+        },
+      };
     }
-    return decoder(value) as InferFieldsUnion<Variants[number]>;
+    return decoder(value);
   };
 }
 
@@ -339,16 +421,23 @@ export function tag<
   }
 > {
   return {
-    decoder: function tagDecoder(value: unknown): Decoded {
-      const str = string(value);
-      if (str !== encoded) {
-        throw new DecoderError({
-          tag: "wrong tag",
-          expected: encoded,
-          got: str,
-        });
+    decoder: (value) => {
+      const strResult = string(value);
+      if (strResult.tag === "DecoderError") {
+        return strResult;
       }
-      return decoded;
+      const str = strResult.value;
+      return str === encoded
+        ? { tag: "Valid", value: decoded }
+        : {
+            tag: "DecoderError",
+            error: {
+              tag: "wrong tag",
+              expected: encoded,
+              got: str,
+              path: [],
+            },
+          };
     },
     renameFrom: encodedFieldName,
     tag: { decoded, encoded },
@@ -358,25 +447,42 @@ export function tag<
 export function tuple<T extends Array<unknown>>(
   mapping: [...{ [P in keyof T]: Decoder<T[P]> }],
 ): Decoder<T> {
-  return function tupleDecoder(value: unknown): T {
-    const arr = unknownArray(value);
+  return (value) => {
+    const arrResult = unknownArray(value);
+    if (arrResult.tag === "DecoderError") {
+      return arrResult;
+    }
+    const arr = arrResult.value;
     if (arr.length !== mapping.length) {
-      throw new DecoderError({
-        tag: "tuple size",
-        expected: mapping.length,
-        got: arr.length,
-      });
+      return {
+        tag: "DecoderError",
+        error: {
+          tag: "tuple size",
+          expected: mapping.length,
+          got: arr.length,
+          path: [],
+        },
+      };
     }
     const result = [];
     for (let index = 0; index < arr.length; index++) {
-      try {
-        const decoder = mapping[index];
-        result.push(decoder(arr[index]));
-      } catch (error) {
-        throw DecoderError.at(error, index);
+      const decoder = mapping[index];
+      const decoderResult = decoder(arr[index]);
+      switch (decoderResult.tag) {
+        case "DecoderError":
+          return {
+            tag: "DecoderError",
+            error: {
+              ...decoderResult.error,
+              path: [index, ...decoderResult.error.path],
+            },
+          };
+        case "Valid":
+          result.push(decoderResult.value);
+          break;
       }
     }
-    return result as T;
+    return { tag: "Valid", value: result as T };
   };
 }
 
@@ -410,48 +516,73 @@ type MultiTypeName =
 export function multi<
   Types extends readonly [MultiTypeName, ...Array<MultiTypeName>],
 >(types: Types): Decoder<Multi<Types[number]>> {
-  return function multiDecoder(value): Multi<Types[number]> {
+  return (value) => {
     if (value === undefined) {
       if (types.includes("undefined")) {
-        return { type: "undefined", value } as unknown as Multi<Types[number]>;
+        return {
+          tag: "Valid",
+          value: { type: "undefined", value } as unknown as Multi<
+            Types[number]
+          >,
+        };
       }
     } else if (value === null) {
       if (types.includes("null")) {
-        return { type: "null", value } as unknown as Multi<Types[number]>;
+        return {
+          tag: "Valid",
+          value: { type: "null", value } as unknown as Multi<Types[number]>,
+        };
       }
     } else if (typeof value === "boolean") {
       if (types.includes("boolean")) {
-        return { type: "boolean", value } as unknown as Multi<Types[number]>;
+        return {
+          tag: "Valid",
+          value: { type: "boolean", value } as unknown as Multi<Types[number]>,
+        };
       }
     } else if (typeof value === "number") {
       if (types.includes("number")) {
-        return { type: "number", value } as unknown as Multi<Types[number]>;
+        return {
+          tag: "Valid",
+          value: { type: "number", value } as unknown as Multi<Types[number]>,
+        };
       }
     } else if (typeof value === "string") {
       if (types.includes("string")) {
-        return { type: "string", value } as unknown as Multi<Types[number]>;
+        return {
+          tag: "Valid",
+          value: { type: "string", value } as unknown as Multi<Types[number]>,
+        };
       }
     } else if (Array.isArray(value)) {
       if (types.includes("array")) {
-        return { type: "array", value } as unknown as Multi<Types[number]>;
+        return {
+          tag: "Valid",
+          value: { type: "array", value } as unknown as Multi<Types[number]>,
+        };
       }
     } else {
       if (types.includes("object")) {
-        return { type: "object", value } as unknown as Multi<Types[number]>;
+        return {
+          tag: "Valid",
+          value: { type: "object", value } as unknown as Multi<Types[number]>,
+        };
       }
     }
-    throw new DecoderError({
-      tag: "unknown multi type",
-      knownTypes: types as unknown as Array<"undefined">, // Type checking hack.
-      got: value,
-    });
+    return {
+      tag: "DecoderError",
+      error: {
+        tag: "unknown multi type",
+        knownTypes: types as unknown as Array<"undefined">, // Type checking hack.
+        got: value,
+        path: [],
+      },
+    };
   };
 }
 
 export function recursive<T>(callback: () => Decoder<T>): Decoder<T> {
-  return function recursiveDecoder(value: unknown): T {
-    return callback()(value);
-  };
+  return (value) => callback()(value);
 }
 
 export function undefinedOr<T>(decoder: Decoder<T>): Decoder<T | undefined>;
@@ -465,18 +596,27 @@ export function undefinedOr<T, U = undefined>(
   decoder: Decoder<T>,
   defaultValue?: U,
 ): Decoder<T | U> {
-  return function optionalDecoder(value: unknown): T | U {
+  return (value) => {
     if (value === undefined) {
-      return defaultValue as T | U;
+      return { tag: "Valid", value: defaultValue as T | U };
     }
-    try {
-      return decoder(value);
-    } catch (error) {
-      const newError = DecoderError.at(error);
-      if (newError.path.length === 0) {
-        newError.optional = true;
-      }
-      throw newError;
+    const decoderResult = decoder(value);
+    switch (decoderResult.tag) {
+      case "DecoderError":
+        return decoderResult.error.path.length === 0
+          ? {
+              tag: "DecoderError",
+              error: {
+                ...decoderResult.error,
+                orExpected:
+                  decoderResult.error.orExpected === "null"
+                    ? "null or undefined"
+                    : "undefined",
+              },
+            }
+          : decoderResult;
+      case "Valid":
+        return decoderResult;
     }
   };
 }
@@ -493,32 +633,65 @@ export function nullable<T, U = null>(
   ...rest: Array<unknown>
 ): Decoder<T | U> {
   const defaultValue = rest.length === 0 ? null : rest[0];
-  return function nullableDecoder(value: unknown): T | U {
+  return (value) => {
     if (value === null) {
-      return defaultValue as T | U;
+      return { tag: "Valid", value: defaultValue as T | U };
     }
-    try {
-      return decoder(value);
-    } catch (error) {
-      const newError = DecoderError.at(error);
-      if (newError.path.length === 0) {
-        newError.nullable = true;
-      }
-      throw newError;
+    const decoderResult = decoder(value);
+    switch (decoderResult.tag) {
+      case "DecoderError":
+        return decoderResult.error.path.length === 0
+          ? {
+              tag: "DecoderError",
+              error: {
+                ...decoderResult.error,
+                orExpected:
+                  decoderResult.error.orExpected === "undefined"
+                    ? "null or undefined"
+                    : "null",
+              },
+            }
+          : decoderResult;
+      case "Valid":
+        return decoderResult;
     }
   };
 }
 
-export function chain<T, U>(
+export function map<T, U>(
   decoder: Decoder<T>,
-  next: Decoder<U, T>,
+  transform: (value: T) => U,
 ): Decoder<U> {
-  return function chainDecoder(value: unknown): U {
-    return next(decoder(value));
+  return (value) => {
+    const decoderResult = decoder(value);
+    switch (decoderResult.tag) {
+      case "DecoderError":
+        return decoderResult;
+      case "Valid":
+        return { tag: "Valid", value: transform(decoderResult.value) };
+    }
   };
 }
 
-export type DecoderErrorVariant =
+export function flatMap<T, U>(
+  decoder: Decoder<T>,
+  transform: (value: T) => DecoderResult<U>,
+): Decoder<U> {
+  return (value) => {
+    const decoderResult = decoder(value);
+    switch (decoderResult.tag) {
+      case "DecoderError":
+        return decoderResult;
+      case "Valid":
+        return transform(decoderResult.value);
+    }
+  };
+}
+
+export type DecoderError = {
+  path: Array<number | string>;
+  orExpected?: "null or undefined" | "null" | "undefined";
+} & (
   | {
       tag: "custom";
       message: string;
@@ -571,10 +744,19 @@ export type DecoderErrorVariant =
   | { tag: "boolean"; got: unknown }
   | { tag: "number"; got: unknown }
   | { tag: "object"; got: unknown }
-  | { tag: "string"; got: unknown };
+  | { tag: "string"; got: unknown }
+);
+
+export function format(error: DecoderError, options?: ReprOptions): string {
+  const path = error.path.map((part) => `[${JSON.stringify(part)}]`).join("");
+  const variant = formatDecoderErrorVariant(error, options);
+  const orExpected =
+    error.orExpected === undefined ? "" : `\nOr expected: ${error.orExpected}`;
+  return `At root${path}:\n${variant}${orExpected}`;
+}
 
 function formatDecoderErrorVariant(
-  variant: DecoderErrorVariant,
+  variant: DecoderError,
   options?: ReprOptions,
 ): string {
   const formatGot = (value: unknown): string => {
@@ -598,20 +780,15 @@ function formatDecoderErrorVariant(
           }),
         );
 
-  const got = (message: string, value: unknown): string =>
-    value === DecoderError.MISSING_VALUE
-      ? message
-      : `${message}\nGot: ${formatGot(value)}`;
-
   switch (variant.tag) {
     case "boolean":
     case "number":
     case "string":
-      return got(`Expected a ${variant.tag}`, variant.got);
+      return `Expected a ${variant.tag}\nGot: ${formatGot(variant.got)}`;
 
     case "array":
     case "object":
-      return got(`Expected an ${variant.tag}`, variant.got);
+      return `Expected an ${variant.tag}\nGot: ${formatGot(variant.got)}`;
 
     case "unknown multi type":
       return `Expected one of these types: ${
@@ -649,68 +826,7 @@ function formatDecoderErrorVariant(
       return `Expected ${variant.expected} items\nGot: ${variant.got}`;
 
     case "custom":
-      return got(variant.message, variant.got);
-  }
-}
-
-type Key = number | string;
-
-export class DecoderError extends TypeError {
-  path: Array<Key>;
-
-  variant: DecoderErrorVariant;
-
-  nullable: boolean;
-
-  optional: boolean;
-
-  constructor({
-    key,
-    ...params
-  }:
-    | { message: string; value: unknown; key?: Key | undefined }
-    | (DecoderErrorVariant & { key?: Key | undefined })) {
-    const variant: DecoderErrorVariant =
-      "tag" in params
-        ? params
-        : { tag: "custom", message: params.message, got: params.value };
-    super(
-      `${formatDecoderErrorVariant(
-        variant,
-        // Default to sensitive so accidental uncaught errors don’t leak
-        // anything. Explicit `.format()` defaults to non-sensitive.
-        { sensitive: true },
-      )}\n\nFor better error messages, see https://github.com/lydell/tiny-decoders#error-messages`,
-    );
-    this.path = key === undefined ? [] : [key];
-    this.variant = variant;
-    this.nullable = false;
-    this.optional = false;
-  }
-
-  static MISSING_VALUE = Symbol("DecoderError.MISSING_VALUE");
-
-  static at(error: unknown, key?: Key): DecoderError {
-    if (error instanceof DecoderError) {
-      if (key !== undefined) {
-        error.path.unshift(key);
-      }
-      return error;
-    }
-    return new DecoderError({
-      tag: "custom",
-      message: error instanceof Error ? error.message : String(error),
-      got: DecoderError.MISSING_VALUE,
-      key,
-    });
-  }
-
-  format(options?: ReprOptions): string {
-    const path = this.path.map((part) => `[${JSON.stringify(part)}]`).join("");
-    const nullableString = this.nullable ? " (nullable)" : "";
-    const optionalString = this.optional ? " (optional)" : "";
-    const variant = formatDecoderErrorVariant(this.variant, options);
-    return `At root${path}${nullableString}${optionalString}:\n${variant}`;
+      return `${variant.message}\nGot: ${formatGot(variant.got)}`;
   }
 }
 

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { chain, Decoder, fieldsAuto, number, tuple } from "../";
+import { Decoder, fieldsAuto, map, number, tuple } from "../";
 
 test("decoding tuples", () => {
   type PointTuple = [number, number];
@@ -10,10 +10,13 @@ test("decoding tuples", () => {
   // If you want a quick way to decode the above into `[number, number]`, use `tuple`.
   const pointTupleDecoder1 = tuple<PointTuple>([number, number]);
   expect(pointTupleDecoder1(data)).toMatchInlineSnapshot(`
-    [
-      50,
-      325,
-    ]
+    {
+      "tag": "Valid",
+      "value": [
+        50,
+        325,
+      ],
+    }
   `);
 
   // If you’d rather produce an object like the following, use `tuple` with `chain`.
@@ -21,7 +24,7 @@ test("decoding tuples", () => {
     x: number;
     y: number;
   };
-  const pointDecoder: Decoder<Point> = chain(
+  const pointDecoder: Decoder<Point> = map(
     tuple([number, number]),
     ([x, y]) => ({
       x,
@@ -30,25 +33,31 @@ test("decoding tuples", () => {
   );
   expect(pointDecoder(data)).toMatchInlineSnapshot(`
     {
-      "x": 50,
-      "y": 325,
+      "tag": "Valid",
+      "value": {
+        "x": 50,
+        "y": 325,
+      },
     }
   `);
 
   // `tuple` works with any number of values. Here’s an example with four values:
   expect(tuple([number, number, number, number])([1, 2, 3, 4]))
     .toMatchInlineSnapshot(`
-      [
-        1,
-        2,
-        3,
-        4,
-      ]
+      {
+        "tag": "Valid",
+        "value": [
+          1,
+          2,
+          3,
+          4,
+        ],
+      }
     `);
 
   // You can of course decode an object to a tuple as well:
   const obj: unknown = { x: 1, y: 2 };
-  const pointTupleDecoder: Decoder<PointTuple> = chain(
+  const pointTupleDecoder: Decoder<PointTuple> = map(
     fieldsAuto({
       x: number,
       y: number,
@@ -56,9 +65,12 @@ test("decoding tuples", () => {
     ({ x, y }) => [x, y],
   );
   expect(pointTupleDecoder(obj)).toMatchInlineSnapshot(`
-    [
-      1,
-      2,
-    ]
+    {
+      "tag": "Valid",
+      "value": [
+        1,
+        2,
+      ],
+    }
   `);
 });

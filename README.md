@@ -8,10 +8,7 @@ Type-safe data decoding for the minimalist.
 npm install tiny-decoders
 ```
 
-**Don’t miss out!**
-
 - 👉 [Decoders summary](#decoders)
-- 👉 [Great error messages](#error-messages)
 
 ## TypeScript requirements
 
@@ -30,6 +27,7 @@ import {
   DecoderError,
   field,
   fieldsAuto,
+  format,
   type Infer,
   number,
   string,
@@ -54,15 +52,16 @@ const userDecoder: Decoder<User> = fieldsAuto({
 
 const payload: unknown = getSomeJSON();
 
-try {
-  const user: User = userDecoder(payload);
-} catch (error: unknown) {
-  if (error instanceof DecoderError) {
-    // `error.format()` gives a nicer error message than `error.message`.
-    console.error(error.format());
-  } else {
-    console.error(error);
-  }
+const userResult: User = userDecoder(payload);
+
+switch (userResult.tag) {
+  case "DecoderError":
+    console.error(format(userResult.error));
+    break;
+
+  case "Valid":
+    console.log(userResult.value);
+    break;
 }
 ```
 
@@ -82,16 +81,26 @@ type User2 = Infer<typeof userDecoder2>;
 
 `User2` above is equivalent to the `User` type already shown earlier.
 
-## Decoder&lt;T&gt;
+## Decoder&lt;T&gt; and DecoderResult&lt;T&gt;
 
 ```ts
-type Decoder<T> = (value: unknown) => T;
+type Decoder<T> = (value: unknown) => DecoderResult<T>;
+
+type DecoderResult<T> =
+  | {
+      tag: "DecoderError";
+      error: DecoderError;
+    }
+  | {
+      tag: "Valid";
+      value: T;
+    };
 ```
 
 A decoder is a function that:
 
 - Takes an `unknown` value and refines it to any type you want (`T`).
-- Throws a [DecoderError](#decodererror) otherwise.
+- Returns a `DecoderResult`: Either that refined `T` or a [DecoderError](#decodererror).
 
 That’s it!
 
@@ -100,14 +109,12 @@ tiny-decoders ships with a bunch of decoders, and a few functions to combine dec
 ### Advanced variant
 
 ```ts
-type Decoder<T, U = unknown> = (value: U) => T;
+type Decoder<T, U = unknown> = (value: U) => DecoderResult<T>;
 ```
 
 The above is the _full_ definition of a decoder. The input value can be some other type (`U`) than `unknown` if you want.
 
 Most of the time you don’t need to think about this, though!
-
-> ℹ️ Some decoders used to support a second `errors` parameter. That is no longer a thing.
 
 ## Decoders
 
@@ -286,10 +293,20 @@ Here’s a summary of all decoders (with slightly simplified type annotations):
 <td><code>T | null</code></td>
 </tr>
 <tr>
-<th><a href="#chain">chain</a></th>
+<th><a href="#map">map</a></th>
 <td><pre>(
   decoder: Decoder&lt;T&gt;,
-  next: Decoder&lt;U, T&gt;
+  transform: (value: T) =&gt; U,
+) =&gt;
+  Decoder&lt;U&gt;</pre></td>
+<td>n/a</td>
+<td><code>U</code></td>
+</tr>
+<tr>
+<th><a href="#flatmap">flatMap</a></th>
+<td><pre>(
+  decoder: Decoder&lt;T&gt;,
+  transform: (value: T) =&gt; DecoderResult&lt;U&gt;,
 ) =&gt;
   Decoder&lt;U&gt;</pre></td>
 <td>n/a</td>
@@ -661,14 +678,14 @@ Decode multiple JSON types into a TypeScript type of choice.
 
 This is useful for supporting stuff that can be either a string or a number, for example.
 
-The type annotation for `multi` is a bit wacky, but it’s not that complicated to use. The `types` parameter is an array of strings – the wanted JSON types. For example, you can say `["string", "number"]`. Then the decoder will give you back either `{ type: "string", value: string }` or `{ type: "number", value: number }`. You can use [chain](#chain) to map that to some type of choice, or decode further.
+The type annotation for `multi` is a bit wacky, but it’s not that complicated to use. The `types` parameter is an array of strings – the wanted JSON types. For example, you can say `["string", "number"]`. Then the decoder will give you back either `{ type: "string", value: string }` or `{ type: "number", value: number }`. You can use [map](#map) to map that to some type of choice, or [flatMap](#flatmap) to decode further.
 
 Example:
 
 ```ts
 type Id = { tag: "Id"; id: string } | { tag: "LegacyId"; id: number };
 
-const idDecoder: Decoder<Id> = chain(multi(["string", "number"]), (value) => {
+const idDecoder: Decoder<Id> = map(multi(["string", "number"]), (value) => {
   switch (value.type) {
     case "string":
       return { tag: "Id" as const, id: value.value };
@@ -722,29 +739,63 @@ function nullable<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
 
 Returns a new decoder that also accepts `null`. Alternatively, supply a `defaultValue` to use in place of `null`.
 
-### chain
+### map
 
 ```ts
-function chain<T, U>(decoder: Decoder<T>, next: Decoder<U, T>): Decoder<U>;
+function map<T, U>(decoder: Decoder<T>, transform: (value: T) => U): Decoder<U>;
 ```
 
-Run a function after a decoder (if it succeeds). The function can either transform the decoded data, or be another decoder to decode the value further.
+Run a function after a decoder (if it succeeds). The function transforms the decoded data.
 
 Example:
 
 ```ts
-const numberSetDecoder: Decoder<Set<number>> = chain(
+const numberSetDecoder: Decoder<Set<number>> = map(
   array(number),
   (arr) => new Set(arr),
 );
 ```
 
-See the [chain example](examples/chain.test.ts) for more.
+### flatMap
+
+```ts
+function flatMap<T, U>(
+  decoder: Decoder<T>,
+  transform: (value: T) => DecoderResult<U>,
+): Decoder<U>;
+```
+
+Run a function after a decoder (if it succeeds). The function decodes the decoded data further, returning another `DecoderResult` which is then “flattened” (so you don’t end up with a `DecoderResult` inside a `DecoderResult`).
+
+Example:
+
+```ts
+const regexDecoder: Decoder<RegExp> = flatMap(string, (str) => {
+  try {
+    return { tag: "Valid", value: RegExp(str, "u") };
+  } catch (error) {
+    return {
+      tag: "DecoderError",
+      error: {
+        tag: "custom",
+        message: error instanceof Error ? error.message : String(error),
+        got: str,
+        path: [],
+      },
+    };
+  }
+});
+```
+
+Note: Sometimes TypeScript has trouble inferring the return type of the `transform` function. No matter what you do, it keeps complaining. In such cases it helps to add return type annotation on the `transform` function.
 
 ## DecoderError
 
 ```ts
-type DecoderErrorVariant =
+type DecoderError = {
+  path: Array<number | string>;
+  orExpected?: "null or undefined" | "null" | "undefined";
+} & (
   | {
       tag: "custom";
       message: string;
@@ -788,98 +839,59 @@ type DecoderErrorVariant =
       knownVariants: Array<string>;
       got: string;
     }
+  | {
+      tag: "wrong tag";
+      expected: string;
+      got: string;
+    }
   | { tag: "array"; got: unknown }
   | { tag: "boolean"; got: unknown }
   | { tag: "number"; got: unknown }
   | { tag: "object"; got: unknown }
-  | { tag: "string"; got: unknown };
-
-type Key = number | string; // Not exported.
-
-class DecoderError extends TypeError {
-  path: Array<Key>;
-
-  variant: DecoderErrorVariant;
-
-  nullable: boolean;
-
-  optional: boolean;
-
-  constructor(
-    params:
-      | { message: string; value: unknown; key?: Key | undefined }
-      | (DecoderErrorVariant & { key?: Key | undefined }),
-  );
-
-  static MISSING_VALUE: symbol;
-
-  static at(error: unknown, key: Key): DecoderError;
-
-  format(options?: ReprOptions): string;
-}
+  | { tag: "string"; got: unknown }
+);
 ```
 
-The error thrown by all decoders. It keeps track of where in the JSON the error occurred.
+The error returned by all decoders. It keeps track of where in the JSON the error occurred.
 
-At the places where you actually call a decoder function (as opposed to just combining them into bigger and bigger structures), use a `try-catch` to catch errors. You can use `.format()` on the caught error to get a nice string explaining what went wrong.
+Use the [format](#format) function to get a nice string explaining what went wrong.
 
 ```ts
 const myDecoder = array(string);
 
-try {
-  myDecoder(someUnknownValue);
-} catch (error) {
-  if (error instanceof DecoderError) {
-    // `error.format()` gives a nicer error message than `error.message`.
-    console.error(error.format());
-  } else {
-    console.error(error);
-  }
+const decoderResult = myDecoder(someUnknownValue);
+switch (decoderResult.tag) {
+  case "DecoderError":
+    console.error(format(decoderResult.error));
+    break;
+  case "Valid":
+    console.log(decoderResult.value);
+    break;
 }
 ```
 
-### constructor
-
-The constructor either takes a `DecoderErrorVariant` or a `{ message, value, key }` object.
-
-When creating a `DecoderError` you generally want to pass `{ message, value, key }` rather than one of the existing `DecoderErrorVariant`s.
-
-- `message` is a string saying what went wrong.
-- `value` is the value being decoded that caused the error.
-- `key` is optional. If you’re at an object key or an array index you can pass that key to let the `DecoderError` know where the error occurred.
-
-### static at
-
-`DecoderError.at(error, key)` returns a `DecoderError` from `error` and marks it as having happened at `key`.
-
-For example, you could turn the keys of an object into regexes. If one key isn’t a valid regex, you can use `at` to make the error message point at that key rather than at the whole object.
+When creating your own `DecoderError`, you probably want to do something like this:
 
 ```ts
-const decoder: Decoder<Array<[RegExp, number]>> = Decode.chain(
-  Decode.record(Decode.number),
-  (record) =>
-    Object.entries(record).map(([key, value]) => {
-      try {
-        return [RegExp(key, "u"), value];
-      } catch (error) {
-        throw Decode.DecoderError.at(error, key);
-      }
-    }),
-);
+const myError: DecoderError = {
+  tag: "custom", // You probably want "custom".
+  message: "my message", // What you expected, or what went wrong.
+  got: theValueYouTriedToDecode,
+  // Usually the empty array; put the object key or array index you’re at if
+  // that makes sense. This will show up as for example `At root["myKey"]`.
+  path: [],
+};
 ```
 
-Note: `DecoderError.at(error)` _mutates_ `error` if `error instanceof DecoderError`! For other values, it creates a new `DecoderError` – and in this case, the value that caused the error is set to `DecoderError.MISSING_VALUE`.
+`orExpected` exists so that `undefinedOr` and `nullable` can say that `undefined` and/or `null` also are expected values.
 
-### format
+## format
+
+```ts
+function format(error: DecoderError, options?: ReprOptions): string;
+```
 
 Turn the `DecoderError` into a nicely formatted string. It uses [repr](#repr) under the hood and takes the same options.
-
-If you want to format the error yourself in a custom way, look at these properties:
-
-- `.path`: The path into a JSON object/array to the value that caused the error.
-- `.variant`: The actual error.
-- `.nullable`: The error happened at a [nullable](#nullable).
-- `.optional`: The error happened at an [undefinedOr](#undefinedor).
 
 ## repr
 

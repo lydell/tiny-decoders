@@ -3,10 +3,10 @@ import { expect, test } from "vitest";
 import {
   array,
   boolean,
-  chain,
   Decoder,
   fieldsAuto,
   Infer,
+  map,
   number,
   string,
   undefinedOr,
@@ -48,23 +48,29 @@ test("untagged union", () => {
 
   expect(userResultDecoder({ name: "John", followers: 42 }))
     .toMatchInlineSnapshot(`
-    {
-      "followers": 42,
-      "name": "John",
-    }
-  `);
+      {
+        "tag": "Valid",
+        "value": {
+          "followers": 42,
+          "name": "John",
+        },
+      }
+    `);
 
   expect(userResultDecoder({ error: "Not found", errorCode: 404 }))
     .toMatchInlineSnapshot(`
-    {
-      "error": "Not found",
-      "errorCode": 404,
-    }
-  `);
+      {
+        "tag": "Valid",
+        "value": {
+          "error": "Not found",
+          "errorCode": 404,
+        },
+      }
+    `);
 });
 
 test("tagged union, but using boolean instead of string", () => {
-  const adminDecoder = chain(
+  const adminDecoder = map(
     fieldsAuto({
       name: string,
       access: array(string),
@@ -75,7 +81,7 @@ test("tagged union, but using boolean instead of string", () => {
     }),
   );
 
-  const notAdminDecoder = chain(
+  const notAdminDecoder = map(
     fieldsAuto({
       name: string,
       location: undefinedOr(string),
@@ -89,8 +95,15 @@ test("tagged union, but using boolean instead of string", () => {
   type User = Infer<typeof adminDecoder> | Infer<typeof notAdminDecoder>;
 
   const userDecoder: Decoder<User> = (value) => {
-    const { isAdmin } = fieldsAuto({ isAdmin: boolean })(value);
-    return isAdmin ? adminDecoder(value) : notAdminDecoder(value);
+    const result = fieldsAuto({ isAdmin: boolean })(value);
+    switch (result.tag) {
+      case "DecoderError":
+        return result;
+      case "Valid":
+        return result.value.isAdmin
+          ? adminDecoder(value)
+          : notAdminDecoder(value);
+    }
   };
 
   expect(
@@ -101,9 +114,12 @@ test("tagged union, but using boolean instead of string", () => {
     }),
   ).toMatchInlineSnapshot(`
     {
-      "access": [],
-      "isAdmin": true,
-      "name": "John",
+      "tag": "Valid",
+      "value": {
+        "access": [],
+        "isAdmin": true,
+        "name": "John",
+      },
     }
   `);
 
@@ -115,9 +131,12 @@ test("tagged union, but using boolean instead of string", () => {
     }),
   ).toMatchInlineSnapshot(`
     {
-      "isAdmin": false,
-      "location": undefined,
-      "name": "Jane",
+      "tag": "Valid",
+      "value": {
+        "isAdmin": false,
+        "location": undefined,
+        "name": "Jane",
+      },
     }
   `);
 });

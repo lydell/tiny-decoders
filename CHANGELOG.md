@@ -1,5 +1,57 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 16.0.0 (2023-10-29)
+
+This release changes decoders from throwing errors to returning a `DecoderResult`:
+
+```ts
+type Decoder<T> = (value: unknown) => DecoderResult<T>;
+
+type DecoderResult<T> =
+  | {
+      tag: "DecoderError";
+      error: DecoderError;
+    }
+  | {
+      tag: "Valid";
+      value: T;
+    };
+```
+
+This change is nice because:
+
+- It avoids `try-catch` when you run a decoder, which is annoying due to the caught error is typed as `any` or `unknown`, which required an `error instanceof DecoderError` check.
+- You previously needed to remember to use the `.format()` method of `DecoderErrors`, but now it’s more obvious how to deal with errors.
+- The type definition of `Decoder` tells the whole story: Now it’s explicit that they can fail, while previously it was implicit.
+
+`DecoderError` is now a plain object instead of a class, and `DecoderErrorVariant` is no longer exposed – there’s just `DecoderError` now. Use the new `format` function to turn a `DecoderError` into a string, similar to what `DecoderError.prototype.format` did before.
+
+You now _have_ to use the `Infer` utility type (added in version 15.1.0) instead of `ReturnType`. `ReturnType` gives you a `DecoderResult<T>` while `Infer` gives you just `T`.
+
+`chain` has been removed and replaced with `map` and `flatMap`. In all places you used `chain`, you need to switch to `map` if the operation cannot fail (you just transform the data), or `flatMap` if it can fail. For `flatMap`, you should not throw errors but instead return a `DecoderResult`. You might need to use a `try-catch` to do this. For example, if you used the `RegExp` constructor in `chain` before to create a regex, you might have relied on tiny-decoders catching the errors for invalid regex syntax errors. Now you need to catch that yourself. Note that TypeScript won’t help you what you need to catch. Similarly, you also need to return a `DecoderError` instead of throwing in custom decoders.
+
+This function can potentially help you migrate tricky decoders where you’re not sure if something might throw errors. It wraps a given decoder in a `try-catch` and returns a new decoder that swallows everything as `DecoderError`s.
+
+```ts
+function catcher<T>(decoder: Decoder<T>): Decoder<T> {
+  return (value) => {
+    try {
+      return decoder(value);
+    } catch (error) {
+      return {
+        tag: "DecoderError",
+        error: {
+          tag: "custom",
+          message: error instanceof Error ? error.message : String(error),
+          got: value,
+          path: [],
+        },
+      };
+    }
+  };
+}
+```
+
 ### Version 15.1.0 (2023-10-23)
 
 This release adds the `Infer` utility type. It’s currently basically just an alias to the TypeScript built-in `ReturnType` utility type, but in a future version of tiny-decoders it’ll need to do a little bit more than just `ReturnType`. If you’d like to reduce the amount of migration work when upgrading to that future version, change all your `ReturnType<typeof myDecoder>` to `Infer<typeof myDecoder>` now!

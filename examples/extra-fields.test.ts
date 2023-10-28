@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 
-import { chain, Decoder, fieldsAuto, number, string } from "..";
+import { Decoder, fieldsAuto, map, number, string } from "..";
+import { run } from "../tests/helpers";
 
 test("adding extra fields to records", () => {
   // Want to add an extra field to a record, that doesn’t look at the input at
@@ -13,8 +14,8 @@ test("adding extra fields to records", () => {
 
   const data: unknown = { name: "Comfortable Bed", price: 10e3 };
 
-  // Use `chain` to add it:
-  const productDecoder: Decoder<Product> = chain(
+  // Use `map` to add it:
+  const productDecoder: Decoder<Product> = map(
     fieldsAuto({
       name: string,
       price: number,
@@ -24,9 +25,12 @@ test("adding extra fields to records", () => {
 
   expect(productDecoder(data)).toMatchInlineSnapshot(`
     {
-      "name": "Comfortable Bed",
-      "price": 10000,
-      "version": 1,
+      "tag": "Valid",
+      "value": {
+        "name": "Comfortable Bed",
+        "price": 10000,
+        "version": 1,
+      },
     }
   `);
 
@@ -36,18 +40,16 @@ test("adding extra fields to records", () => {
   const productDecoderBroken: Decoder<Product> = fieldsAuto({
     name: string,
     price: number,
-    version: () => 1,
+    version: () => ({ tag: "Valid", value: 1 }),
   });
 
   // It no longer works, because all the fields you mentioned are expected to exist.
-  expect(() => productDecoderBroken(data)).toThrowErrorMatchingInlineSnapshot(`
-    "Expected an object with a field called: \\"version\\"
+  expect(run(productDecoderBroken, data)).toMatchInlineSnapshot(`
+    At root:
+    Expected an object with a field called: "version"
     Got: {
-      \\"name\\": string,
-      \\"price\\": number
+      "name": "Comfortable Bed",
+      "price": 10000
     }
-    (Actual values are hidden in sensitive mode.)
-
-    For better error messages, see https://github.com/lydell/tiny-decoders#error-messages"
   `);
 });

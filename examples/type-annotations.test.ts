@@ -3,7 +3,7 @@
 
 import { expect, test } from "vitest";
 
-import { Decoder, fieldsAuto, number, string } from "../";
+import { Decoder, DecoderResult, fieldsAuto, number, string } from "../";
 
 test("type annotations", () => {
   // First, a small test type and a function that receives it:
@@ -11,8 +11,13 @@ test("type annotations", () => {
     name: string;
     age: number;
   };
-  function greet(person: Person): string {
-    return `Hello, ${person.name}!`;
+  function greet(personResult: DecoderResult<Person>): string {
+    switch (personResult.tag) {
+      case "DecoderError":
+        return "Hello, troubled person!";
+      case "Valid":
+        return `Hello, ${personResult.value.name}!`;
+    }
   }
   const testPerson: unknown = { name: "John", age: 30, aye: 0, extra: "" };
 
@@ -87,8 +92,11 @@ test("type annotations", () => {
 
   expect(personDecoder6(testPerson)).toMatchInlineSnapshot(`
     {
-      "age": 30,
-      "name": "John",
+      "tag": "Valid",
+      "value": {
+        "age": 30,
+        "name": "John",
+      },
     }
   `);
 });
