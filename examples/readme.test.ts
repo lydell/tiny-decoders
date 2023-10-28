@@ -10,7 +10,6 @@ import {
   fieldsAuto,
   Infer,
   number,
-  repr,
   string,
   undefinedOr,
 } from "..";
@@ -88,16 +87,6 @@ test("default vs sensitive error messages", () => {
       ssn: 123456789,
     },
   };
-
-  let message = "Expected userDecoder to fail!";
-  try {
-    userDecoder(data);
-  } catch (error) {
-    message =
-      error instanceof Error ? error.message : `Unknown error: ${repr(error)}`;
-  }
-
-  expect(message).toMatchInlineSnapshot('"Expected userDecoder to fail!"');
 
   expect(run(userDecoder, data)).toMatchInlineSnapshot(`
     At root["details"]["ssn"]:

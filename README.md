@@ -924,19 +924,7 @@ Options:
 | maxLength | `number` | `100` | The maximum length of literals, such as strings, before truncating them. |
 | sensitive | `boolean` | `false` | Set it do `true` if you deal with sensitive data to avoid leaks. See below. |
 
-## Error messages
-
-**If you just use `error.message`, you’re missing out!**
-
-`error.message` example:
-
-```
-Expected a string
-Got: number
-(Actual values are hidden in sensitive mode.)
-```
-
-`error.format()` example:
+`format(someDecoderError)` example:
 
 ```
 At root["details"]["ssn"]:
@@ -944,7 +932,7 @@ Expected a string
 Got: 123456789
 ```
 
-`error.format({ sensitive: true })` example:
+`format(someDecoderError, { sensitive: true })` example:
 
 ```
 At root["details"]["ssn"]:
@@ -954,10 +942,6 @@ Got: number
 ```
 
 It’s helpful when errors show you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
-
-- `error.message` hides potentially sensitive data so accidental uncaught errors don’t leak anything.
-- `error.format()` defaults to showing actual values. It also shows the “path” to the problematic value (which isn’t available at the time `error` is constructed, which is why `error.message` doesn’t contain the path).
-- `error.format({ sensitive: true })` can be used to hide potentially sensitive data. (See `ReprOptions`.)
 
 ## Type inference
 
