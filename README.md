@@ -674,7 +674,7 @@ type Multi<Types> = Types extends any
   : never;
 ```
 
-Decode multiple JSON types into a TypeScript type of choice.
+Decode multiple JSON types into a TypeScript tagged union for those types.
 
 This is useful for supporting stuff that can be either a string or a number, for example.
 
