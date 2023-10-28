@@ -995,18 +995,6 @@ export function unknown(value: unknown): unknown {
 
 This decoder would turn any JSON value into TypeScript’s `unknown`. I rarely need that. When I do, there are other ways of achieving it – the `unknown` function above is just the identity function. See the [unknown example](examples/unknown.test.ts) for more details.
 
-### succeed
-
-```ts
-export function succeed<T>(value: T): Decoder<T> {
-  return function succeedDecoder() {
-    return value;
-  };
-}
-```
-
-This decoder would ignore its input and always “succeed” with a given value. This can be useful when using [fieldsAuto](#fieldsauto) inside [fieldsUnion](#fieldsunion). But I’m not sure if `succeed("Square")` is any more clear than `() => "Square" as const`. Some languages call this function `always` or `const`.
-
 ### either
 
 ```ts
