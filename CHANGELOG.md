@@ -1,5 +1,23 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 17.0.0 (unreleased)
+
+This release removes the second argument from `undefinedOr` and `nullable`, which was a default value to use in place of `undefined` or `null`, respectively. You now need to use `map` instead. This change unlocks further changes that will come in future releases.
+
+Before:
+
+```ts
+const decoder1 = undefinedOr(string, "default value");
+const decoder2 = nullable(string, undefined);
+```
+
+After:
+
+```ts
+const decoder1 = map(undefinedOr(string), (value) => value ?? "default value");
+const decoder2 = map(nullable(string), (value) => value ?? undefined);
+```
+
 ### Version 16.0.0 (2023-10-28)
 
 This release changes decoders from throwing errors to returning a `DecoderResult`:

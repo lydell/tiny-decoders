@@ -715,14 +715,9 @@ See the [recursive example](examples/recursive.test.ts) for more information.
 
 ```ts
 function undefinedOr<T>(decoder: Decoder<T>): Decoder<T | undefined>;
-
-function undefinedOr<T, U>(
-  decoder: Decoder<T>,
-  defaultValue: U,
-): Decoder<T | U>;
 ```
 
-Returns a new decoder that also accepts `undefined`. Alternatively, supply a `defaultValue` to use in place of `undefined`.
+Returns a new decoder that also accepts `undefined`.
 
 Notes:
 
@@ -733,11 +728,9 @@ Notes:
 
 ```ts
 function nullable<T>(decoder: Decoder<T>): Decoder<T | null>;
-
-function nullable<T, U>(decoder: Decoder<T>, defaultValue: U): Decoder<T | U>;
 ```
 
-Returns a new decoder that also accepts `null`. Alternatively, supply a `defaultValue` to use in place of `null`.
+Returns a new decoder that also accepts `null`.
 
 ### map
 

@@ -1304,20 +1304,11 @@ describe("undefinedOr", () => {
   });
 
   test("with default", () => {
-    const decoder = undefinedOr(string, "def");
+    const decoder = map(undefinedOr(string), (value) => value ?? "def");
 
     expectType<TypeEqual<Infer<typeof decoder>, string>>(true);
 
     expect(run(decoder, undefined)).toBe("def");
-    expect(run(decoder, "a")).toBe("a");
-  });
-
-  test("with other type default", () => {
-    const decoder = undefinedOr(string, 0);
-
-    expectType<TypeEqual<Infer<typeof decoder>, number | string>>(true);
-
-    expect(run(decoder, undefined)).toBe(0);
     expect(run(decoder, "a")).toBe("a");
   });
 
@@ -1424,7 +1415,7 @@ describe("nullable", () => {
   });
 
   test("with default", () => {
-    const decoder = nullable(string, "def");
+    const decoder = map(nullable(string), (value) => value ?? "def");
 
     expectType<TypeEqual<Infer<typeof decoder>, string>>(true);
 
@@ -1432,17 +1423,8 @@ describe("nullable", () => {
     expect(run(decoder, "a")).toBe("a");
   });
 
-  test("with other type default", () => {
-    const decoder = nullable(string, 0);
-
-    expectType<TypeEqual<Infer<typeof decoder>, number | string>>(true);
-
-    expect(run(decoder, null)).toBe(0);
-    expect(run(decoder, "a")).toBe("a");
-  });
-
   test("with undefined instead of null", () => {
-    const decoder = nullable(string, undefined);
+    const decoder = map(nullable(string), (value) => value ?? undefined);
 
     expectType<TypeEqual<Infer<typeof decoder>, string | undefined>>(true);
 
