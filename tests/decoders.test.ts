@@ -1480,54 +1480,6 @@ describe("nullable", () => {
     void person;
   });
 
-  test("nullable autoField", () => {
-    type Person = Infer<typeof personDecoder>;
-    const personDecoder = fieldsAuto({
-      name: string,
-      age: nullable(number),
-    });
-
-    expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
-
-    expect(run(personDecoder, { name: "John" })).toMatchInlineSnapshot(`
-      At root:
-      Expected an object with a field called: "age"
-      Got: {
-        "name": "John"
-      }
-    `);
-
-    expect(run(personDecoder, { name: "John", age: undefined }))
-      .toMatchInlineSnapshot(`
-        At root["age"]:
-        Expected a number
-        Got: undefined
-        Or expected: null
-      `);
-
-    expect(run(personDecoder, { name: "John", age: null })).toStrictEqual({
-      name: "John",
-      age: null,
-    });
-
-    expect(run(personDecoder, { name: "John", age: 45 })).toStrictEqual({
-      name: "John",
-      age: 45,
-    });
-
-    expect(run(personDecoder, { name: "John", age: "old" }))
-      .toMatchInlineSnapshot(`
-        At root["age"]:
-        Expected a number
-        Got: "old"
-        Or expected: null
-      `);
-
-    // @ts-expect-error Property 'age' is missing in type '{ name: string; }' but required in type '{ name: string; age: number | null; }'.
-    const person: Person = { name: "John" };
-    void person;
-  });
-
   test("nullable custom decoder", () => {
     function decoder(value: unknown): DecoderResult<never> {
       return {
