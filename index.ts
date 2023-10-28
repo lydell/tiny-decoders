@@ -585,20 +585,10 @@ export function recursive<T>(callback: () => Decoder<T>): Decoder<T> {
   return (value) => callback()(value);
 }
 
-export function undefinedOr<T>(decoder: Decoder<T>): Decoder<T | undefined>;
-
-export function undefinedOr<T, U>(
-  decoder: Decoder<T>,
-  defaultValue: U,
-): Decoder<T | U>;
-
-export function undefinedOr<T, U = undefined>(
-  decoder: Decoder<T>,
-  defaultValue?: U,
-): Decoder<T | U> {
+export function undefinedOr<T>(decoder: Decoder<T>): Decoder<T | undefined> {
   return (value) => {
     if (value === undefined) {
-      return { tag: "Valid", value: defaultValue as T | U };
+      return { tag: "Valid", value: undefined };
     }
     const decoderResult = decoder(value);
     switch (decoderResult.tag) {
@@ -621,21 +611,10 @@ export function undefinedOr<T, U = undefined>(
   };
 }
 
-export function nullable<T>(decoder: Decoder<T>): Decoder<T | null>;
-
-export function nullable<T, U>(
-  decoder: Decoder<T>,
-  defaultValue: U,
-): Decoder<T | U>;
-
-export function nullable<T, U = null>(
-  decoder: Decoder<T>,
-  ...rest: Array<unknown>
-): Decoder<T | U> {
-  const defaultValue = rest.length === 0 ? null : rest[0];
+export function nullable<T>(decoder: Decoder<T>): Decoder<T | null> {
   return (value) => {
     if (value === null) {
-      return { tag: "Valid", value: defaultValue as T | U };
+      return { tag: "Valid", value: null };
     }
     const decoderResult = decoder(value);
     switch (decoderResult.tag) {
