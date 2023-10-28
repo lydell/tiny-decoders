@@ -433,7 +433,7 @@ const userDecoder: Decoder<User> = fieldsAuto({
 The `allowExtraFields` option lets you choose between ignoring extraneous fields and making it an error.
 
 - `true` (default) allows extra fields on the object.
-- `false` throws a `DecoderError` for extra fields.
+- `false` returns a `DecoderError` for extra fields.
 
 See also the [Extra fields](examples/extra-fields.test.ts) example.
 
@@ -627,7 +627,7 @@ function tuple<T extends Array<unknown>>(
 ): Decoder<[...T]>;
 ```
 
-Decodes a JSON array into a TypeScript tuple. They both must have the exact same length, otherwise an error is thrown.
+Decodes a JSON array into a TypeScript tuple. They both must have the exact same length, otherwise the decoder fails.
 
 Example:
 
