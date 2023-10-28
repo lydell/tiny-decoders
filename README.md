@@ -961,8 +961,6 @@ type Person = {
 };
 ```
 
-The `Infer` utility type is currently basically just an alias to the TypeScript built-in `ReturnType` utility type, but it’s recommended to use `Infer` because in a future version of tiny-decoders it’ll need to do a little bit more than just `ReturnType` and then you don’t need to migrate.
-
 See the [type inference example](examples/type-inference.test.ts) for more details.
 
 ## Things left out
