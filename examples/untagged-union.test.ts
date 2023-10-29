@@ -3,10 +3,9 @@ import { expect, test } from "vitest";
 import {
   array,
   boolean,
-  Decoder,
+  Codec,
   fieldsAuto,
   Infer,
-  map,
   number,
   string,
   undefinedOr,
@@ -25,28 +24,32 @@ test("untagged union", () => {
 
   type UserResult = Failure | User;
 
-  const userDecoder = fieldsAuto({
+  const userCodec = fieldsAuto({
     name: string,
     followers: number,
   });
 
-  const failureDecoder = fieldsAuto({
+  const failureCodec = fieldsAuto({
     error: string,
     errorCode: number,
   });
 
-  const userResultDecoder: Decoder<UserResult> = (value) =>
-    // This is a bit annoying to do. Prefer a tagged union and use `fieldsAuto`.
-    // But when that’s not possible, this is a simple way of “committing” to one
-    // of the union variants and choosing a decoder based on that.
-    // This approach results in much easier to understand error messages at
-    // runtime than an approach of first trying the first decoder, and then
-    // the second (because if both fail, you need to display both error messages).
-    typeof value === "object" && value !== null && "error" in value
-      ? failureDecoder(value)
-      : userDecoder(value);
+  const userResultCodec: Codec<UserResult> = {
+    decoder: (value) =>
+      // This is a bit annoying to do. Prefer a tagged union and use `fieldsAuto`.
+      // But when that’s not possible, this is a simple way of “committing” to one
+      // of the union variants and choosing a decoder based on that.
+      // This approach results in much easier to understand error messages at
+      // runtime than an approach of first trying the first decoder, and then
+      // the second (because if both fail, you need to display both error messages).
+      typeof value === "object" && value !== null && "error" in value
+        ? failureCodec.decoder(value)
+        : userCodec.decoder(value),
+    encoder: (value) =>
+      "error" in value ? failureCodec.encoder(value) : userCodec.encoder(value),
+  };
 
-  expect(userResultDecoder({ name: "John", followers: 42 }))
+  expect(userResultCodec.decoder({ name: "John", followers: 42 }))
     .toMatchInlineSnapshot(`
       {
         "tag": "Valid",
@@ -57,7 +60,15 @@ test("untagged union", () => {
       }
     `);
 
-  expect(userResultDecoder({ error: "Not found", errorCode: 404 }))
+  expect(userResultCodec.encoder({ name: "John", followers: 42 }))
+    .toMatchInlineSnapshot(`
+    {
+      "followers": 42,
+      "name": "John",
+    }
+  `);
+
+  expect(userResultCodec.decoder({ error: "Not found", errorCode: 404 }))
     .toMatchInlineSnapshot(`
       {
         "tag": "Valid",
@@ -67,47 +78,69 @@ test("untagged union", () => {
         },
       }
     `);
+
+  expect(userResultCodec.encoder({ error: "Not found", errorCode: 404 }))
+    .toMatchInlineSnapshot(`
+    {
+      "error": "Not found",
+      "errorCode": 404,
+    }
+  `);
 });
 
 test("tagged union, but using boolean instead of string", () => {
-  const adminDecoder = map(
-    fieldsAuto({
-      name: string,
-      access: array(string),
-    }),
-    (props) => ({
-      isAdmin: true as const,
-      ...props,
-    }),
-  );
+  function constant<T extends boolean | number | string>(
+    constantValue: T,
+  ): Codec<T, T> {
+    return {
+      decoder: (value) =>
+        value === constantValue
+          ? { tag: "Valid", value: constantValue }
+          : {
+              tag: "DecoderError",
+              error: {
+                tag: "custom",
+                message: `Expected ${JSON.stringify(constantValue)}`,
+                got: value,
+                path: [],
+              },
+            },
+      encoder: (value) => value,
+    };
+  }
 
-  const notAdminDecoder = map(
-    fieldsAuto({
-      name: string,
-      location: undefinedOr(string),
-    }),
-    (props) => ({
-      isAdmin: false as const,
-      ...props,
-    }),
-  );
+  const adminCodec = fieldsAuto({
+    isAdmin: constant(true),
+    name: string,
+    access: array(string),
+  });
 
-  type User = Infer<typeof adminDecoder> | Infer<typeof notAdminDecoder>;
+  const notAdminCodec = fieldsAuto({
+    isAdmin: constant(false),
+    name: string,
+    location: undefinedOr(string),
+  });
 
-  const userDecoder: Decoder<User> = (value) => {
-    const result = fieldsAuto({ isAdmin: boolean })(value);
-    switch (result.tag) {
-      case "DecoderError":
-        return result;
-      case "Valid":
-        return result.value.isAdmin
-          ? adminDecoder(value)
-          : notAdminDecoder(value);
-    }
+  type User = Infer<typeof adminCodec> | Infer<typeof notAdminCodec>;
+
+  const userCodec: Codec<User> = {
+    decoder: (value) => {
+      const result = fieldsAuto({ isAdmin: boolean }).decoder(value);
+      switch (result.tag) {
+        case "DecoderError":
+          return result;
+        case "Valid":
+          return result.value.isAdmin
+            ? adminCodec.decoder(value)
+            : notAdminCodec.decoder(value);
+      }
+    },
+    encoder: (value) =>
+      value.isAdmin ? adminCodec.encoder(value) : notAdminCodec.encoder(value),
   };
 
   expect(
-    userDecoder({
+    userCodec.decoder({
       isAdmin: true,
       name: "John",
       access: [],
@@ -124,7 +157,21 @@ test("tagged union, but using boolean instead of string", () => {
   `);
 
   expect(
-    userDecoder({
+    userCodec.encoder({
+      isAdmin: true,
+      name: "John",
+      access: [],
+    }),
+  ).toMatchInlineSnapshot(`
+    {
+      "access": [],
+      "isAdmin": true,
+      "name": "John",
+    }
+  `);
+
+  expect(
+    userCodec.decoder({
       isAdmin: false,
       name: "Jane",
       location: undefined,
@@ -137,6 +184,20 @@ test("tagged union, but using boolean instead of string", () => {
         "location": undefined,
         "name": "Jane",
       },
+    }
+  `);
+
+  expect(
+    userCodec.encoder({
+      isAdmin: false,
+      name: "Jane",
+      location: undefined,
+    }),
+  ).toMatchInlineSnapshot(`
+    {
+      "isAdmin": false,
+      "location": undefined,
+      "name": "Jane",
     }
   `);
 });

@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import {
   array,
   boolean,
-  Decoder,
+  Codec,
   DecoderResult,
   field,
   fieldsAuto,
@@ -23,7 +23,7 @@ test("the main readme example", () => {
     interests: Array<string>;
   };
 
-  const userDecoder: Decoder<User> = fieldsAuto({
+  const userCodec: Codec<User> = fieldsAuto({
     name: string,
     active: field(boolean, { renameFrom: "is_active" }),
     age: field(number, { optional: true }),
@@ -32,7 +32,7 @@ test("the main readme example", () => {
 
   const payload: unknown = getSomeJSON();
 
-  const userResult: DecoderResult<User> = userDecoder(payload);
+  const userResult: DecoderResult<User> = userCodec.decoder(payload);
 
   expect(userResult).toStrictEqual({
     tag: "Valid",
@@ -46,7 +46,7 @@ test("the main readme example", () => {
 
   const payload2: unknown = getSomeInvalidJSON();
 
-  expect(run(userDecoder, payload2)).toMatchInlineSnapshot(`
+  expect(run(userCodec, payload2)).toMatchInlineSnapshot(`
     At root["age"]:
     Expected a number
     Got: "30"
@@ -72,7 +72,7 @@ function getSomeInvalidJSON(): unknown {
 }
 
 test("default vs sensitive error messages", () => {
-  const userDecoder = fieldsAuto({
+  const userCodec = fieldsAuto({
     name: string,
     details: fieldsAuto({
       email: string,
@@ -88,13 +88,13 @@ test("default vs sensitive error messages", () => {
     },
   };
 
-  expect(run(userDecoder, data)).toMatchInlineSnapshot(`
+  expect(run(userCodec, data)).toMatchInlineSnapshot(`
     At root["details"]["ssn"]:
     Expected a string
     Got: 123456789
   `);
 
-  expect(run(userDecoder, data, { sensitive: true })).toMatchInlineSnapshot(`
+  expect(run(userCodec, data, { sensitive: true })).toMatchInlineSnapshot(`
     At root["details"]["ssn"]:
     Expected a string
     Got: number
@@ -102,35 +102,35 @@ test("default vs sensitive error messages", () => {
   `);
 });
 
-test("fieldsAuto", () => {
-  const exampleDecoder = fieldsAuto({
+test("fieldsAuto exactOptionalPropertyTypes", () => {
+  const exampleCodec = fieldsAuto({
     name: field(string, { optional: true }),
   });
 
   type Example = { name?: string };
 
-  expectType<TypeEqual<Infer<typeof exampleDecoder>, Example>>(true);
+  expectType<TypeEqual<Infer<typeof exampleCodec>, Example>>(true);
 
-  const exampleDecoder2 = fieldsAuto({
+  const exampleCodec2 = fieldsAuto({
     name: field(undefinedOr(string), { optional: true }),
   });
 
-  expect(run(exampleDecoder, {})).toStrictEqual({});
-  expect(run(exampleDecoder, { name: "some string" })).toStrictEqual({
+  expect(run(exampleCodec, {})).toStrictEqual({});
+  expect(run(exampleCodec, { name: "some string" })).toStrictEqual({
     name: "some string",
   });
 
   type Example2 = { name?: string | undefined };
 
-  expectType<TypeEqual<Infer<typeof exampleDecoder2>, Example2>>(true);
+  expectType<TypeEqual<Infer<typeof exampleCodec2>, Example2>>(true);
 
-  expect(run(exampleDecoder2, { name: undefined })).toStrictEqual({
+  expect(run(exampleCodec2, { name: undefined })).toStrictEqual({
     name: undefined,
   });
 });
 
-test("field", () => {
-  const exampleDecoder = fieldsAuto({
+test("fieldAuto optional vs undefined", () => {
+  const exampleCodec = fieldsAuto({
     // Required field.
     a: string,
 
@@ -151,18 +151,18 @@ test("field", () => {
     d?: string | undefined;
   };
 
-  expectType<TypeEqual<Infer<typeof exampleDecoder>, Example>>(true);
+  expectType<TypeEqual<Infer<typeof exampleCodec>, Example>>(true);
 
-  expect(run(exampleDecoder, { a: "", c: undefined })).toStrictEqual({
+  expect(run(exampleCodec, { a: "", c: undefined })).toStrictEqual({
     a: "",
     c: undefined,
   });
 
   expect(
-    run(exampleDecoder, { a: "", b: "", c: undefined, d: undefined }),
+    run(exampleCodec, { a: "", b: "", c: undefined, d: undefined }),
   ).toStrictEqual({ a: "", b: "", c: undefined, d: undefined });
 
-  expect(run(exampleDecoder, { a: "", b: "", c: "", d: "" })).toStrictEqual({
+  expect(run(exampleCodec, { a: "", b: "", c: "", d: "" })).toStrictEqual({
     a: "",
     b: "",
     c: "",

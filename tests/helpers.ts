@@ -1,13 +1,13 @@
 import { expect } from "vitest";
 
-import { Decoder, format, ReprOptions } from "..";
+import { Codec, format, ReprOptions } from "..";
 
-export function run<T>(
-  decoder: Decoder<T>,
+export function run<Decoded, Encoded>(
+  codec: Codec<Decoded, Encoded>,
   value: unknown,
   options?: ReprOptions,
-): T | string {
-  const decoderResult = decoder(value);
+): Decoded | string {
+  const decoderResult = codec.decoder(value);
   switch (decoderResult.tag) {
     case "DecoderError":
       return format(decoderResult.error, options);

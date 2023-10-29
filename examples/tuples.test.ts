@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { Decoder, fieldsAuto, map, number, tuple } from "../";
+import { Codec, fieldsAuto, map, number, tuple } from "../";
 
 test("decoding tuples", () => {
   type PointTuple = [number, number];
@@ -8,8 +8,8 @@ test("decoding tuples", () => {
   const data: unknown = [50, 325];
 
   // If you want a quick way to decode the above into `[number, number]`, use `tuple`.
-  const pointTupleDecoder1 = tuple<PointTuple>([number, number]);
-  expect(pointTupleDecoder1(data)).toMatchInlineSnapshot(`
+  const pointTupleCodec1: Codec<PointTuple> = tuple([number, number]);
+  expect(pointTupleCodec1.decoder(data)).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": [
@@ -19,19 +19,19 @@ test("decoding tuples", () => {
     }
   `);
 
-  // If you’d rather produce an object like the following, use `tuple` with `chain`.
+  // If you’d rather produce an object like the following, use `tuple` with `map`.
   type Point = {
     x: number;
     y: number;
   };
-  const pointDecoder: Decoder<Point> = map(
-    tuple([number, number]),
-    ([x, y]) => ({
+  const pointCodec: Codec<Point> = map(tuple([number, number]), {
+    decoder: ([x, y]) => ({
       x,
       y,
     }),
-  );
-  expect(pointDecoder(data)).toMatchInlineSnapshot(`
+    encoder: ({ x, y }) => [x, y] as const,
+  });
+  expect(pointCodec.decoder(data)).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": {
@@ -40,9 +40,15 @@ test("decoding tuples", () => {
       },
     }
   `);
+  expect(pointCodec.encoder({ x: 50, y: 325 })).toMatchInlineSnapshot(`
+    [
+      50,
+      325,
+    ]
+  `);
 
   // `tuple` works with any number of values. Here’s an example with four values:
-  expect(tuple([number, number, number, number])([1, 2, 3, 4]))
+  expect(tuple([number, number, number, number]).decoder([1, 2, 3, 4]))
     .toMatchInlineSnapshot(`
       {
         "tag": "Valid",
@@ -57,20 +63,29 @@ test("decoding tuples", () => {
 
   // You can of course decode an object to a tuple as well:
   const obj: unknown = { x: 1, y: 2 };
-  const pointTupleDecoder: Decoder<PointTuple> = map(
+  const pointTupleCodec: Codec<PointTuple> = map(
     fieldsAuto({
       x: number,
       y: number,
     }),
-    ({ x, y }) => [x, y],
+    {
+      decoder: ({ x, y }) => [x, y],
+      encoder: ([x, y]) => ({ x, y }),
+    },
   );
-  expect(pointTupleDecoder(obj)).toMatchInlineSnapshot(`
+  expect(pointTupleCodec.decoder(obj)).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": [
         1,
         2,
       ],
+    }
+  `);
+  expect(pointTupleCodec.encoder([1, 2])).toMatchInlineSnapshot(`
+    {
+      "x": 1,
+      "y": 2,
     }
   `);
 });

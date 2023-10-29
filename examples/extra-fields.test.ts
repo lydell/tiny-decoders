@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { Decoder, fieldsAuto, map, number, string } from "..";
+import { Codec, fieldsAuto, map, number, string } from "..";
 import { run } from "../tests/helpers";
 
 test("adding extra fields to records", () => {
@@ -15,15 +15,18 @@ test("adding extra fields to records", () => {
   const data: unknown = { name: "Comfortable Bed", price: 10e3 };
 
   // Use `map` to add it:
-  const productDecoder: Decoder<Product> = map(
+  const productCodec: Codec<Product> = map(
     fieldsAuto({
       name: string,
       price: number,
     }),
-    (props) => ({ ...props, version: 1 }),
+    {
+      decoder: (props) => ({ ...props, version: 1 }),
+      encoder: ({ version: _version, ...props }) => props,
+    },
   );
 
-  expect(productDecoder(data)).toMatchInlineSnapshot(`
+  expect(productCodec.decoder(data)).toMatchInlineSnapshot(`
     {
       "tag": "Valid",
       "value": {
@@ -34,17 +37,33 @@ test("adding extra fields to records", () => {
     }
   `);
 
+  expect(
+    productCodec.encoder({
+      name: "Comfortable Bed",
+      price: 10000,
+      version: 1,
+    }),
+  ).toMatchInlineSnapshot(`
+    {
+      "name": "Comfortable Bed",
+      "price": 10000,
+    }
+  `);
+
   // In previous versions of tiny-decoders, another way of doing this was to add
   // a decoder that always succeeds (a function that ignores its input and
   // always returns the same value).
-  const productDecoderBroken: Decoder<Product> = fieldsAuto({
+  const productCodecBroken: Codec<Product> = fieldsAuto({
     name: string,
     price: number,
-    version: () => ({ tag: "Valid", value: 1 }),
+    version: {
+      decoder: () => ({ tag: "Valid", value: 1 }),
+      encoder: () => undefined,
+    },
   });
 
   // It no longer works, because all the fields you mentioned are expected to exist.
-  expect(run(productDecoderBroken, data)).toMatchInlineSnapshot(`
+  expect(run(productCodecBroken, data)).toMatchInlineSnapshot(`
     At root:
     Expected an object with a field called: "version"
     Got: {
