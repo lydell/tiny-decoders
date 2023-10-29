@@ -749,6 +749,44 @@ describe("fieldsUnion", () => {
     expect(run(decoder, { type: "B" })).toStrictEqual({ tag: "B" });
   });
 
+  test("same tag used twice", () => {
+    type Type = Infer<typeof decoder>;
+    const decoder = fieldsUnion("tag", [
+      { tag: tag("Test"), one: number },
+      { tag: tag("Test"), two: string },
+    ]);
+
+    expectType<
+      TypeEqual<
+        Type,
+        | {
+            tag: "Test";
+            one: number;
+          }
+        | {
+            tag: "Test";
+            two: string;
+          }
+      >
+    >(true);
+
+    // The last one wins:
+    expect(run(decoder, { tag: "Test", two: "a" })).toStrictEqual({
+      tag: "Test",
+      two: "a",
+    });
+
+    // The first one never matches and always fails:
+    expect(run(decoder, { tag: "Test", one: 1 })).toMatchInlineSnapshot(`
+      At root:
+      Expected an object with a field called: "two"
+      Got: {
+        "tag": "Test",
+        "one": 1
+      }
+    `);
+  });
+
   test("generic decoder", () => {
     type Result<Ok, Err> =
       | { tag: "Err"; error: Err }

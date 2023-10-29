@@ -586,6 +586,8 @@ The `allowExtraFields` option works just like for [fieldsAuto](#fieldsauto).
 
 See also the [renaming union field example](examples/renaming-union-field.test.ts).
 
+Note: If you use the same tag value twice, the last one wins. TypeScript infers a type with two variants with the same tag (which is a valid type), but tiny-decoders can’t tell them apart. Nothing will ever decode to the first one, only the last one will succeed.
+
 ### tag
 
 ```ts
