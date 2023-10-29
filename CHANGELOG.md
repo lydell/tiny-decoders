@@ -1,5 +1,42 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 19.0.0 (unreleased)
+
+This release introduces `Codec`:
+
+```ts
+type Codec<Decoded, Encoded = unknown> = {
+  decoder: (value: unknown) => DecoderResult<Decoded>;
+  encoder: (value: Decoded) => Encoded;
+};
+```
+
+A codec is an object with a decoder and an encoder.
+
+The decoder of a codec is the `Decoder` type from previous versions of tiny-decoders.
+
+An encoder is a function that turns `Decoded` back into what the input looked like. You can think of it as “turning `Decoded` back into `unknown`”, but usually the `Encoded` type variable is inferred to something more precise.
+
+All functions in tiny-decoders have been changed to work with `Codec`s instead of `Decoder`s (and the `Decoder` type does not exist anymore – it is only part of the new `Codec` type).
+
+Overall, most things are the same. Things accept and return `Codec`s instead of `Decoder`s now, but many times it does not affect your code.
+
+The biggest changes are:
+
+- Unlike a `Decoder`, a `Codec` is not callable. You need to add `.decoder`. For example, change `myDecoder(data)` to `myDecoder.decoder(data)`. Then rename to `myCodec.decoder(data)` for clarity.
+- `map` and `flatMap` now take _two_ functions: The same function as before for transforming the decoded data, but now also a second function for turning the data back again. This is usually trivial to implement.
+- A custom `Decoder` was just a function. A custom `Codec` is an _object_ with `decoder` and `encoder` fields. Wrap your existing decoder function in such an object, and then implement the encoder (the inverse of the decoder). This is usually trivial as well.
+
+Finally, this release adds a couple of small things:
+
+- The `InferEncoded` utility type. `Infer` still infers the type for the decoder. `InferEncoded` infers the type for the _encoder._
+- The `unknown` codec. It’s occasionally useful, and now that you need to specify both a decoder and an encoder it crossed the triviality threshold for being included in the package.
+
+The motivations for codecs are:
+
+- TypeScript can now find some edge case errors that it couldn’t before: Extra fields in `fieldsAuto` and inconsistent encoded common fields in `fieldsUnion`.
+- If you use `map`, `flatMap`, `field` and `tag` to turn JSON into nicer or more type safe types, you can now easily reverse that again when you need to serialize back to JSON.
+
 ### Version 18.0.0 (2023-10-29)
 
 This release removes the second type variable from `Decoder`.
