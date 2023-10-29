@@ -4,7 +4,6 @@ import { expect, test } from "vitest";
 import {
   boolean,
   Codec,
-  DecoderResult,
   fieldsAuto,
   fieldsUnion,
   Infer,
@@ -16,6 +15,46 @@ import {
 import { run } from "../tests/helpers";
 
 test("fieldsUnion with common fields", () => {
+  // This function takes two codecs for object types and returns
+  // a new codec which is the intersection of those.
+  // This function is not part of the tiny-decoders package because it has some caveats:
+  // - If either codec uses `{ allowExtraFields: false }`, it fails.
+  // - It’s not possible to disallow extra fields on the resulting codec.
+  // - It’s type wise possible to intersect with a `Record`, but what does that mean?
+  function intersection<
+    Decoded1 extends Record<string, unknown>,
+    Encoded1 extends Record<string, unknown>,
+    Decoded2 extends Record<string, unknown>,
+    Encoded2 extends Record<string, unknown>,
+  >(
+    codec1: Codec<Decoded1, Encoded1>,
+    codec2: Codec<Decoded2, Encoded2>,
+  ): Codec<Decoded1 & Decoded2, Encoded1 & Encoded2> {
+    return {
+      decoder: (value) => {
+        const decoderResult1 = codec1.decoder(value);
+        if (decoderResult1.tag === "DecoderError") {
+          return decoderResult1;
+        }
+        const decoderResult2 = codec2.decoder(value);
+        if (decoderResult2.tag === "DecoderError") {
+          return decoderResult2;
+        }
+        return {
+          tag: "Valid",
+          value: {
+            ...decoderResult1.value,
+            ...decoderResult2.value,
+          },
+        };
+      },
+      encoder: (event) => ({
+        ...codec1.encoder(event),
+        ...codec2.encoder(event),
+      }),
+    };
+  }
+
   type EventWithPayload = Infer<typeof EventWithPayload>;
   const EventWithPayload = fieldsUnion("event", [
     {
@@ -38,34 +77,8 @@ test("fieldsUnion with common fields", () => {
     timestamp: string,
   });
 
-  type EncodedEvent = InferEncoded<typeof EventMetadata> &
-    InferEncoded<typeof EventWithPayload>;
-
-  type Event = EventMetadata & EventWithPayload;
-
-  const Event: Codec<Event, EncodedEvent> = {
-    decoder: (value: unknown): DecoderResult<Event> => {
-      const eventMetadataResult = EventMetadata.decoder(value);
-      if (eventMetadataResult.tag === "DecoderError") {
-        return eventMetadataResult;
-      }
-      const eventWithPayloadResult = EventWithPayload.decoder(value);
-      if (eventWithPayloadResult.tag === "DecoderError") {
-        return eventWithPayloadResult;
-      }
-      return {
-        tag: "Valid",
-        value: {
-          ...eventMetadataResult.value,
-          ...eventWithPayloadResult.value,
-        },
-      };
-    },
-    encoder: (event: Event): EncodedEvent => ({
-      ...EventMetadata.encoder(event),
-      ...EventWithPayload.encoder(event),
-    }),
-  };
+  type Event = Infer<typeof Event>;
+  const Event = intersection(EventMetadata, EventWithPayload);
 
   expectType<
     TypeEqual<
@@ -92,7 +105,7 @@ test("fieldsUnion with common fields", () => {
 
   expectType<
     TypeEqual<
-      EncodedEvent,
+      InferEncoded<typeof Event>,
       {
         id: string;
         timestamp: string;
