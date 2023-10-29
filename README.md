@@ -1060,6 +1060,44 @@ Got: number
 
 It’s helpful when errors show you the actual values that failed decoding to make it easier to understand what happened. However, if you’re dealing with sensitive data, such as email addresses, passwords or social security numbers, you might not want that data to potentially appear in error logs.
 
+## Replacement for JSON.parse and JSON.stringify
+
+```ts
+const JSON: {
+  parse<Decoded>(
+    codec: Codec<Decoded>,
+    jsonString: string,
+  ): DecoderResult<Decoded>;
+
+  stringify<Decoded, Encoded>(
+    codec: Codec<Decoded, Encoded>,
+    value: Decoded,
+    space?: number | string,
+  ): string;
+};
+```
+
+tiny-decoders exports a `JSON` object with `parse` and `stringify` methods, similar to the standard global `JSON` object. The difference is that tiny-decoder’s versions also take a `Codec`, which makes them safer.
+
+You can use ESLint’s [no-restricted-globals](https://eslint.org/docs/latest/rules/no-restricted-globals) rule to forbid the global `JSON` object, for maximum safety:
+
+```json
+{
+  "rules": {
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "JSON",
+        "message": "Import JSON from tiny-decoders and use its JSON.parse and JSON.stringify with a codec instead."
+      }
+    ]
+  }
+}
+```
+
+> **Note**  
+> The standard `JSON.stringify` can return `undefined` (if you try to stringify `undefined` itself, or a function or a symbol). tiny-decoder’s `JSON.stringify` _always_ returns a string – it returns `"null"` for `undefined`, functions and symbols.
+
 ## Type inference
 
 Rather than first defining the type and then defining the codec (which often feels like writing the type twice), you can _only_ define the decoder and then infer the type.
