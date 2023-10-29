@@ -612,7 +612,7 @@ See also these examples:
 - [Renaming union field](examples/renaming-union-field.test.ts)
 - [`fieldsUnion` with common fields](examples/fieldsUnion-with-common-fields.test.ts)
 
-Note: If you use the same tag value twice, the last one wins. TypeScript infers a type with two variants with the same tag (which is a valid type), but tiny-decoders can’t tell them apart. Nothing will ever decode to the first one, only the last one will succeed.
+Note: If you use the same tag value twice, the last one wins. TypeScript infers a type with two variants with the same tag (which is a valid type), but tiny-decoders can’t tell them apart. Nothing will ever decode to the first one, only the last one will succeed. Trying to encode the first one might result in bad data.
 
 ### tag
 

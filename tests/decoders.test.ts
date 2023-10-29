@@ -1100,8 +1100,8 @@ describe("fieldsUnion", () => {
   });
 
   test("same tag used twice", () => {
-    type Type = Infer<typeof decoder>;
-    const decoder = fieldsUnion("tag", [
+    type Type = Infer<typeof codec>;
+    const codec = fieldsUnion("tag", [
       { tag: tag("Test"), one: number },
       { tag: tag("Test"), two: string },
     ]);
@@ -1121,18 +1121,34 @@ describe("fieldsUnion", () => {
     >(true);
 
     // The last one wins:
-    expect(run(decoder, { tag: "Test", two: "a" })).toStrictEqual({
+    expect(run(codec, { tag: "Test", two: "a" })).toStrictEqual({
       tag: "Test",
       two: "a",
     });
 
     // The first one never matches and always fails:
-    expect(run(decoder, { tag: "Test", one: 1 })).toMatchInlineSnapshot(`
+    expect(run(codec, { tag: "Test", one: 1 })).toMatchInlineSnapshot(`
       At root:
       Expected an object with a field called: "two"
       Got: {
         "tag": "Test",
         "one": 1
+      }
+    `);
+
+    // The last one can be encoded:
+    expect(codec.encoder({ tag: "Test", two: "a" })).toMatchInlineSnapshot(`
+      {
+        "tag": "Test",
+        "two": "a",
+      }
+    `);
+
+    // The first one unfortunately compiles, but results in bad data:
+    expect(codec.encoder({ tag: "Test", one: 1 })).toMatchInlineSnapshot(`
+      {
+        "tag": "Test",
+        "two": undefined,
       }
     `);
   });
