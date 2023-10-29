@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   array,
+  bigint,
   boolean,
   Codec,
   DecoderResult,
@@ -16,10 +17,10 @@ import {
   multi,
   nullable,
   number,
+  primitiveUnion,
   record,
   recursive,
   string,
-  stringUnion,
   tag,
   tuple,
   undefinedOr,
@@ -93,6 +94,25 @@ test("number", () => {
   `);
 });
 
+test("bigint", () => {
+  expect(run(bigint, 0n)).toBe(0n);
+  expect(run(bigint, -0n)).toBe(-0n);
+  expect(run(bigint, 9999999999999999999999999999999999999n)).toBe(
+    9999999999999999999999999999999999999n,
+  );
+
+  // @ts-expect-error Expected 1 arguments, but got 2.
+  bigint.decoder(0n, []);
+  // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'bigint'.
+  bigint.encoder(0);
+
+  expect(run(bigint, 0)).toMatchInlineSnapshot(`
+    At root:
+    Expected a bigint
+    Got: 0
+  `);
+});
+
 test("string", () => {
   expect(run(string, "")).toBe("");
   expect(run(string, "string")).toBe("string");
@@ -115,10 +135,10 @@ test("string", () => {
   `);
 });
 
-describe("stringUnion", () => {
-  test("basic", () => {
+describe("primitiveUnion", () => {
+  test("strings", () => {
     type Color = Infer<typeof Color>;
-    const Color = stringUnion(["red", "green", "blue"]);
+    const Color = primitiveUnion(["red", "green", "blue"]);
 
     expectType<TypeEqual<Color, "blue" | "green" | "red">>(true);
     expectType<TypeEqual<Color, InferEncoded<typeof Color>>>(true);
@@ -142,7 +162,7 @@ describe("stringUnion", () => {
     expectType<Color>(Color.encoder("red"));
 
     // @ts-expect-error Argument of type '{ one: null; two: null; }' is not assignable to parameter of type 'readonly string[]'.
-    stringUnion({ one: null, two: null });
+    primitiveUnion({ one: null, two: null });
     // @ts-expect-error Argument of type '"magenta"' is not assignable to parameter of type '"red" | "green" | "blue"'.
     Color.encoder("magenta");
 
@@ -157,15 +177,48 @@ describe("stringUnion", () => {
 
     expect(run(Color, 0)).toMatchInlineSnapshot(`
       At root:
-      Expected a string
+      Expected one of these variants:
+        "red",
+        "green",
+        "blue"
       Got: 0
     `);
+  });
+
+  test("mixed values", () => {
+    const symbol1 = Symbol("symbol1");
+    const symbol2 = Symbol("symbol2");
+
+    const literals = [
+      undefined,
+      null,
+      true,
+      false,
+      0,
+      1,
+      0n,
+      1n,
+      "",
+      "a",
+      symbol1,
+      symbol2,
+    ] as const;
+
+    const codec = primitiveUnion(literals);
+
+    type Type = Infer<typeof codec>;
+    type ExpectedType = (typeof literals)[number];
+    expectType<TypeEqual<Type, ExpectedType>>(true);
+
+    for (const literal of literals) {
+      expect(run(codec, literal)).toStrictEqual(literal);
+    }
   });
 
   test("empty array is not allowed", () => {
     // @ts-expect-error Argument of type '[]' is not assignable to parameter of type 'readonly [string, ...string[]]'.
     //   Source has 0 element(s) but target requires 1.
-    const emptyCodec = stringUnion([]);
+    const emptyCodec = primitiveUnion([]);
 
     expect(run(emptyCodec, "test")).toMatchInlineSnapshot(`
       At root:
@@ -178,16 +231,16 @@ describe("stringUnion", () => {
     expect(emptyCodec.encoder("test")).toBe("test");
   });
 
-  test("variants must be strings", () => {
-    // @ts-expect-error Type 'number' is not assignable to type 'string'.
-    stringUnion([1]);
-    const goodCodec = stringUnion(["1"]);
+  test("variants must be primitives", () => {
+    // @ts-expect-error Type '{}' is not assignable to type 'primitive'.
+    primitiveUnion([{}]);
+    const goodCodec = primitiveUnion(["1"]);
     expectType<TypeEqual<Infer<typeof goodCodec>, "1">>(true);
     expect(run(goodCodec, "1")).toBe("1");
   });
 
   test("always print the expected tags in full", () => {
-    const codec = stringUnion(["PrettyLongTagName1", "PrettyLongTagName2"]);
+    const codec = primitiveUnion(["PrettyLongTagName1", "PrettyLongTagName2"]);
 
     expect(
       run(codec, "PrettyLongTagNameButWrong", {
@@ -208,7 +261,7 @@ describe("stringUnion", () => {
 describe("array", () => {
   test("basic", () => {
     type Bits = Infer<typeof Bits>;
-    const Bits = array(stringUnion(["0", "1"]));
+    const Bits = array(primitiveUnion(["0", "1"]));
 
     expectType<TypeEqual<Bits, Array<"0" | "1">>>(true);
     expectType<TypeEqual<Bits, InferEncoded<typeof Bits>>>(true);
@@ -269,7 +322,7 @@ describe("array", () => {
 describe("record", () => {
   test("basic", () => {
     type Registers = Infer<typeof Registers>;
-    const Registers = record(stringUnion(["0", "1"]));
+    const Registers = record(primitiveUnion(["0", "1"]));
 
     expectType<TypeEqual<Registers, Record<string, "0" | "1">>>(true);
     expectType<TypeEqual<Registers, InferEncoded<typeof Registers>>>(true);
@@ -926,7 +979,7 @@ describe("fieldsAuto", () => {
 });
 
 describe("fieldsUnion", () => {
-  test("basic", () => {
+  test("string tags", () => {
     type Shape = Infer<typeof Shape>;
     const Shape = fieldsUnion("tag", [
       {
@@ -1013,6 +1066,270 @@ describe("fieldsUnion", () => {
       Got: [
         "a"
       ]
+    `);
+  });
+
+  test("boolean tags", () => {
+    type User = Infer<typeof User>;
+    const User = fieldsUnion("isAdmin", [
+      {
+        isAdmin: tag(true),
+        name: string,
+        access: array(string),
+      },
+      {
+        isAdmin: tag(false),
+        name: string,
+        location: undefinedOr(string),
+      },
+    ]);
+
+    expectType<
+      TypeEqual<
+        User,
+        | {
+            isAdmin: false;
+            name: string;
+            location: string | undefined;
+          }
+        | {
+            isAdmin: true;
+            name: string;
+            access: Array<string>;
+          }
+      >
+    >(true);
+    expectType<TypeEqual<User, InferEncoded<typeof User>>>(true);
+
+    expect(
+      run(User, {
+        isAdmin: true,
+        name: "John",
+        access: [],
+      }),
+    ).toStrictEqual({
+      access: [],
+      isAdmin: true,
+      name: "John",
+    });
+
+    expect(
+      User.encoder({
+        isAdmin: true,
+        name: "John",
+        access: [],
+      }),
+    ).toStrictEqual({
+      access: [],
+      isAdmin: true,
+      name: "John",
+    });
+
+    expect(
+      run(User, {
+        isAdmin: false,
+        name: "Jane",
+        location: undefined,
+      }),
+    ).toStrictEqual({
+      isAdmin: false,
+      location: undefined,
+      name: "Jane",
+    });
+
+    expect(
+      User.encoder({
+        isAdmin: false,
+        name: "Jane",
+        location: undefined,
+      }),
+    ).toStrictEqual({
+      isAdmin: false,
+      location: undefined,
+      name: "Jane",
+    });
+
+    expect(run(User, { isAdmin: [] })).toMatchInlineSnapshot(`
+      At root["isAdmin"]:
+      Expected one of these tags:
+        true,
+        false
+      Got: []
+    `);
+  });
+
+  test("mixed tags", () => {
+    const symbol1 = Symbol("symbol1");
+    const symbol2 = Symbol("symbol2");
+
+    type Type = Infer<typeof codec>;
+    const codec = fieldsUnion("tag", [
+      { tag: tag(undefined) },
+      { tag: tag(null) },
+      { tag: tag(true) },
+      { tag: tag(false) },
+      { tag: tag(0) },
+      { tag: tag(1) },
+      { tag: tag(0n) },
+      { tag: tag(1n) },
+      { tag: tag("") },
+      { tag: tag("a") },
+      { tag: tag(symbol1) },
+      { tag: tag(symbol2) },
+    ]);
+
+    expectType<
+      TypeEqual<
+        Type,
+        | { tag: "" }
+        | { tag: "a" }
+        | { tag: 0 }
+        | { tag: 0n }
+        | { tag: 1 }
+        | { tag: 1n }
+        | { tag: false }
+        | { tag: null }
+        | { tag: true }
+        | { tag: typeof symbol1 }
+        | { tag: typeof symbol2 }
+        | { tag: undefined }
+      >
+    >(true);
+
+    const tags = [
+      undefined,
+      null,
+      true,
+      false,
+      0,
+      1,
+      0n,
+      1n,
+      "",
+      "a",
+      symbol1,
+      symbol2,
+    ];
+
+    for (const testTag of tags) {
+      expect(run(codec, { tag: testTag })).toStrictEqual({ tag: testTag });
+    }
+
+    expect(run(codec, { tag: 2n })).toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags:
+        undefined,
+        null,
+        true,
+        false,
+        0,
+        1,
+        0n,
+        1n,
+        "",
+        "a",
+        Symbol(symbol1),
+        Symbol(symbol2)
+      Got: 2n
+    `);
+  });
+
+  test("renamed mixed tags", () => {
+    const symbol1 = Symbol("symbol1");
+    const symbol2 = Symbol("symbol2");
+
+    type Type = Infer<typeof codec>;
+    type EncodedType = InferEncoded<typeof codec>;
+    const codec = fieldsUnion("tag", [
+      { tag: tag("undefined", { renameTagFrom: undefined }) },
+      { tag: tag("null", { renameTagFrom: null }) },
+      { tag: tag("true", { renameTagFrom: true }) },
+      { tag: tag("false", { renameTagFrom: false }) },
+      { tag: tag("0", { renameTagFrom: 0 }) },
+      { tag: tag("1", { renameTagFrom: 1 }) },
+      { tag: tag("0n", { renameTagFrom: 0n }) },
+      { tag: tag("1n", { renameTagFrom: 1n }) },
+      { tag: tag(42, { renameTagFrom: "" }) },
+      { tag: tag(43, { renameTagFrom: "a" }) },
+      { tag: tag("symbol1", { renameTagFrom: symbol1 }) },
+      { tag: tag("symbol2", { renameTagFrom: symbol2 }) },
+    ]);
+
+    expectType<
+      TypeEqual<
+        Type,
+        | { tag: "0" }
+        | { tag: "0n" }
+        | { tag: "1" }
+        | { tag: "1n" }
+        | { tag: "false" }
+        | { tag: "null" }
+        | { tag: "symbol1" }
+        | { tag: "symbol2" }
+        | { tag: "true" }
+        | { tag: "undefined" }
+        | { tag: 42 }
+        | { tag: 43 }
+      >
+    >(true);
+
+    expectType<
+      TypeEqual<
+        EncodedType,
+        | { tag: "" }
+        | { tag: "a" }
+        | { tag: 0 }
+        | { tag: 0n }
+        | { tag: 1 }
+        | { tag: 1n }
+        | { tag: false }
+        | { tag: null }
+        | { tag: symbol }
+        | { tag: true }
+        | { tag: undefined }
+      >
+    >(true);
+
+    const tags = [
+      [undefined, "undefined"],
+      [null, "null"],
+      [true, "true"],
+      [false, "false"],
+      [0, "0"],
+      [1, "1"],
+      [0n, "0n"],
+      [1n, "1n"],
+      ["", 42],
+      ["a", 43],
+      [symbol1, "symbol1"],
+      [symbol2, "symbol2"],
+    ] as const;
+
+    for (const [encodedTag, decodedTag] of tags) {
+      expect(run(codec, { tag: encodedTag })).toStrictEqual({
+        tag: decodedTag,
+      });
+      expect(codec.encoder({ tag: decodedTag })).toStrictEqual({
+        tag: encodedTag,
+      });
+    }
+
+    expect(run(codec, { tag: 2n })).toMatchInlineSnapshot(`
+      At root["tag"]:
+      Expected one of these tags:
+        undefined,
+        null,
+        true,
+        false,
+        0,
+        1,
+        0n,
+        1n,
+        "",
+        "a",
+        Symbol(symbol1),
+        Symbol(symbol2)
+      Got: 2n
     `);
   });
 
@@ -1459,7 +1776,7 @@ describe("tag", () => {
     `);
     expect(run(codec, 0)).toMatchInlineSnapshot(`
       At root:
-      Expected a string
+      Expected this string: "Test"
       Got: 0
     `);
   });
@@ -1859,7 +2176,10 @@ describe("multi", () => {
       "null",
       "boolean",
       "number",
+      "bigint",
       "string",
+      "symbol",
+      "function",
       "array",
       "object",
     ]);
@@ -1870,7 +2190,10 @@ describe("multi", () => {
       true,
       false,
       0,
+      0n,
       "a",
+      Symbol(),
+      Function.prototype,
       [1, 2],
       { a: 1 },
       new Int32Array(2),
@@ -1903,10 +2226,28 @@ describe("multi", () => {
       Got: 0
     `);
 
+    expect(run(codec, 0n)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: 0n
+    `);
+
     expect(run(codec, "")).toMatchInlineSnapshot(`
       At root:
       Expected one of these types: undefined
       Got: ""
+    `);
+
+    expect(run(codec, Symbol())).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: Symbol()
+    `);
+
+    expect(run(codec, Function.prototype)).toMatchInlineSnapshot(`
+      At root:
+      Expected one of these types: undefined
+      Got: function ""
     `);
 
     expect(run(codec, [])).toMatchInlineSnapshot(`

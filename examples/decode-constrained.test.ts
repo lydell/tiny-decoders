@@ -7,8 +7,8 @@ import {
   DecoderResult,
   fieldsAuto,
   format,
+  primitiveUnion,
   string,
-  stringUnion,
 } from "../";
 
 test("decode constrained", () => {
@@ -17,7 +17,7 @@ test("decode constrained", () => {
   });
 
   const codec2 = fieldsAuto({
-    status: stringUnion(["ok", "error"]), // In a second codec, we have a stricter type.
+    status: primitiveUnion(["ok", "error"]), // In a second codec, we have a stricter type.
   });
 
   // `.decoder` of a codec usually accepts `unknown` – you can pass in anything.
