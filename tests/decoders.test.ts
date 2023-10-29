@@ -382,6 +382,18 @@ describe("fieldsAuto", () => {
     expect(
       run(personDecoder, {
         id: 1,
+        first_name: false,
+        followers: undefined,
+      }),
+    ).toMatchInlineSnapshot(`
+      At root["first_name"]:
+      Expected a string
+      Got: false
+    `);
+
+    expect(
+      run(personDecoder, {
+        id: 1,
         first_name: "John",
         followers: undefined,
       }),

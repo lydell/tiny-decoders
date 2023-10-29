@@ -238,7 +238,7 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
             tag: "DecoderError",
             error: {
               ...decoderResult.error,
-              path: [key, ...decoderResult.error.path],
+              path: [encodedFieldName, ...decoderResult.error.path],
             },
           };
         case "Valid":

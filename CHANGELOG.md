@@ -1,5 +1,33 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 17.0.1 (2023-10-29)
+
+Fixed: `fieldsAuto` now reports the correct field name when there’s an error in a renamed field.
+
+```ts
+const decoder = fieldsAuto({
+  firstName: field(string, { renameFrom: "first_name" }),
+});
+
+decoder({ first_name: false });
+```
+
+Before:
+
+```
+At root["firstName"]:
+Expected a string
+Got: false
+```
+
+After:
+
+```
+At root["first_name"]:
+Expected a string
+Got: false
+```
+
 ### Version 17.0.0 (2023-10-28)
 
 This release removes the second argument from `undefinedOr` and `nullable`, which was a default value to use in place of `undefined` or `null`, respectively. You now need to use `map` instead. This change unlocks further changes that will come in future releases.
