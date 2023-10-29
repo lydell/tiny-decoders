@@ -41,8 +41,8 @@ test("type annotations", () => {
 
   // The way to make the above type error more clear is to provide an explicit type
   // annotation, so that TypeScript knows what you’re trying to do.
-  // @ts-expect-error Type 'Decoder<{ name: string; aye: number; }, unknown>' is not assignable to type 'Decoder<Person>'.
-  //   Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.ts(2322)
+  // @ts-expect-error Type 'Decoder<{ name: string; aye: number; }>' is not assignable to type 'Decoder<Person>'.
+  //   Property 'age' is missing in type '{ name: string; aye: number; }' but required in type 'Person'.
   const personDecoder2: Decoder<Person> = fieldsAuto({
     name: string,
     aye: number,

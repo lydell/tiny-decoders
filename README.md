@@ -106,16 +106,6 @@ That’s it!
 
 tiny-decoders ships with a bunch of decoders, and a few functions to combine decoders. This way you can describe the shape of any data!
 
-### Advanced variant
-
-```ts
-type Decoder<T, U = unknown> = (value: U) => DecoderResult<T>;
-```
-
-The above is the _full_ definition of a decoder. The input value can be some other type (`U`) than `unknown` if you want.
-
-Most of the time you don’t need to think about this, though!
-
 ## Decoders
 
 Here’s a summary of all decoders (with slightly simplified type annotations):

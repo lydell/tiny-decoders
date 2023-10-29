@@ -1022,9 +1022,9 @@ describe("tag", () => {
 });
 
 describe("tuple", () => {
-  // @ts-expect-error Argument of type '{}' is not assignable to parameter of type 'readonly Decoder<unknown, unknown>[]'.
+  // @ts-expect-error Argument of type '{}' is not assignable to parameter of type 'Decoder<unknown>[]'.
   tuple({});
-  // @ts-expect-error Argument of type '(value: unknown) => number' is not assignable to parameter of type 'readonly Decoder<unknown, unknown>[]'.
+  // @ts-expect-error Argument of type '(value: unknown) => DecoderResult<number>' is not assignable to parameter of type 'Decoder<unknown>[]'.
   tuple(number);
 
   test("0 items", () => {

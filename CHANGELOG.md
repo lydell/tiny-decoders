@@ -1,5 +1,23 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 18.0.0 (unreleased)
+
+This release removes the second type variable from `Decoder`.
+
+Before:
+
+```ts
+type Decoder<T, U = unknown> = (value: U) => DecoderResult<T>;
+```
+
+After:
+
+```ts
+type Decoder<T> = (value: unknown) => DecoderResult<T>;
+```
+
+This change unlocks further changes that will come in future releases.
+
 ### Version 17.0.1 (2023-10-29)
 
 Fixed: `fieldsAuto` now reports the correct field name when there’s an error in a renamed field.

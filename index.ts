@@ -2,7 +2,7 @@
 // No `any` “leaks” when _using_ the library, though.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export type Decoder<T, U = unknown> = (value: U) => DecoderResult<T>;
+export type Decoder<T> = (value: unknown) => DecoderResult<T>;
 
 export type DecoderResult<T> =
   | {
