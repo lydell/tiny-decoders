@@ -58,6 +58,14 @@ test("number", () => {
   ).toMatchInlineSnapshot(`-1234…34567`);
 });
 
+test("bigint", () => {
+  expect(repr(0n)).toMatchInlineSnapshot(`0n`);
+  expect(repr(-1n)).toMatchInlineSnapshot(`-1n`);
+  expect(repr(9999999999999999999999999999999999999n)).toMatchInlineSnapshot(
+    "9999999999999999999999999999999999999n",
+  );
+});
+
 test("string", () => {
   expect(repr("")).toMatchInlineSnapshot(`""`);
   expect(repr("0")).toMatchInlineSnapshot(`"0"`);
@@ -364,6 +372,7 @@ test("object", () => {
         o: [1],
         p: { a: 1 },
         r: new Point(10, 235.8),
+        s: 0n,
         "a somewhat long key name": 1,
       },
       { maxObjectChildren: Infinity },
@@ -387,6 +396,7 @@ test("object", () => {
       "o": Array(1),
       "p": Object(1),
       "r": Point(2),
+      "s": 0n,
       "a somewhat long key name": 1
     }
   `,
@@ -516,6 +526,7 @@ test("sensitive output", () => {
         null,
         true,
         NaN,
+        0n,
         "string",
         Symbol("desc"),
         repr,
@@ -539,6 +550,7 @@ test("sensitive output", () => {
       null,
       boolean,
       number,
+      bigint,
       string,
       symbol,
       function "repr",
@@ -580,6 +592,7 @@ test("sensitive output", () => {
         o: [1],
         p: { a: 1 },
         r: new Point(10, 235.8),
+        s: 0n,
       },
       { maxObjectChildren: Infinity },
     ),
@@ -601,7 +614,8 @@ test("sensitive output", () => {
       "m": {},
       "o": Array(1),
       "p": Object(1),
-      "r": Point(2)
+      "r": Point(2),
+      "s": bigint
     }
   `,
   );

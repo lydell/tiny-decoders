@@ -12,8 +12,8 @@ import {
   map,
   multi,
   number,
+  primitiveUnion,
   string,
-  stringUnion,
 } from "..";
 import { run } from "../tests/helpers";
 
@@ -50,7 +50,7 @@ test("making a type from a codec", () => {
     age: number,
     active: boolean,
     country: field(string, { optional: true }),
-    type: stringUnion(["user"]),
+    type: primitiveUnion(["user"]),
   });
 
   // Then, let TypeScript infer the `User` type!
@@ -107,7 +107,7 @@ test("making a type from a codec", () => {
   expect({ tag: "Valid", value: user3 }).toMatchObject(userResult);
 });
 
-test("making a type from an object and stringUnion", () => {
+test("making a type from an object and primitiveUnion", () => {
   // Imagine this being the popular `chalk` terminal coloring package.
   const chalk = {
     hex:
@@ -129,7 +129,7 @@ test("making a type from an object and stringUnion", () => {
 
   expectType<TypeEqual<Severity, "Critical" | "High" | "Low" | "Medium">>(true);
 
-  const severityCodec = stringUnion(SEVERITIES);
+  const severityCodec = primitiveUnion(SEVERITIES);
   expectType<TypeEqual<Severity, Infer<typeof severityCodec>>>(true);
   expect(run(severityCodec, "High")).toBe("High");
 

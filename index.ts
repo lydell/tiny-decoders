@@ -59,6 +59,17 @@ export const number: Codec<number, number> = {
   encoder: identity,
 };
 
+export const bigint: Codec<bigint, bigint> = {
+  decoder: (value) =>
+    typeof value === "bigint"
+      ? { tag: "Valid", value }
+      : {
+          tag: "DecoderError",
+          error: { tag: "bigint", got: value, path: [] },
+        },
+  encoder: identity,
+};
+
 export const string: Codec<string, string> = {
   decoder: (value) =>
     typeof value === "string"
@@ -70,28 +81,24 @@ export const string: Codec<string, string> = {
   encoder: identity,
 };
 
-export function stringUnion<
-  const Variants extends readonly [string, ...Array<string>],
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
+
+export function primitiveUnion<
+  const Variants extends readonly [primitive, ...Array<primitive>],
 >(variants: Variants): Codec<Variants[number], Variants[number]> {
   return {
-    decoder: (value) => {
-      const stringResult = string.decoder(value);
-      if (stringResult.tag === "DecoderError") {
-        return stringResult;
-      }
-      const str = stringResult.value;
-      return variants.includes(str)
-        ? { tag: "Valid", value: str }
+    decoder: (value) =>
+      variants.includes(value as primitive)
+        ? { tag: "Valid", value: value as primitive }
         : {
             tag: "DecoderError",
             error: {
-              tag: "unknown stringUnion variant",
-              knownVariants: variants as unknown as Array<string>,
-              got: str,
+              tag: "unknown primitiveUnion variant",
+              knownVariants: variants as unknown as Array<primitive>,
+              got: value,
               path: [],
             },
-          };
-    },
+          },
     encoder: identity,
   };
 }
@@ -208,7 +215,7 @@ type Field<Decoded, Encoded, Meta extends FieldMeta> = Meta & {
 type FieldMeta = {
   renameFrom?: string | undefined;
   optional?: boolean | undefined;
-  tag?: { decoded: string; encoded: string } | undefined;
+  tag?: { decoded: primitive; encoded: primitive } | undefined;
 };
 
 type FieldsMapping = Record<string, Codec<any> | Field<any, any, FieldMeta>>;
@@ -388,7 +395,7 @@ type InferEncodedFieldsUnion<MappingsUnion extends FieldsMapping> =
 
 type Variant<DecodedCommonField extends number | string | symbol> = Record<
   DecodedCommonField,
-  Field<any, any, { tag: { decoded: string; encoded: string } }>
+  Field<any, any, { tag: { decoded: primitive; encoded: primitive } }>
 > &
   Record<string, Codec<any> | Field<any, any, FieldMeta>>;
 
@@ -418,8 +425,8 @@ export function fieldsUnion<
   }
 
   type VariantCodec = Codec<any, any>;
-  const decoderMap = new Map<string, VariantCodec["decoder"]>(); // encodedName -> decoder
-  const encoderMap = new Map<string, VariantCodec["encoder"]>(); // decodedName -> encoder
+  const decoderMap = new Map<primitive, VariantCodec["decoder"]>(); // encodedName -> decoder
+  const encoderMap = new Map<primitive, VariantCodec["encoder"]>(); // decodedName -> encoder
 
   let maybeEncodedCommonField: number | string | symbol | undefined = undefined;
 
@@ -427,7 +434,7 @@ export function fieldsUnion<
     const field_: Field<
       any,
       any,
-      FieldMeta & { tag: { decoded: string; encoded: string } }
+      FieldMeta & { tag: { decoded: primitive; encoded: primitive } }
     > = variant[decodedCommonField];
     const {
       renameFrom: encodedFieldName = decodedCommonField as DecodedCommonField,
@@ -461,13 +468,13 @@ export function fieldsUnion<
   return {
     decoder: (value) => {
       const encodedNameResult = fieldsAuto({
-        [encodedCommonField]: string,
+        [encodedCommonField]: unknown,
       }).decoder(value);
       if (encodedNameResult.tag === "DecoderError") {
         return encodedNameResult;
       }
       const encodedName = encodedNameResult.value[encodedCommonField];
-      const decoder = decoderMap.get(encodedName);
+      const decoder = decoderMap.get(encodedName as primitive);
       if (decoder === undefined) {
         return {
           tag: "DecoderError",
@@ -482,9 +489,9 @@ export function fieldsUnion<
       return decoder(value);
     },
     encoder: (value) => {
-      const decodedName = (value as Record<number | string | symbol, string>)[
-        decodedCommonField as DecodedCommonField
-      ];
+      const decodedName = (
+        value as Record<number | string | symbol, primitive>
+      )[decodedCommonField as DecodedCommonField];
       const encoder = encoderMap.get(decodedName);
       if (encoder === undefined) {
         throw new Error(
@@ -498,19 +505,22 @@ export function fieldsUnion<
   };
 }
 
-export function tag<const Decoded extends string>(
+export function tag<const Decoded extends primitive>(
   decoded: Decoded,
-): Field<Decoded, Decoded, { tag: { decoded: string; encoded: string } }>;
+): Field<Decoded, Decoded, { tag: { decoded: primitive; encoded: primitive } }>;
 
-export function tag<const Decoded extends string, const Encoded extends string>(
+export function tag<
+  const Decoded extends primitive,
+  const Encoded extends primitive,
+>(
   decoded: Decoded,
   options: {
     renameTagFrom: Encoded;
   },
-): Field<Decoded, Encoded, { tag: { decoded: string; encoded: string } }>;
+): Field<Decoded, Encoded, { tag: { decoded: primitive; encoded: primitive } }>;
 
 export function tag<
-  const Decoded extends string,
+  const Decoded extends primitive,
   const EncodedFieldName extends string,
 >(
   decoded: Decoded,
@@ -520,12 +530,15 @@ export function tag<
 ): Field<
   Decoded,
   Decoded,
-  { renameFrom: EncodedFieldName; tag: { decoded: string; encoded: string } }
+  {
+    renameFrom: EncodedFieldName;
+    tag: { decoded: primitive; encoded: primitive };
+  }
 >;
 
 export function tag<
-  const Decoded extends string,
-  const Encoded extends string,
+  const Decoded extends primitive,
+  const Encoded extends primitive,
   const EncodedFieldName extends string,
 >(
   decoded: Decoded,
@@ -536,19 +549,19 @@ export function tag<
 ): Field<
   Decoded,
   Encoded,
-  { renameFrom: EncodedFieldName; tag: { decoded: string; encoded: string } }
+  {
+    renameFrom: EncodedFieldName;
+    tag: { decoded: primitive; encoded: primitive };
+  }
 >;
 
 export function tag<
-  const Decoded extends string,
-  const Encoded extends string,
+  const Decoded extends primitive,
+  const Encoded extends primitive,
   const EncodedFieldName extends string,
 >(
   decoded: Decoded,
-  {
-    renameTagFrom: encoded = decoded as unknown as Encoded,
-    renameFieldFrom: encodedFieldName,
-  }: {
+  options: {
     renameTagFrom?: Encoded;
     renameFieldFrom?: EncodedFieldName;
   } = {},
@@ -557,32 +570,27 @@ export function tag<
   Encoded,
   {
     renameFrom: EncodedFieldName | undefined;
-    tag: { decoded: string; encoded: string };
+    tag: { decoded: primitive; encoded: primitive };
   }
 > {
+  const encoded = "renameTagFrom" in options ? options.renameTagFrom : decoded;
   return {
     codec: {
-      decoder: (value) => {
-        const strResult = string.decoder(value);
-        if (strResult.tag === "DecoderError") {
-          return strResult;
-        }
-        const str = strResult.value;
-        return str === encoded
+      decoder: (value) =>
+        value === encoded
           ? { tag: "Valid", value: decoded }
           : {
               tag: "DecoderError",
               error: {
                 tag: "wrong tag",
                 expected: encoded,
-                got: str,
+                got: value,
                 path: [],
               },
-            };
-      },
-      encoder: () => encoded,
+            },
+      encoder: () => encoded as Encoded,
     },
-    renameFrom: encodedFieldName,
+    renameFrom: options.renameFieldFrom,
     tag: { decoded, encoded },
   };
 }
@@ -656,8 +664,14 @@ type Multi<Types> = Types extends any
     ? { type: "boolean"; value: boolean }
     : Types extends "number"
     ? { type: "number"; value: number }
+    : Types extends "bigint"
+    ? { type: "bigint"; value: bigint }
     : Types extends "string"
     ? { type: "string"; value: string }
+    : Types extends "symbol"
+    ? { type: "symbol"; value: symbol }
+    : Types extends "function"
+    ? { type: "function"; value: Function } // eslint-disable-line @typescript-eslint/ban-types
     : Types extends "array"
     ? { type: "array"; value: Array<unknown> }
     : Types extends "object"
@@ -667,11 +681,14 @@ type Multi<Types> = Types extends any
 
 type MultiTypeName =
   | "array"
+  | "bigint"
   | "boolean"
+  | "function"
   | "null"
   | "number"
   | "object"
   | "string"
+  | "symbol"
   | "undefined";
 
 export function multi<
@@ -711,11 +728,34 @@ export function multi<
             value: { type: "number", value } as unknown as Multi<Types[number]>,
           };
         }
+      } else if (typeof value === "bigint") {
+        if (types.includes("bigint")) {
+          return {
+            tag: "Valid",
+            value: { type: "bigint", value } as unknown as Multi<Types[number]>,
+          };
+        }
       } else if (typeof value === "string") {
         if (types.includes("string")) {
           return {
             tag: "Valid",
             value: { type: "string", value } as unknown as Multi<Types[number]>,
+          };
+        }
+      } else if (typeof value === "symbol") {
+        if (types.includes("symbol")) {
+          return {
+            tag: "Valid",
+            value: { type: "symbol", value } as unknown as Multi<Types[number]>,
+          };
+        }
+      } else if (typeof value === "function") {
+        if (types.includes("function")) {
+          return {
+            tag: "Valid",
+            value: { type: "function", value } as unknown as Multi<
+              Types[number]
+            >,
           };
         }
       } else if (Array.isArray(value)) {
@@ -886,8 +926,8 @@ export type DecoderError = {
     }
   | {
       tag: "unknown fieldsUnion tag";
-      knownTags: Array<string>;
-      got: string;
+      knownTags: Array<primitive>;
+      got: unknown;
     }
   | {
       tag: "unknown multi type";
@@ -903,16 +943,17 @@ export type DecoderError = {
       got: unknown;
     }
   | {
-      tag: "unknown stringUnion variant";
-      knownVariants: Array<string>;
-      got: string;
+      tag: "unknown primitiveUnion variant";
+      knownVariants: Array<primitive>;
+      got: unknown;
     }
   | {
       tag: "wrong tag";
-      expected: string;
-      got: string;
+      expected: primitive;
+      got: unknown;
     }
   | { tag: "array"; got: unknown }
+  | { tag: "bigint"; got: unknown }
   | { tag: "boolean"; got: unknown }
   | { tag: "number"; got: unknown }
   | { tag: "object"; got: unknown }
@@ -941,7 +982,7 @@ function formatDecoderErrorVariant(
   const removeBrackets = (formatted: string): string =>
     formatted.replace(/^\[|\s*\]$/g, "");
 
-  const stringList = (strings: Array<string>): string =>
+  const primitiveList = (strings: Array<primitive>): string =>
     strings.length === 0
       ? " (none)"
       : removeBrackets(
@@ -955,6 +996,7 @@ function formatDecoderErrorVariant(
   switch (variant.tag) {
     case "boolean":
     case "number":
+    case "bigint":
     case "string":
       return `Expected a ${variant.tag}\nGot: ${formatGot(variant.got)}`;
 
@@ -970,12 +1012,12 @@ function formatDecoderErrorVariant(
       }\nGot: ${formatGot(variant.got)}`;
 
     case "unknown fieldsUnion tag":
-      return `Expected one of these tags:${stringList(
+      return `Expected one of these tags:${primitiveList(
         variant.knownTags,
       )}\nGot: ${formatGot(variant.got)}`;
 
-    case "unknown stringUnion variant":
-      return `Expected one of these variants:${stringList(
+    case "unknown primitiveUnion variant":
+      return `Expected one of these variants:${primitiveList(
         variant.knownVariants,
       )}\nGot: ${formatGot(variant.got)}`;
 
@@ -990,7 +1032,7 @@ function formatDecoderErrorVariant(
       )}\nGot: ${formatGot(variant.got)}`;
 
     case "exact fields":
-      return `Expected only these fields:${stringList(
+      return `Expected only these fields:${primitiveList(
         variant.knownFields,
       )}\nFound extra fields:${removeBrackets(formatGot(variant.got))}`;
 
@@ -1057,13 +1099,14 @@ function reprHelper(
     if (
       value == null ||
       type === "number" ||
+      type === "bigint" ||
       type === "boolean" ||
       type === "symbol" ||
       toStringType === "RegExp"
     ) {
       return sensitive
         ? toStringType.toLowerCase()
-        : truncate(String(value), maxLength);
+        : truncate(String(value) + (type === "bigint" ? "n" : ""), maxLength);
     }
 
     if (type === "string") {

@@ -141,26 +141,41 @@ Here’s a summary of all codecs (with slightly simplified type annotations):
 <td><code>number</code></td>
 </tr>
 <tr>
+<th><a href="#bigint">bigint</a></th>
+<td><code>Codec&lt;bigint&gt;</code></td>
+<td>n/a</td>
+<td><code>bigint</code></td>
+</tr>
+<tr>
 <th><a href="#string">string</a></th>
 <td><code>Codec&lt;string&gt;</code></td>
 <td>string</td>
 <td><code>string</code></td>
 </tr>
-<th><a href="#stringunion">stringUnion</a></th>
+<th><a href="#primitiveunion">primitiveUnion</a></th>
 <td><pre>(variants: [
   "string1",
   "string2",
-  "stringN"
+  "stringN",
+  1,
+  2,
+  true
 ]) =&gt;
   Codec&lt;
     "string1"
     | "string2"
     | "stringN"
+    | 1
+    | 2
+    | true
   &gt;</pre></td>
-<td>string</td>
+<td>string, number, boolean, null</td>
 <td><pre>"string1"
 | "string2"
-| "stringN"</pre></td>
+| "stringN"
+| 1
+| 2
+| true</pre></td>
 </tr>
 <tr>
 <th><a href="#array">array</a></th>
@@ -253,19 +268,22 @@ Here’s a summary of all codecs (with slightly simplified type annotations):
 <td><pre>(types: [
   "type1",
   "type2",
-  "type7"
+  "type10"
 ]) =&gt;
   Codec&lt;
     { type: "type1", value: type1 }
     | { type: "type2", value: type2 }
-    | { type: "type7", value: type7 }
+    | { type: "type10", value: type10 }
   &gt;</pre></td>
 <td>you decide</td>
 <td>A subset of: <pre>{ type: "undefined"; value: undefined }
 | { type: "null"; value: null }
 | { type: "boolean"; value: boolean }
 | { type: "number"; value: number }
+| { type: "bigint"; value: bigint }
 | { type: "string"; value: string }
+| { type: "symbol"; value: symbol }
+| { type: "function"; value: Function }
 | { type: "array"; value: Array<unknown> }
 | { type: "object"; value: Record<string, unknown> }</pre></td>
 </tr>
@@ -343,6 +361,16 @@ const number: Codec<number, number>;
 
 Codec for a JSON number, and a TypeScript `number`.
 
+### bigint
+
+```ts
+const bigint: Codec<bigint, bigint>;
+```
+
+Codec for a JavaScript `bigint`, and a TypeScript `bigint`.
+
+Note: JSON does not have bigint. You need to serialize them to strings, and then parse them to bigint. This function does _not_ do that for you. It is only useful when you are decoding values that already are JavaScript bigint, but are `unknown` to TypeScript.
+
 ### string
 
 ```ts
@@ -351,17 +379,19 @@ const string: Codec<string, string>;
 
 Codec for a JSON string, and a TypeScript `string`.
 
-### stringUnion
+### primitiveUnion
 
 ```ts
-function stringUnion<
-  const Variants extends readonly [string, ...Array<string>],
+function primitiveUnion<
+  const Variants extends readonly [primitive, ...Array<primitive>],
 >(variants: Variants): Codec<Variants[number], Variants[number]>;
+
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
 ```
 
-Codec for a set of specific JSON strings, and a TypeScript union of those strings.
+Codec for a set of specific primitive values, and a TypeScript union of those values.
 
-The `variants` is an array of the strings you want. You must provide at least one variant.
+The `variants` is an array of the values you want. You must provide at least one variant. If you provide exactly one variant, you get a codec for a single, constant, exact value (a union with just one variant).
 
 If you have an object and want to use its keys for a string union there’s an example of that in the [type inference example](examples/type-inference.test.ts).
 
@@ -370,7 +400,7 @@ Example:
 ```ts
 type Color = "green" | "red";
 
-const colorCodec: Codec<Color> = stringUnion(["green", "red"]);
+const colorCodec: Codec<Color> = primitiveUnion(["green", "red"]);
 ```
 
 ### array
@@ -418,8 +448,10 @@ type Field<Decoded, Encoded, Meta extends FieldMeta> = Meta & {
 type FieldMeta = {
   renameFrom?: string | undefined;
   optional?: boolean | undefined;
-  tag?: { decoded: string; encoded: string } | undefined;
+  tag?: { decoded: primitive; encoded: primitive } | undefined;
 };
+
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
 
 type InferFields<Mapping extends FieldsMapping> = magic;
 
@@ -470,8 +502,10 @@ type Field<Decoded, Encoded, Meta extends FieldMeta> = Meta & {
 type FieldMeta = {
   renameFrom?: string | undefined;
   optional?: boolean | undefined;
-  tag?: { decoded: string; encoded: string } | undefined;
+  tag?: { decoded: primitive; encoded: primitive } | undefined;
 };
+
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
 ```
 
 This function takes a codec and lets you:
@@ -570,9 +604,11 @@ function fieldsUnion<
 
 type Variant<DecodedCommonField extends number | string | symbol> = Record<
   DecodedCommonField,
-  Field<any, any, { tag: { decoded: string; encoded: string } }>
+  Field<any, any, { tag: { decoded: primitive; encoded: primitive } }>
 > &
   Record<string, Codec<any> | Field<any, any, FieldMeta>>;
+
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
 
 type InferFieldsUnion<MappingsUnion extends FieldsMapping> = magic;
 
@@ -581,9 +617,9 @@ type InferEncodedFieldsUnion<MappingsUnion extends FieldsMapping> = magic;
 // See `fieldsAuto` for the definitions of `Field`, `FieldMeta` and `FieldsMapping`.
 ```
 
-Codec for JSON objects with a common string field (that tells them apart), and a TypeScript tagged union type.
+Codec for JSON objects with a common field (that tells them apart), and a TypeScript tagged union type.
 
-The `decodedCommonField` is the name of the common string field.
+The `decodedCommonField` is the name of the common field.
 
 `variants` is an array of objects. Those objects are “`fieldsAuto` objects” – they fit when passed to `fieldsAuto` as well. All of those objects must have `decodedCommonField` as a key, and use the [tag](#tag) function on that key.
 
@@ -618,15 +654,12 @@ Note: If you use the same tag value twice, the last one wins. TypeScript infers 
 
 ```ts
 function tag<
-  const Decoded extends string,
-  const Encoded extends string,
+  const Decoded extends primitive,
+  const Encoded extends primitive,
   const EncodedFieldName extends string,
 >(
   decoded: Decoded,
-  {
-    renameTagFrom = decoded,
-    renameFieldFrom,
-  }: {
+  options: {
     renameTagFrom?: Encoded;
     renameFieldFrom?: EncodedFieldName;
   } = {},
@@ -635,9 +668,11 @@ function tag<
   Encoded,
   {
     renameFrom: EncodedFieldName | undefined;
-    tag: { decoded: string; encoded: string };
+    tag: { decoded: primitive; encoded: primitive };
   }
 >;
+
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
 ```
 
 Used with [fieldsUnion](#fieldsunion), once for each variant of the union.
@@ -647,6 +682,8 @@ Used with [fieldsUnion](#fieldsunion), once for each variant of the union.
 `tag("MyTag", { renameTagFrom: "my_tag" })` returns a `Field` with a codec that requires the input `"my_tag"` but returns `"MyTag"`.
 
 For `renameFieldFrom`, see [fieldsUnion](#fieldsunion).
+
+You will typically use string tags for your tagged unions, but other primitive types such as `boolean` and `number` are supported too.
 
 ### tuple
 
@@ -681,11 +718,14 @@ function multi<Types extends readonly [MultiTypeName, ...Array<MultiTypeName>]>(
 
 type MultiTypeName =
   | "array"
+  | "bigint"
   | "boolean"
+  | "function"
   | "null"
   | "number"
   | "object"
   | "string"
+  | "symbol"
   | "undefined";
 
 type Multi<Types> = Types extends any
@@ -697,8 +737,14 @@ type Multi<Types> = Types extends any
     ? { type: "boolean"; value: boolean }
     : Types extends "number"
     ? { type: "number"; value: number }
+    : Types extends "bigint"
+    ? { type: "bigint"; value: bigint }
     : Types extends "string"
     ? { type: "string"; value: string }
+    : Types extends "symbol"
+    ? { type: "symbol"; value: symbol }
+    : Types extends "function"
+    ? { type: "function"; value: Function }
     : Types extends "array"
     ? { type: "array"; value: Array<unknown> }
     : Types extends "object"
@@ -707,11 +753,18 @@ type Multi<Types> = Types extends any
   : never;
 ```
 
-Codec for multiple JSON types, and a TypeScript tagged union for those types.
+Codec for multiple types, and a TypeScript tagged union for those types.
 
-This is useful for supporting stuff that can be either a string or a number, for example.
+This is useful for supporting stuff that can be either a string or a number, for example. It lets you do a JavaScript `typeof`, basically.
 
-The type annotation for `multi` is a bit wacky, but it’s not that complicated to use. The `types` parameter is an array of strings – the wanted JSON types. For example, you can say `["string", "number"]`. Then the decoder will give you back either `{ type: "string", value: string }` or `{ type: "number", value: number }`. You can use [map](#map) to map that to some type of choice, or [flatMap](#flatmap) to decode further.
+The type annotation for `multi` is a bit wacky, but it’s not that complicated to use. The `types` parameter is an array of strings – the wanted types. For example, you can say `["string", "number"]`. Then the decoder will give you back either `{ type: "string", value: string }` or `{ type: "number", value: number }`. You can use [map](#map) to map that to some type of choice, or [flatMap](#flatmap) to decode further.
+
+The `types` strings are the same as the JavaScript [typeof](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof) returns, with two exceptions:
+
+- `null` is `"null"` instead of `"object"` (because `typeof null === "object"` is a famous mistake).
+- `array` is `"array"` instead of `"object"` (because arrays are very common).
+
+If you need to tell other objects apart, write a custom codec.
 
 Example:
 
@@ -872,8 +925,8 @@ type DecoderError = {
     }
   | {
       tag: "unknown fieldsUnion tag";
-      knownTags: Array<string>;
-      got: string;
+      knownTags: Array<primitive>;
+      got: unknown;
     }
   | {
       tag: "unknown multi type";
@@ -889,21 +942,24 @@ type DecoderError = {
       got: unknown;
     }
   | {
-      tag: "unknown stringUnion variant";
-      knownVariants: Array<string>;
-      got: string;
+      tag: "unknown primitiveUnion variant";
+      knownVariants: Array<primitive>;
+      got: unknown;
     }
   | {
       tag: "wrong tag";
-      expected: string;
-      got: string;
+      expected: primitive;
+      got: unknown;
     }
   | { tag: "array"; got: unknown }
+  | { tag: "bigint"; got: unknown }
   | { tag: "boolean"; got: unknown }
   | { tag: "number"; got: unknown }
   | { tag: "object"; got: unknown }
   | { tag: "string"; got: unknown }
 );
+
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
 ```
 
 The error returned by all decoders. It keeps track of where in the JSON the error occurred.

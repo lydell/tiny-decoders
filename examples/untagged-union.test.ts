@@ -1,15 +1,20 @@
+import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
 import {
   array,
-  boolean,
   Codec,
+  field,
   fieldsAuto,
+  fieldsUnion,
   Infer,
+  InferEncoded,
   number,
   string,
-  undefinedOr,
+  tag,
+  unknown,
 } from "../";
+import { run } from "../tests/helpers";
 
 test("untagged union", () => {
   type User = {
@@ -88,116 +93,125 @@ test("untagged union", () => {
   `);
 });
 
-test("tagged union, but using boolean instead of string", () => {
-  function constant<T extends boolean | number | string>(
-    constantValue: T,
-  ): Codec<T, T> {
+test("tagged tuples", () => {
+  // A codec that turns `[a, b, c]` into `{ 0: a, 1: b, 2: c }` and back.
+  const arrayToObject: Codec<Record<string, unknown>, Array<unknown>> = {
+    decoder: (value) => {
+      const arrResult = array(unknown).decoder(value);
+      if (arrResult.tag === "DecoderError") {
+        return arrResult;
+      }
+      const result: Record<string, unknown> = {};
+      for (const [index, item] of arrResult.value.entries()) {
+        result[index] = item;
+      }
+      return { tag: "Valid", value: result };
+    },
+    encoder: (value) => {
+      const result: Array<unknown> = [];
+      for (const key in value) {
+        const num = Number(key);
+        if (Number.isFinite(num)) {
+          result[num] = value[key];
+        }
+      }
+      return result;
+    },
+  };
+
+  // A function that takes a regular `fieldsUnion` codec, but makes it work on
+  // tagged tuples instead.
+  function toArrayUnion<
+    Decoded extends Record<string, unknown>,
+    Encoded extends Record<string, unknown>,
+  >(codec: Codec<Decoded, Encoded>): Codec<Decoded, Array<unknown>> {
     return {
-      decoder: (value) =>
-        value === constantValue
-          ? { tag: "Valid", value: constantValue }
-          : {
-              tag: "DecoderError",
-              error: {
-                tag: "custom",
-                message: `Expected ${JSON.stringify(constantValue)}`,
-                got: value,
-                path: [],
-              },
-            },
-      encoder: (value) => value,
+      decoder: (value) => {
+        const decoderResult = arrayToObject.decoder(value);
+        switch (decoderResult.tag) {
+          case "DecoderError":
+            return decoderResult;
+          case "Valid":
+            return codec.decoder(decoderResult.value);
+        }
+      },
+      encoder: (value) => arrayToObject.encoder(codec.encoder(value)),
     };
   }
 
-  const adminCodec = fieldsAuto({
-    isAdmin: constant(true),
-    name: string,
-    access: array(string),
+  type Shape = Infer<typeof Shape>;
+  const Shape = toArrayUnion(
+    fieldsUnion("tag", [
+      {
+        tag: tag("Circle", { renameFieldFrom: "0" }),
+        radius: field(number, { renameFrom: "1" }),
+      },
+      {
+        tag: tag("Rectangle", { renameFieldFrom: "0" }),
+        width: field(number, { renameFrom: "1" }),
+        height: field(number, { renameFrom: "2" }),
+      },
+    ]),
+  );
+
+  expectType<
+    TypeEqual<
+      Shape,
+      | {
+          tag: "Circle";
+          radius: number;
+        }
+      | {
+          tag: "Rectangle";
+          width: number;
+          height: number;
+        }
+    >
+  >(true);
+
+  expectType<TypeEqual<InferEncoded<typeof Shape>, Array<unknown>>>(true);
+
+  expect(run(Shape, ["Circle", 5])).toStrictEqual({ tag: "Circle", radius: 5 });
+  expect(run(Shape, ["Rectangle", 5, 6])).toStrictEqual({
+    tag: "Rectangle",
+    width: 5,
+    height: 6,
   });
 
-  const notAdminCodec = fieldsAuto({
-    isAdmin: constant(false),
-    name: string,
-    location: undefinedOr(string),
-  });
-
-  type User = Infer<typeof adminCodec> | Infer<typeof notAdminCodec>;
-
-  const userCodec: Codec<User> = {
-    decoder: (value) => {
-      const result = fieldsAuto({ isAdmin: boolean }).decoder(value);
-      switch (result.tag) {
-        case "DecoderError":
-          return result;
-        case "Valid":
-          return result.value.isAdmin
-            ? adminCodec.decoder(value)
-            : notAdminCodec.decoder(value);
-      }
-    },
-    encoder: (value) =>
-      value.isAdmin ? adminCodec.encoder(value) : notAdminCodec.encoder(value),
-  };
-
+  expect(Shape.encoder({ tag: "Circle", radius: 5 })).toStrictEqual([
+    "Circle",
+    5,
+  ]);
   expect(
-    userCodec.decoder({
-      isAdmin: true,
-      name: "John",
-      access: [],
-    }),
-  ).toMatchInlineSnapshot(`
-    {
-      "tag": "Valid",
-      "value": {
-        "access": [],
-        "isAdmin": true,
-        "name": "John",
-      },
+    Shape.encoder({ tag: "Rectangle", width: 5, height: 6 }),
+  ).toStrictEqual(["Rectangle", 5, 6]);
+
+  // The error messages aren’t perfect, but still quite understandable.
+  expect(run(Shape, ["Square", 5])).toMatchInlineSnapshot(`
+    At root["0"]:
+    Expected one of these tags:
+      "Circle",
+      "Rectangle"
+    Got: "Square"
+  `);
+
+  expect(run(Shape, ["Circle", "5"])).toMatchInlineSnapshot(`
+    At root["1"]:
+    Expected a number
+    Got: "5"
+  `);
+
+  expect(run(Shape, ["Circle"])).toMatchInlineSnapshot(`
+    At root:
+    Expected an object with a field called: "1"
+    Got: {
+      "0": "Circle"
     }
   `);
 
-  expect(
-    userCodec.encoder({
-      isAdmin: true,
-      name: "John",
-      access: [],
-    }),
-  ).toMatchInlineSnapshot(`
-    {
-      "access": [],
-      "isAdmin": true,
-      "name": "John",
-    }
-  `);
-
-  expect(
-    userCodec.decoder({
-      isAdmin: false,
-      name: "Jane",
-      location: undefined,
-    }),
-  ).toMatchInlineSnapshot(`
-    {
-      "tag": "Valid",
-      "value": {
-        "isAdmin": false,
-        "location": undefined,
-        "name": "Jane",
-      },
-    }
-  `);
-
-  expect(
-    userCodec.encoder({
-      isAdmin: false,
-      name: "Jane",
-      location: undefined,
-    }),
-  ).toMatchInlineSnapshot(`
-    {
-      "isAdmin": false,
-      "location": undefined,
-      "name": "Jane",
-    }
+  expect(run(Shape, [])).toMatchInlineSnapshot(`
+    At root:
+    Expected an object with a field called: "0"
+    Got: {}
   `);
 });

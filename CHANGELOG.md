@@ -1,5 +1,27 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 20.0.0 (unreleased)
+
+This release adds more support for primitives.
+
+These are the primitive types:
+
+```ts
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
+```
+
+- `stringUnion` has been renamed to `primitiveUnion` and now works with literals of any primitive type, not just strings. You can now create a codec for a union of numbers, for example.
+- `tag` now accepts literals of any primitive type, not just strings. For example, this allows for easily decoding a tagged union where the discriminator is `isAdmin: true` and `isAdmin: false`, or a tagged union where the tags are numbers.
+- A `bigint` codec has been added – a codec for `bigint` values. There are now codecs for all primitive types, except:
+  - `symbol`: I don’t think this is useful. Use `const mySymbol: unique symbol = Symbol(); primitiveUnion([mySymbol])` instead.
+  - `undefined`: Use `primitiveUnion([undefined])` if needed.
+  - `null`: Use `primitiveUnion([null])` if needed.
+- `multi` now supports `bigint` and `symbol`, covering all primitive types. Additionally, since `multi` is basically the JavaScript `typeof` operator as a codec, it now also supports `function`.
+- `repr` now recognizes `bigint` and prints for example `123n` instead of `BigInt`. It already supported symbols (and all other primitive types) since before.
+- The `DecoderError` type had slight changes due to the above. If all you do with errors is `format(error)`, then you won’t notice.
+
+In short, all you need to do to upgrade is change `stringUnion` into `primitiveUnion`.
+
 ### Version 19.0.0 (2023-10-29)
 
 This release introduces `Codec`:
