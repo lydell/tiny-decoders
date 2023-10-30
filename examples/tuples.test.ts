@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { Codec, fieldsAuto, map, number, tuple } from "../";
+import { Codec, fields, map, number, tuple } from "../";
 
 test("decoding tuples", () => {
   type PointTuple = [number, number];
@@ -64,7 +64,7 @@ test("decoding tuples", () => {
   // You can of course decode an object to a tuple as well:
   const obj: unknown = { x: 1, y: 2 };
   const pointTupleCodec: Codec<PointTuple> = map(
-    fieldsAuto({
+    fields({
       x: number,
       y: number,
     }),

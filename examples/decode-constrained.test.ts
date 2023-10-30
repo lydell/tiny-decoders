@@ -5,18 +5,18 @@ import { expect, test } from "vitest";
 import {
   Codec,
   DecoderResult,
-  fieldsAuto,
+  fields,
   format,
   primitiveUnion,
   string,
 } from "../";
 
 test("decode constrained", () => {
-  const codec1 = fieldsAuto({
+  const codec1 = fields({
     status: string, // In a first codec, we have a pretty loose type.
   });
 
-  const codec2 = fieldsAuto({
+  const codec2 = fields({
     status: primitiveUnion(["ok", "error"]), // In a second codec, we have a stricter type.
   });
 

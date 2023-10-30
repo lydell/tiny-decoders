@@ -8,7 +8,7 @@ import {
   Codec,
   DecoderResult,
   field,
-  fieldsAuto,
+  fields,
   flatMap,
   Infer,
   InferEncoded,
@@ -437,9 +437,8 @@ describe("record", () => {
     `,
     );
 
-    expect(
-      cleanRegexError(run(fieldsAuto({ regexes: codec }), { regexes: bad })),
-    ).toMatchInlineSnapshot(`
+    expect(cleanRegexError(run(fields({ regexes: codec }), { regexes: bad })))
+      .toMatchInlineSnapshot(`
       At root["regexes"]["\\\\d{4}:\\\\d{2"]:
       Invalid regular expression: (the regex error)
       Got: "\\\\d{4}:\\\\d{2"
@@ -462,14 +461,14 @@ describe("record", () => {
   });
 });
 
-describe("fieldsAuto", () => {
+describe("fields", () => {
   // @ts-expect-error Argument of type 'Codec<string, string>[]' is not assignable to parameter of type 'FieldsMapping'.
   //   Index signature for type 'string' is missing in type 'Codec<string, string>[]'.
-  fieldsAuto([string]);
+  fields([string]);
 
   test("basic", () => {
     type Person = Infer<typeof Person>;
-    const Person = fieldsAuto({
+    const Person = fields({
       id: number,
       firstName: string,
     });
@@ -510,7 +509,7 @@ describe("fieldsAuto", () => {
         }
       `);
 
-    expect(run(fieldsAuto({ 0: number }), [1])).toMatchInlineSnapshot(`
+    expect(run(fields({ 0: number }), [1])).toMatchInlineSnapshot(`
       At root:
       Expected an object
       Got: [
@@ -521,7 +520,7 @@ describe("fieldsAuto", () => {
 
   test("optional and renamed fields", () => {
     type Person = Infer<typeof Person>;
-    const Person = fieldsAuto({
+    const Person = fields({
       id: number,
       firstName: field(string, { renameFrom: "first_name" }),
       lastName: field(string, { renameFrom: "last_name", optional: true }),
@@ -803,7 +802,7 @@ describe("fieldsAuto", () => {
   describe("allowExtraFields", () => {
     test("allows excess properties by default", () => {
       expect(
-        run(fieldsAuto({ one: string, two: boolean }), {
+        run(fields({ one: string, two: boolean }), {
           one: "a",
           two: true,
           three: 3,
@@ -812,13 +811,15 @@ describe("fieldsAuto", () => {
       ).toStrictEqual({ one: "a", two: true });
 
       expect(
-        run(
-          fieldsAuto({ one: string, two: boolean }, { allowExtraFields: true }),
-          { one: "a", two: true, three: 3, four: {} },
-        ),
+        run(fields({ one: string, two: boolean }, { allowExtraFields: true }), {
+          one: "a",
+          two: true,
+          three: 3,
+          four: {},
+        }),
       ).toStrictEqual({ one: "a", two: true });
 
-      fieldsAuto({ one: string, two: boolean }).encoder({
+      fields({ one: string, two: boolean }).encoder({
         one: "",
         two: true,
         // @ts-expect-error Object literal may only specify known properties, and 'three' does not exist in type '{ one: string; two: boolean; }'.
@@ -829,10 +830,7 @@ describe("fieldsAuto", () => {
     test("fail on excess properties", () => {
       expect(
         run(
-          fieldsAuto(
-            { one: string, two: boolean },
-            { allowExtraFields: false },
-          ),
+          fields({ one: string, two: boolean }, { allowExtraFields: false }),
           {
             one: "a",
             two: true,
@@ -850,7 +848,7 @@ describe("fieldsAuto", () => {
           "four"
       `);
 
-      fieldsAuto(
+      fields(
         { one: string, two: boolean },
         { allowExtraFields: false },
       ).encoder({
@@ -865,10 +863,7 @@ describe("fieldsAuto", () => {
     test("large number of excess properties", () => {
       expect(
         run(
-          fieldsAuto(
-            { "1": boolean, "2": boolean },
-            { allowExtraFields: false },
-          ),
+          fields({ "1": boolean, "2": boolean }, { allowExtraFields: false }),
           Object.fromEntries(Array.from({ length: 100 }, (_, i) => [i, false])),
         ),
       ).toMatchInlineSnapshot(`
@@ -887,7 +882,7 @@ describe("fieldsAuto", () => {
     });
 
     test("always print the expected keys in full", () => {
-      const codec = fieldsAuto(
+      const codec = fields(
         {
           PrettyLongTagName1: string,
           PrettyLongTagName2: string,
@@ -921,7 +916,7 @@ describe("fieldsAuto", () => {
   });
 
   test("__proto__ is not allowed", () => {
-    const codec = fieldsAuto({ a: number, __proto__: string, b: number });
+    const codec = fields({ a: number, __proto__: string, b: number });
     expect(
       run(codec, JSON.parse(`{"a": 1, "__proto__": "a", "b": 3}`)),
     ).toStrictEqual({ a: 1, b: 3 });
@@ -933,7 +928,7 @@ describe("fieldsAuto", () => {
 
     const desc = Object.create(null) as { __proto__: Codec<string> };
     desc.__proto__ = string;
-    const codec2 = fieldsAuto(desc);
+    const codec2 = fields(desc);
     expect(run(codec2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
     expect(
       codec2.encoder(JSON.parse(`{"__proto__": "a"}`) as Infer<typeof codec2>),
@@ -941,7 +936,7 @@ describe("fieldsAuto", () => {
   });
 
   test("renaming from __proto__ is not allowed", () => {
-    const codec = fieldsAuto({
+    const codec = fields({
       a: number,
       b: field(string, { renameFrom: "__proto__" }),
     });
@@ -952,7 +947,7 @@ describe("fieldsAuto", () => {
 
     const desc = Object.create(null) as { __proto__: Codec<string> };
     desc.__proto__ = string;
-    const codec2 = fieldsAuto(desc);
+    const codec2 = fields(desc);
     expect(run(codec2, JSON.parse(`{"__proto__": "a"}`))).toStrictEqual({});
     expect(
       codec2.encoder(JSON.parse(`{"__proto__": "a"}`) as Infer<typeof codec2>),
@@ -960,7 +955,7 @@ describe("fieldsAuto", () => {
   });
 
   test("empty object", () => {
-    const codec = fieldsAuto({}, { allowExtraFields: false });
+    const codec = fields({}, { allowExtraFields: false });
 
     expect(run(codec, {})).toStrictEqual({});
     expect(codec.encoder({})).toStrictEqual({});
@@ -1969,7 +1964,7 @@ describe("tuple", () => {
     type Type = Infer<typeof codec>;
     const codec = tuple([
       map(boolean, { decoder: Number, encoder: Boolean }),
-      fieldsAuto({ decoded: field(string, { renameFrom: "encoded" }) }),
+      fields({ decoded: field(string, { renameFrom: "encoded" }) }),
     ]);
 
     expectType<TypeEqual<Type, [number, { decoded: string }]>>(true);
@@ -2271,7 +2266,7 @@ describe("recursive", () => {
       b: Array<Recursive>;
     };
 
-    const codec: Codec<Recursive> = fieldsAuto({
+    const codec: Codec<Recursive> = fields({
       a: field(
         recursive(() => codec),
         { optional: true },
@@ -2327,9 +2322,9 @@ describe("undefinedOr", () => {
     expect(codec.encoder("a")).toBe("a");
   });
 
-  test("using with fieldsAuto does NOT result in an optional field", () => {
+  test("using with fields does NOT result in an optional field", () => {
     type Person = Infer<typeof Person>;
-    const Person = fieldsAuto({
+    const Person = fields({
       name: string,
       age: undefinedOr(number),
     });
@@ -2412,8 +2407,8 @@ describe("undefinedOr", () => {
   });
 
   test("undefinedOr higher up the chain makes no difference", () => {
-    const codec = fieldsAuto({
-      test: undefinedOr(fieldsAuto({ inner: string })),
+    const codec = fields({
+      test: undefinedOr(fields({ inner: string })),
     });
 
     expect(run(codec, { test: 1 })).toMatchInlineSnapshot(`
@@ -2495,7 +2490,7 @@ describe("nullOr", () => {
 
   test("nullOr field", () => {
     type Person = Infer<typeof Person>;
-    const Person = fieldsAuto({
+    const Person = fields({
       name: string,
       age: nullOr(number),
     });
@@ -2581,8 +2576,8 @@ describe("nullOr", () => {
   });
 
   test("nullOr higher up the chain makes no difference", () => {
-    const codec = fieldsAuto({
-      test: nullOr(fieldsAuto({ inner: string })),
+    const codec = fields({
+      test: nullOr(fields({ inner: string })),
     });
 
     expect(run(codec, { test: 1 })).toMatchInlineSnapshot(`

@@ -5,7 +5,7 @@ import {
   array,
   Codec,
   field,
-  fieldsAuto,
+  fields,
   Infer,
   InferEncoded,
   number,
@@ -29,19 +29,19 @@ test("untagged union", () => {
 
   type UserResult = Failure | User;
 
-  const userCodec = fieldsAuto({
+  const userCodec = fields({
     name: string,
     followers: number,
   });
 
-  const failureCodec = fieldsAuto({
+  const failureCodec = fields({
     error: string,
     errorCode: number,
   });
 
   const userResultCodec: Codec<UserResult> = {
     decoder: (value) =>
-      // This is a bit annoying to do. Prefer a tagged union and use `fieldsAuto`.
+      // This is a bit annoying to do. Prefer a tagged union and use `fields`.
       // But when that’s not possible, this is a simple way of “committing” to one
       // of the union variants and choosing a decoder based on that.
       // This approach results in much easier to understand error messages at

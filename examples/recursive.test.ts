@@ -4,7 +4,7 @@ import {
   array,
   Codec,
   DecoderResult,
-  fieldsAuto,
+  fields,
   flatMap,
   multi,
   record,
@@ -22,7 +22,7 @@ test("recursive data structure", () => {
   // This wouldn’t work to decode it, because we’re trying to use
   // `personDecoder` in the definition of `personDecoder` itself.
   /*
-  const personCodec = fieldsAuto<Person>({
+  const personCodec = fields<Person>({
     name: string,
     friends: array(personDecoder2), // ReferenceError: Cannot access 'personDecoder2' before initialization
   });
@@ -30,7 +30,7 @@ test("recursive data structure", () => {
 
   // `recursive` lets us delay when `personDecoder` is referenced, solving the
   // issue.
-  const personCodec: Codec<Person> = fieldsAuto({
+  const personCodec: Codec<Person> = fields({
     name: string,
     friends: array(recursive(() => personCodec)),
   });
@@ -139,7 +139,7 @@ test("circular objects", () => {
     likes: Person;
   };
 
-  const personCodec: Codec<Person> = fieldsAuto({
+  const personCodec: Codec<Person> = fields({
     name: string,
     likes: recursive(() => personCodec),
   });
