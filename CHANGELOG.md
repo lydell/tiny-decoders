@@ -1,6 +1,6 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
-### Version 20.1.0 (unreleased)
+### Version 20.1.0 (2023-10-30)
 
 This release adds a `JSON` object with `parse` and `stringify` methods, similar to the standard global `JSON` object. The difference is that tiny-decoder’s versions also take a `Codec`, which makes them safer. Read more about it in the documentation.
 
