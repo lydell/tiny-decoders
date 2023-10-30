@@ -88,6 +88,10 @@ module.exports = {
     "@typescript-eslint/no-useless-empty-export": warn,
     "@typescript-eslint/no-var-requires": error,
     "@typescript-eslint/prefer-as-const": warn,
+    "@typescript-eslint/prefer-destructuring": [
+      warn,
+      { object: true, array: false },
+    ],
     "@typescript-eslint/prefer-for-of": warn,
     "@typescript-eslint/prefer-function-type": warn,
     "@typescript-eslint/prefer-includes": warn,
@@ -172,7 +176,6 @@ module.exports = {
     "object-shorthand": warn,
     "prefer-arrow-callback": warn,
     "prefer-const": warn,
-    "prefer-destructuring": [warn, { object: true, array: false }],
     "prefer-exponentiation-operator": warn,
     "prefer-numeric-literals": warn,
     "prefer-object-spread": warn,
