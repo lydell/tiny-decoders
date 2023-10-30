@@ -7,7 +7,7 @@ import {
   Codec,
   DecoderResult,
   field,
-  fieldsAuto,
+  fields,
   Infer,
   number,
   string,
@@ -23,7 +23,7 @@ test("the main readme example", () => {
     interests: Array<string>;
   };
 
-  const userCodec: Codec<User> = fieldsAuto({
+  const userCodec: Codec<User> = fields({
     name: string,
     active: field(boolean, { renameFrom: "is_active" }),
     age: field(number, { optional: true }),
@@ -72,9 +72,9 @@ function getSomeInvalidJSON(): unknown {
 }
 
 test("default vs sensitive error messages", () => {
-  const userCodec = fieldsAuto({
+  const userCodec = fields({
     name: string,
-    details: fieldsAuto({
+    details: fields({
       email: string,
       ssn: string,
     }),
@@ -102,8 +102,8 @@ test("default vs sensitive error messages", () => {
   `);
 });
 
-test("fieldsAuto exactOptionalPropertyTypes", () => {
-  const exampleCodec = fieldsAuto({
+test("fields exactOptionalPropertyTypes", () => {
+  const exampleCodec = fields({
     name: field(string, { optional: true }),
   });
 
@@ -111,7 +111,7 @@ test("fieldsAuto exactOptionalPropertyTypes", () => {
 
   expectType<TypeEqual<Infer<typeof exampleCodec>, Example>>(true);
 
-  const exampleCodec2 = fieldsAuto({
+  const exampleCodec2 = fields({
     name: field(undefinedOr(string), { optional: true }),
   });
 
@@ -130,7 +130,7 @@ test("fieldsAuto exactOptionalPropertyTypes", () => {
 });
 
 test("fieldAuto optional vs undefined", () => {
-  const exampleCodec = fieldsAuto({
+  const exampleCodec = fields({
     // Required field.
     a: string,
 

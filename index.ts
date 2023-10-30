@@ -301,7 +301,7 @@ type InferEncodedFields<Mapping extends FieldsMapping> = Expand<
   }
 >;
 
-export function fieldsAuto<Mapping extends FieldsMapping>(
+export function fields<Mapping extends FieldsMapping>(
   mapping: Mapping,
   { allowExtraFields = true }: { allowExtraFields?: boolean } = {},
 ): Codec<InferFields<Mapping>, InferEncodedFields<Mapping>> {
@@ -480,7 +480,7 @@ export function taggedUnion<
         )}) than before (${JSON.stringify(maybeEncodedCommonField)}).`,
       );
     }
-    const fullCodec = fieldsAuto(variant, { allowExtraFields });
+    const fullCodec = fields(variant, { allowExtraFields });
     decoderMap.set(field_.tag.encoded, fullCodec.decoder);
     encoderMap.set(field_.tag.decoded, fullCodec.encoder);
   }
@@ -497,7 +497,7 @@ export function taggedUnion<
 
   return {
     decoder: (value) => {
-      const encodedNameResult = fieldsAuto({
+      const encodedNameResult = fields({
         [encodedCommonField]: unknown,
       }).decoder(value);
       if (encodedNameResult.tag === "DecoderError") {

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { Codec, fieldsAuto, map, number, string } from "..";
+import { Codec, fields, map, number, string } from "..";
 import { run } from "../tests/helpers";
 
 test("adding extra fields to records", () => {
@@ -16,7 +16,7 @@ test("adding extra fields to records", () => {
 
   // Use `map` to add it:
   const productCodec: Codec<Product> = map(
-    fieldsAuto({
+    fields({
       name: string,
       price: number,
     }),
@@ -53,7 +53,7 @@ test("adding extra fields to records", () => {
   // In previous versions of tiny-decoders, another way of doing this was to add
   // a decoder that always succeeds (a function that ignores its input and
   // always returns the same value).
-  const productCodecBroken: Codec<Product> = fieldsAuto({
+  const productCodecBroken: Codec<Product> = fields({
     name: string,
     price: number,
     version: {

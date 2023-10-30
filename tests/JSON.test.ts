@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   DecoderResult,
   field,
-  fieldsAuto,
+  fields,
   format,
   JSON,
   map,
@@ -34,7 +34,7 @@ function helper<Decoded>(
 
 describe("JSON.parse", () => {
   test("basic", () => {
-    const codec = fieldsAuto({
+    const codec = fields({
       lastName: field(string, { renameFrom: "last_name" }),
       port: map(number, {
         decoder: (value) => ({ tag: "Port" as const, value }),
@@ -73,7 +73,7 @@ describe("JSON.parse", () => {
 
 describe("JSON.stringify", () => {
   test("basic", () => {
-    const codec = fieldsAuto({
+    const codec = fields({
       lastName: field(string, { renameFrom: "last_name" }),
       port: map(number, {
         decoder: (value) => ({ tag: "Port" as const, value }),

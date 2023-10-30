@@ -25,7 +25,7 @@ import {
   array,
   boolean,
   field,
-  fieldsAuto,
+  fields,
   format,
   type Infer,
   number,
@@ -35,7 +35,7 @@ import {
 // You can also import into a namespace if you want (conventionally called `Codec`):
 import * as Codec from "tiny-decoders";
 
-const userCodec = fieldsAuto({
+const userCodec = fields({
   name: string,
   active: field(boolean, { renameFrom: "is_active" }),
   age: field(number, { optional: true }),
@@ -115,7 +115,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 - Codec type: [Codec and DecoderResult](#codect-and-decoderresultt)
 - Primitives: [unknown](#unknown), [boolean](#boolean), [number](#number), [bigint](#bigint), [string](#string)
 - Collections: [array](#array), [record](#record), [tuple](#tuple)
-- Object literals: [fieldsAuto](#fieldsauto) with [field](#field)
+- Object literals: [fields](#fields) with [field](#field)
 - Unions:
   - Of primitive literals: [primitiveUnion](#primitiveunion)
   - Of different types: [multi](#multi)
@@ -210,7 +210,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <td><code>Record&lt;string, T&gt;</code></td>
 </tr>
 <tr>
-<th><a href="#fieldsauto">fieldsAuto</a></th>
+<th><a href="#fields">fields</a></th>
 <td><pre>(mapping: {
   field1: Codec&lt;T1&gt;,
   field2: Field&lt;T2, {optional: true}&gt;,
@@ -247,14 +247,14 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
   meta: Meta,
 ): Field&lt;Decoded, Meta&gt;</pre></td>
 <td>n/a</td>
-<td>n/a, only used with <code>fieldsAuto</code></td>
+<td>n/a, only used with <code>fields</code></td>
 </tr>
 <tr>
 <th><a href="#taggedunion">taggedUnion</a></th>
 <td><pre>(
   decodedCommonField: string,
   variants: Array&lt;
-    Parameters&lt;typeof fieldsAuto&gt;[0]
+    Parameters&lt;typeof fields&gt;[0]
   &gt;,
 ) =&gt;
   Codec&lt;T1 | T2 | TN&gt;</pre></td>
@@ -449,10 +449,10 @@ The passed `codec` is for each value of the object.
 
 For example, `record(number)` is a codec for an object where the keys can be anything and the values are numbers (`Record<string, number>`).
 
-### fieldsAuto
+### fields
 
 ```ts
-function fieldsAuto<Mapping extends FieldsMapping>(
+function fields<Mapping extends FieldsMapping>(
   mapping: Mapping,
   { allowExtraFields = true }: { allowExtraFields?: boolean } = {},
 ): Codec<InferFields<Mapping>, InferEncodedFields<Mapping>>;
@@ -491,7 +491,7 @@ type User = {
   active: boolean;
 };
 
-const userCodec: Codec<User> = fieldsAuto({
+const userCodec: Codec<User> = fields({
   name: string,
   age: field(number, { optional: true }),
   active: field(boolean, { renameFrom: "is_active" }),
@@ -532,14 +532,14 @@ This function takes a codec and lets you:
 - Rename a field: `field(string, { renameFrom: "some_name" })`
 - Both: `field(string, { optional: true, renameFrom: "some_name" })`
 
-Use it with [fieldsAuto](#fieldsAuto).
+Use it with [fields](#fields).
 
 The `tag` thing is handled by the [tag](#tag) function. It’s not something you’ll set manually using `field`. (That’s why the type annotation says `Omit<FieldMeta, "tag">`.)
 
 Here’s an example illustrating the difference between `field(string, { optional: true })` and `undefinedOr(string)`:
 
 ```ts
-const exampleCodec = fieldsAuto({
+const exampleCodec = fields({
   // Required field.
   a: string,
 
@@ -571,7 +571,7 @@ type Example = {
 > Why? Let’s take this codec as an example:
 >
 > ```ts
-> const exampleCodec = fieldsAuto({
+> const exampleCodec = fields({
 >   name: field(string, { optional: true }),
 > });
 > ```
@@ -593,7 +593,7 @@ type Example = {
 > Notice the added `| undefined`. That allows also constructing `{ name: undefined }`. But if you run `exampleCodec.decoder({ name: undefined })`, the decoder will fail. The decoder only supports `name` existing and being set to a string, or `name` being missing. It does not support it being set to `undefined` explicitly. If you wanted to support that, use `undefinedOr`:
 >
 > ```ts
-> const exampleCodec = fieldsAuto({
+> const exampleCodec = fields({
 >   name: field(undefinedOr(string), { optional: true }),
 > });
 > ```
@@ -632,14 +632,14 @@ type InferFieldsUnion<MappingsUnion extends FieldsMapping> = magic;
 
 type InferEncodedFieldsUnion<MappingsUnion extends FieldsMapping> = magic;
 
-// See `fieldsAuto` for the definitions of `Field`, `FieldMeta` and `FieldsMapping`.
+// See `fields` for the definitions of `Field`, `FieldMeta` and `FieldsMapping`.
 ```
 
 Codec for JSON objects with a common field (that tells them apart), and a TypeScript tagged union type.
 
 The `decodedCommonField` is the name of the common field.
 
-`variants` is an array of objects. Those objects are “`fieldsAuto` objects” – they fit when passed to `fieldsAuto` as well. All of those objects must have `decodedCommonField` as a key, and use the [tag](#tag) function on that key.
+`variants` is an array of objects. Those objects are “`fields` objects” – they fit when passed to `fields` as well. All of those objects must have `decodedCommonField` as a key, and use the [tag](#tag) function on that key.
 
 ```ts
 type Shape =
@@ -659,7 +659,7 @@ const shapeCodec: Codec<Shape> = taggedUnion("tag", [
 ]);
 ```
 
-The `allowExtraFields` option works just like for [fieldsAuto](#fieldsauto).
+The `allowExtraFields` option works just like for [fields](#fields).
 
 See also these examples:
 
@@ -1121,7 +1121,7 @@ You can use ESLint’s [no-restricted-globals](https://eslint.org/docs/latest/ru
 Rather than first defining the type and then defining the codec (which often feels like writing the type twice), you can _only_ define the decoder and then infer the type.
 
 ```ts
-const personCodec = fieldsAuto({
+const personCodec = fields({
   name: string,
   age: number,
 });
@@ -1138,7 +1138,7 @@ This is a nice pattern (naming the type and the codec the same):
 
 ```ts
 type Person = Infer<typeof Person>;
-const Person = fieldsAuto({
+const Person = fields({
   name: string,
   age: number,
 });

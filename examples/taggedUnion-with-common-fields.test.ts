@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import {
   boolean,
   Codec,
-  fieldsAuto,
+  fields,
   Infer,
   InferEncoded,
   number,
@@ -72,7 +72,7 @@ test("taggedUnion with common fields", () => {
   ]);
 
   type EventMetadata = Infer<typeof EventMetadata>;
-  const EventMetadata = fieldsAuto({
+  const EventMetadata = fields({
     id: string,
     timestamp: string,
   });

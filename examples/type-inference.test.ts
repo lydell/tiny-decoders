@@ -7,7 +7,7 @@ import {
   boolean,
   DecoderResult,
   field,
-  fieldsAuto,
+  fields,
   Infer,
   map,
   multi,
@@ -19,10 +19,10 @@ import { run } from "../tests/helpers";
 
 test("making a type from a codec", () => {
   // Rather than first typing out a `type` for `Person` and then essentially
-  // typing the same thing again in the codec (especially `fieldsAuto` codecs
+  // typing the same thing again in the codec (especially `fields` codecs
   // look almost identical to the `type` they decode to!), you can start with the
   // codec and extract the type afterwards with tiny-decoder’s `Infer` utility.
-  const personCodec = fieldsAuto({
+  const personCodec = fields({
     name: string,
     age: number,
   });
@@ -38,7 +38,7 @@ test("making a type from a codec", () => {
   // the “duplication,” but when you do – try out the `Infer` approach!
 
   // Here’s a more complex example for trying out TypeScript’s inference.
-  const userCodec = fieldsAuto({
+  const userCodec = fields({
     id: map(multi(["string", "number"]), {
       decoder: ({ value }) => value,
       encoder: (value) =>

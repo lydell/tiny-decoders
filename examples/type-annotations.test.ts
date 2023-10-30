@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { Codec, DecoderResult, fieldsAuto, number, string } from "../";
+import { Codec, DecoderResult, fields, number, string } from "../";
 
 test("type annotations", () => {
   // First, a small test type and a function that receives it:
@@ -26,7 +26,7 @@ test("type annotations", () => {
   // TypeScript will infer what it decodes into (try hovering `personCodec1`
   // in your editor!), but it won’t know that you intended to decode a `Person`.
   // As you can see, I’ve misspelled `age` as `aye`.
-  const personCodec1 = fieldsAuto({
+  const personCodec1 = fields({
     name: string,
     aye: number,
   });
@@ -39,7 +39,7 @@ test("type annotations", () => {
   // The way to make the above type error more clear is to provide an explicit type
   // annotation, so that TypeScript knows what you’re trying to do.
   // @ts-expect-error Type '{ name: string; aye: number; }' is not assignable to type 'Person'.
-  const personCodec2: Codec<Person> = fieldsAuto({
+  const personCodec2: Codec<Person> = fields({
     name: string,
     aye: number,
   });
@@ -51,7 +51,7 @@ test("type annotations", () => {
 
   // TypeScript allows passing extra properties, so without type annotations
   // there are no errors:
-  const personCodec3 = fieldsAuto({
+  const personCodec3 = fields({
     name: string,
     age: number,
     extra: string,
@@ -61,7 +61,7 @@ test("type annotations", () => {
 
   // Adding `Codec<Person>` helps TypeScript find the error:
   // @ts-expect-error Type 'Person' is not assignable to type '{ name: string; age: number; extra: string; }'.
-  const personCodec4: Codec<Person> = fieldsAuto({
+  const personCodec4: Codec<Person> = fields({
     name: string,
     age: number,
     extra: string,
@@ -69,7 +69,7 @@ test("type annotations", () => {
   greet(personCodec4.decoder(testPerson));
 
   // Finally, a compiling codec.
-  const personCodec5: Codec<Person> = fieldsAuto({
+  const personCodec5: Codec<Person> = fields({
     name: string,
     age: number,
   });
