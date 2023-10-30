@@ -1,12 +1,12 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { Codec, fieldsUnion, Infer, number, tag } from "../";
+import { Codec, Infer, number, tag, taggedUnion } from "../";
 import { run } from "../tests/helpers";
 
-test("fieldsUnion with fallback for unknown tags", () => {
+test("taggedUnion with fallback for unknown tags", () => {
   // Here’s a helper function that takes a codec – which is supposed to be a
-  // `fieldsUnion` codec – and makes it return `undefined` if the tag is unknown.
+  // `taggedUnion` codec – and makes it return `undefined` if the tag is unknown.
   function handleUnknownTag<Decoded, Encoded>(
     codec: Codec<Decoded, Encoded>,
   ): Codec<Decoded | undefined, Encoded | undefined> {
@@ -15,8 +15,8 @@ test("fieldsUnion with fallback for unknown tags", () => {
         const decoderResult = codec.decoder(value);
         switch (decoderResult.tag) {
           case "DecoderError":
-            return decoderResult.error.path.length === 1 && // Don’t match on nested `fieldsUnion`.
-              decoderResult.error.tag === "unknown fieldsUnion tag"
+            return decoderResult.error.path.length === 1 && // Don’t match on nested `taggedUnion`.
+              decoderResult.error.tag === "unknown taggedUnion tag"
               ? { tag: "Valid", value: undefined }
               : decoderResult;
           case "Valid":
@@ -28,12 +28,12 @@ test("fieldsUnion with fallback for unknown tags", () => {
     };
   }
 
-  const shapeCodec = fieldsUnion("tag", [
+  const shapeCodec = taggedUnion("tag", [
     { tag: tag("Circle"), radius: number },
     { tag: tag("Square"), side: number },
   ]);
 
-  const codec = fieldsUnion("tag", [
+  const codec = taggedUnion("tag", [
     { tag: tag("One") },
     { tag: tag("Two"), value: shapeCodec },
   ]);
@@ -74,7 +74,7 @@ test("fieldsUnion with fallback for unknown tags", () => {
   `);
   expect(run(codecWithFallback, { tag: "Three" })).toBeUndefined();
 
-  // A nested `fieldsUnion` still fails on unknown tags:
+  // A nested `taggedUnion` still fails on unknown tags:
   expect(run(codecWithFallback, { tag: "Two", value: { tag: "Rectangle" } }))
     .toMatchInlineSnapshot(`
     At root["value"]["tag"]:

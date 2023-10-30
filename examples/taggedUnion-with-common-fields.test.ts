@@ -5,16 +5,16 @@ import {
   boolean,
   Codec,
   fieldsAuto,
-  fieldsUnion,
   Infer,
   InferEncoded,
   number,
   string,
   tag,
+  taggedUnion,
 } from "../";
 import { run } from "../tests/helpers";
 
-test("fieldsUnion with common fields", () => {
+test("taggedUnion with common fields", () => {
   // This function takes two codecs for object types and returns
   // a new codec which is the intersection of those.
   // This function is not part of the tiny-decoders package because it has some caveats:
@@ -56,7 +56,7 @@ test("fieldsUnion with common fields", () => {
   }
 
   type EventWithPayload = Infer<typeof EventWithPayload>;
-  const EventWithPayload = fieldsUnion("event", [
+  const EventWithPayload = taggedUnion("event", [
     {
       event: tag("opened"),
       payload: string,

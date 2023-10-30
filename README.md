@@ -119,11 +119,11 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 - Unions:
   - Of primitive literals: [primitiveUnion](#primitiveunion)
   - Of different types: [multi](#multi)
-  - Of tagged objects: [fieldsUnion](#fieldsunion) with [tag](#tag)
+  - Of tagged objects: [taggedUnion](#taggedunion) with [tag](#tag)
   - With undefined: [undefinedOr](#undefinedor)
   - With null: [nullOr](#nullOr)
   - Other unions: [untagged union example](examples/untagged-union.test.ts)
-- Intersections: [intersection example](examples/fieldsUnion-with-common-fields.test.ts)
+- Intersections: [intersection example](examples/taggedUnion-with-common-fields.test.ts)
 - Transformation: [map](#map), [flatMap](#flatmap)
 - Recursion: [recursive](#recursive)
 - Errors: [DecoderError](#decodererror), [format](#format), [repr](#repr)
@@ -250,7 +250,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <td>n/a, only used with <code>fieldsAuto</code></td>
 </tr>
 <tr>
-<th><a href="#fieldsunion">fieldsUnion</a></th>
+<th><a href="#taggedunion">taggedUnion</a></th>
 <td><pre>(
   decodedCommonField: string,
   variants: Array&lt;
@@ -602,10 +602,10 @@ type Example = {
 >
 > All in all, you avoid a slight gotcha with optional fields and inferred types if you enable `exactOptionalPropertyTypes`.
 
-### fieldsUnion
+### taggedUnion
 
 ```ts
-function fieldsUnion<
+function taggedUnion<
   const DecodedCommonField extends keyof Variants[number],
   Variants extends readonly [
     Variant<DecodedCommonField>,
@@ -646,7 +646,7 @@ type Shape =
   | { tag: "Circle"; radius: number }
   | { tag: "Rectangle"; width: number; height: number };
 
-const shapeCodec: Codec<Shape> = fieldsUnion("tag", [
+const shapeCodec: Codec<Shape> = taggedUnion("tag", [
   {
     tag: tag("Circle"),
     radius: number,
@@ -664,7 +664,7 @@ The `allowExtraFields` option works just like for [fieldsAuto](#fieldsauto).
 See also these examples:
 
 - [Renaming union field](examples/renaming-union-field.test.ts)
-- [`fieldsUnion` with common fields](examples/fieldsUnion-with-common-fields.test.ts)
+- [`taggedUnion` with common fields](examples/taggedUnion-with-common-fields.test.ts)
 
 Note: If you use the same tag value twice, the last one wins. TypeScript infers a type with two variants with the same tag (which is a valid type), but tiny-decoders can’t tell them apart. Nothing will ever decode to the first one, only the last one will succeed. Trying to encode the first one might result in bad data.
 
@@ -693,13 +693,13 @@ function tag<
 type primitive = bigint | boolean | number | string | symbol | null | undefined;
 ```
 
-Used with [fieldsUnion](#fieldsunion), once for each variant of the union.
+Used with [taggedUnion](#taggedunion), once for each variant of the union.
 
-`tag("MyTag")` returns a `Field` with a codec that requires the input `"MyTag"` and returns `"MyTag"`. The metadata of the `Field` also advertises that the tag value is `"MyTag"`, which `fieldsUnion` uses to know what to do.
+`tag("MyTag")` returns a `Field` with a codec that requires the input `"MyTag"` and returns `"MyTag"`. The metadata of the `Field` also advertises that the tag value is `"MyTag"`, which `taggedUnion` uses to know what to do.
 
 `tag("MyTag", { renameTagFrom: "my_tag" })` returns a `Field` with a codec that requires the input `"my_tag"` but returns `"MyTag"`.
 
-For `renameFieldFrom`, see [fieldsUnion](#fieldsunion).
+For `renameFieldFrom`, see [taggedUnion](#taggedunion).
 
 You will typically use string tags for your tagged unions, but other primitive types such as `boolean` and `number` are supported too.
 
@@ -942,7 +942,7 @@ type DecoderError = {
       got: number;
     }
   | {
-      tag: "unknown fieldsUnion tag";
+      tag: "unknown taggedUnion tag";
       knownTags: Array<primitive>;
       got: unknown;
     }
@@ -1160,6 +1160,6 @@ function either<T, U>(codec1: Codec<T>, codec2: Codec<U>): Codec<T | U>;
 The decoder of this codec would try `codec1.decoder` first. If it fails, go on and try `codec2.decoder`. If that fails, present both errors. I consider this a blunt tool.
 
 - If you want either a string or a number, use [multi](#multi). This let’s you switch between any JSON types.
-- For objects that can be decoded in different ways, use [fieldsUnion](#fieldsunion). If that’s not possible, see the [untagged union example](examples/untagged-union.test.ts) for how you can approach the problem.
+- For objects that can be decoded in different ways, use [taggedUnion](#taggedunion). If that’s not possible, see the [untagged union example](examples/untagged-union.test.ts) for how you can approach the problem.
 
 The above approaches result in a much simpler [DecoderError](#decodererror) type, and also results in much better error messages, since there’s never a need to present something like “decoding failed in the following 2 ways: …”

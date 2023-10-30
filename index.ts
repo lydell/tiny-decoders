@@ -429,7 +429,7 @@ type Variant<DecodedCommonField extends number | string | symbol> = Record<
 > &
   Record<string, Codec<any> | Field<any, any, FieldMeta>>;
 
-export function fieldsUnion<
+export function taggedUnion<
   const DecodedCommonField extends keyof Variants[number],
   Variants extends readonly [
     Variant<DecodedCommonField>,
@@ -440,7 +440,7 @@ export function fieldsUnion<
     Variants[number]
   > extends never
     ? [
-        "fieldsUnion variants must have a field in common, and their encoded field names must be the same",
+        "taggedUnion variants must have a field in common, and their encoded field names must be the same",
         never,
       ]
     : DecodedCommonField,
@@ -451,7 +451,7 @@ export function fieldsUnion<
   InferEncodedFieldsUnion<Variants[number]>
 > {
   if (decodedCommonField === "__proto__") {
-    throw new Error("fieldsUnion: decoded common field cannot be __proto__");
+    throw new Error("taggedUnion: decoded common field cannot be __proto__");
   }
 
   type VariantCodec = Codec<any, any>;
@@ -473,7 +473,7 @@ export function fieldsUnion<
       maybeEncodedCommonField = encodedFieldName;
     } else if (maybeEncodedCommonField !== encodedFieldName) {
       throw new Error(
-        `fieldsUnion: Variant at index ${index}: Key ${JSON.stringify(
+        `taggedUnion: Variant at index ${index}: Key ${JSON.stringify(
           decodedCommonField,
         )}: Got a different encoded field name (${JSON.stringify(
           encodedFieldName,
@@ -487,7 +487,7 @@ export function fieldsUnion<
 
   if (typeof maybeEncodedCommonField !== "string") {
     throw new Error(
-      `fieldsUnion: Got unusable encoded common field: ${repr(
+      `taggedUnion: Got unusable encoded common field: ${repr(
         maybeEncodedCommonField,
       )}`,
     );
@@ -509,7 +509,7 @@ export function fieldsUnion<
         return {
           tag: "DecoderError",
           error: {
-            tag: "unknown fieldsUnion tag",
+            tag: "unknown taggedUnion tag",
             knownTags: Array.from(decoderMap.keys()),
             got: encodedName,
             path: [encodedCommonField],
@@ -525,7 +525,7 @@ export function fieldsUnion<
       const encoder = encoderMap.get(decodedName);
       if (encoder === undefined) {
         throw new Error(
-          `fieldsUnion: Unexpectedly found no encoder for decoded variant name: ${JSON.stringify(
+          `taggedUnion: Unexpectedly found no encoder for decoded variant name: ${JSON.stringify(
             decodedName,
           )} at key ${JSON.stringify(decodedCommonField)}`,
         );
@@ -953,11 +953,6 @@ export type DecoderError = {
       got: number;
     }
   | {
-      tag: "unknown fieldsUnion tag";
-      knownTags: Array<primitive>;
-      got: unknown;
-    }
-  | {
       tag: "unknown multi type";
       knownTypes: Array<
         | "array"
@@ -973,6 +968,11 @@ export type DecoderError = {
   | {
       tag: "unknown primitiveUnion variant";
       knownVariants: Array<primitive>;
+      got: unknown;
+    }
+  | {
+      tag: "unknown taggedUnion tag";
+      knownTags: Array<primitive>;
       got: unknown;
     }
   | {
@@ -1039,7 +1039,7 @@ function formatDecoderErrorVariant(
           : variant.knownTypes.join(", ")
       }\nGot: ${formatGot(variant.got)}`;
 
-    case "unknown fieldsUnion tag":
+    case "unknown taggedUnion tag":
       return `Expected one of these tags:${primitiveList(
         variant.knownTags,
       )}\nGot: ${formatGot(variant.got)}`;

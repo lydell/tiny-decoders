@@ -6,12 +6,12 @@ import {
   Codec,
   field,
   fieldsAuto,
-  fieldsUnion,
   Infer,
   InferEncoded,
   number,
   string,
   tag,
+  taggedUnion,
   unknown,
 } from "../";
 import { run } from "../tests/helpers";
@@ -119,7 +119,7 @@ test("tagged tuples", () => {
     },
   };
 
-  // A function that takes a regular `fieldsUnion` codec, but makes it work on
+  // A function that takes a regular `taggedUnion` codec, but makes it work on
   // tagged tuples instead.
   function toArrayUnion<
     Decoded extends Record<string, unknown>,
@@ -141,7 +141,7 @@ test("tagged tuples", () => {
 
   type Shape = Infer<typeof Shape>;
   const Shape = toArrayUnion(
-    fieldsUnion("tag", [
+    taggedUnion("tag", [
       {
         tag: tag("Circle", { renameFieldFrom: "0" }),
         radius: field(number, { renameFrom: "1" }),
