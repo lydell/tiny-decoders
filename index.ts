@@ -28,6 +28,39 @@ export type InferEncoded<T extends Codec<any>> = ReturnType<T["encoder"]>;
 // https://stackoverflow.com/a/57683652/2010616
 type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
+const CodecJSON = {
+  parse<Decoded>(
+    codec: Codec<Decoded>,
+    jsonString: string,
+  ): DecoderResult<Decoded> {
+    let json: unknown;
+    try {
+      json = JSON.parse(jsonString);
+    } catch (unknownError) {
+      const error = unknownError as Error; // `JSON.parse` always throws `Error` instances.
+      return {
+        tag: "DecoderError",
+        error: {
+          tag: "custom",
+          message: `${error.name}: ${error.message}`,
+          path: [],
+        },
+      };
+    }
+    return codec.decoder(json);
+  },
+
+  stringify<Decoded, Encoded>(
+    codec: Codec<Decoded, Encoded>,
+    value: Decoded,
+    space?: number | string,
+  ): string {
+    return JSON.stringify(codec.encoder(value), null, space) ?? "null";
+  },
+};
+
+export { CodecJSON as JSON };
+
 function identity<T>(value: T): T {
   return value;
 }
@@ -907,7 +940,7 @@ export type DecoderError = {
   | {
       tag: "custom";
       message: string;
-      got: unknown;
+      got?: unknown;
     }
   | {
       tag: "exact fields";
@@ -1040,7 +1073,9 @@ function formatDecoderErrorVariant(
       return `Expected ${variant.expected} items\nGot: ${variant.got}`;
 
     case "custom":
-      return `${variant.message}\nGot: ${formatGot(variant.got)}`;
+      return "got" in variant
+        ? `${variant.message}\nGot: ${formatGot(variant.got)}`
+        : variant.message;
   }
 }
 
