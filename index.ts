@@ -859,7 +859,7 @@ export function undefinedOr<Decoded, Encoded>(
   };
 }
 
-export function nullable<Decoded, Encoded>(
+export function nullOr<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,
 ): Codec<Decoded | null, Encoded | null> {
   return {
