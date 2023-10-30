@@ -312,15 +312,13 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
         return objectResult;
       }
       const object = objectResult.value;
-      const keys = Object.keys(mapping);
       const knownFields = new Set<string>();
       const result: Record<string, unknown> = {};
 
-      for (const key of keys) {
+      for (const [key, fieldOrCodec] of Object.entries(mapping)) {
         if (key === "__proto__") {
           continue;
         }
-        const fieldOrCodec = mapping[key];
         const field_: Field<any, any, FieldMeta> =
           "codec" in fieldOrCodec ? fieldOrCodec : { codec: fieldOrCodec };
         const {
@@ -383,11 +381,10 @@ export function fieldsAuto<Mapping extends FieldsMapping>(
     },
     encoder: (object) => {
       const result: Record<string, unknown> = {};
-      for (const key of Object.keys(mapping)) {
+      for (const [key, fieldOrCodec] of Object.entries(mapping)) {
         if (key === "__proto__") {
           continue;
         }
-        const fieldOrCodec = mapping[key];
         const field_: Field<any, any, FieldMeta> =
           "codec" in fieldOrCodec ? fieldOrCodec : { codec: fieldOrCodec };
         const {
@@ -658,8 +655,7 @@ export function tuple<const Codecs extends ReadonlyArray<Codec<any>>>(
         };
       }
       const result = [];
-      for (let index = 0; index < arr.length; index++) {
-        const codec = codecs[index];
+      for (const [index, codec] of codecs.entries()) {
         const decoderResult = codec.decoder(arr[index]);
         switch (decoderResult.tag) {
           case "DecoderError":
@@ -679,8 +675,7 @@ export function tuple<const Codecs extends ReadonlyArray<Codec<any>>>(
     },
     encoder: (value) => {
       const result = [];
-      for (let index = 0; index < codecs.length; index++) {
-        const codec = codecs[index];
+      for (const [index, codec] of codecs.entries()) {
         result.push(codec.encoder(value[index]));
       }
       return result as InferEncodedTuple<Codecs>;
