@@ -15,7 +15,7 @@ import {
   InferEncoded,
   map,
   multi,
-  nullable,
+  nullOr,
   number,
   primitiveUnion,
   record,
@@ -2432,9 +2432,9 @@ describe("undefinedOr", () => {
   });
 });
 
-describe("nullable", () => {
-  test("nullable string", () => {
-    const codec = nullable(string);
+describe("nullOr", () => {
+  test("nullOr string", () => {
+    const codec = nullOr(string);
 
     expectType<TypeEqual<Infer<typeof codec>, string | null>>(true);
     expectType<TypeEqual<InferEncoded<typeof codec>, string | null>>(true);
@@ -2457,7 +2457,7 @@ describe("nullable", () => {
   });
 
   test("with default", () => {
-    const codec = map(nullable(string), {
+    const codec = map(nullOr(string), {
       decoder: (value) => value ?? "def",
       encoder: (value) => value,
     });
@@ -2475,7 +2475,7 @@ describe("nullable", () => {
   });
 
   test("with undefined instead of null", () => {
-    const codec = map(nullable(string), {
+    const codec = map(nullOr(string), {
       decoder: (value) => value ?? undefined,
       encoder: (value) => value ?? null,
     });
@@ -2493,11 +2493,11 @@ describe("nullable", () => {
     expect(codec.encoder("a")).toBe("a");
   });
 
-  test("nullable field", () => {
+  test("nullOr field", () => {
     type Person = Infer<typeof Person>;
     const Person = fieldsAuto({
       name: string,
-      age: nullable(number),
+      age: nullOr(number),
     });
 
     expectType<TypeEqual<Person, { name: string; age: number | null }>>(true);
@@ -2551,7 +2551,7 @@ describe("nullable", () => {
     void person;
   });
 
-  test("nullable custom codec", () => {
+  test("nullOr custom codec", () => {
     const codec: Codec<never, never> = {
       decoder: (value) => ({
         tag: "DecoderError",
@@ -2567,7 +2567,7 @@ describe("nullable", () => {
       },
     };
 
-    expect(run(nullable(codec), 1)).toMatchInlineSnapshot(`
+    expect(run(nullOr(codec), 1)).toMatchInlineSnapshot(`
       At root:
       fail
       Got: 1
@@ -2580,9 +2580,9 @@ describe("nullable", () => {
     );
   });
 
-  test("nullable higher up the chain makes no difference", () => {
+  test("nullOr higher up the chain makes no difference", () => {
     const codec = fieldsAuto({
-      test: nullable(fieldsAuto({ inner: string })),
+      test: nullOr(fieldsAuto({ inner: string })),
     });
 
     expect(run(codec, { test: 1 })).toMatchInlineSnapshot(`
@@ -2600,8 +2600,8 @@ describe("nullable", () => {
     `);
   });
 
-  test("undefinedOr and nullable", () => {
-    const codec = undefinedOr(nullable(nullable(undefinedOr(string))));
+  test("undefinedOr and nullOr", () => {
+    const codec = undefinedOr(nullOr(nullOr(undefinedOr(string))));
 
     expectType<TypeEqual<Infer<typeof codec>, string | null | undefined>>(true);
     expectType<

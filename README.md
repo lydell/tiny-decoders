@@ -121,7 +121,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
   - Of different types: [multi](#multi)
   - Of tagged objects: [fieldsUnion](#fieldsunion) with [tag](#tag)
   - With undefined: [undefinedOr](#undefinedor)
-  - With null: [nullable](#nullable)
+  - With null: [nullOr](#nullOr)
   - Other unions: [untagged union example](examples/untagged-union.test.ts)
 - Intersections: [intersection example](examples/fieldsUnion-with-common-fields.test.ts)
 - Transformation: [map](#map), [flatMap](#flatmap)
@@ -320,7 +320,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <td><code>T | undefined</code></td>
 </tr>
 <tr>
-<th><a href="#nullable">nullable</a></th>
+<th><a href="#nullOr">nullOr</a></th>
 <td><pre>(codec: Codec&lt;T&gt;) =&gt;
   Codec&lt;T | null&gt;</pre></td>
 <td>null or …</td>
@@ -842,7 +842,7 @@ Notes:
 - Using `undefinedOr` does _not_ make a field in an object optional. It only allows the field to be `undefined`. Similarly, using the [field](#field) function to mark a field as optional does not allow setting the field to `undefined`, only omitting it.
 - JSON does not have `undefined` (only `null`). So `undefinedOr` is more useful when you are decoding something that does not come from JSON. However, even when working with JSON `undefinedOr` still has a use: If you infer types from codecs, using `undefinedOr` on object fields results in `| undefined` for the type of the field, which allows you to assign `undefined` to it which is occasionally useful.
 
-### nullable
+### nullOr
 
 ```ts
 function nullOr<Decoded, Encoded>(
@@ -1011,7 +1011,7 @@ const myError: DecoderError = {
 };
 ```
 
-`orExpected` exists so that `undefinedOr` and `nullable` can say that `undefined` and/or `null` also are expected values.
+`orExpected` exists so that `undefinedOr` and `nullOr` can say that `undefined` and/or `null` also are expected values.
 
 ## format
 
