@@ -24,11 +24,7 @@ const FILES_TO_COPY: Array<FileToCopy> = [
   },
 ];
 
-if (fs.rmSync !== undefined) {
-  fs.rmSync(BUILD, { recursive: true, force: true });
-} else if (fs.existsSync(BUILD)) {
-  fs.rmdirSync(BUILD, { recursive: true });
-}
+fs.rmSync(BUILD, { recursive: true, force: true });
 
 fs.mkdirSync(BUILD);
 
@@ -64,14 +60,10 @@ fs.renameSync(
   path.join(BUILD, "index.mjs"),
 );
 
-if (fs.rmSync !== undefined) {
-  fs.rmSync(MODULE_BUILD, { recursive: true, force: true });
-} else if (fs.existsSync(MODULE_BUILD)) {
-  fs.rmdirSync(MODULE_BUILD, { recursive: true });
-}
+fs.rmSync(MODULE_BUILD, { recursive: true, force: true });
 
 for (const file of fs.readdirSync(BUILD)) {
   if (file.startsWith("vitest")) {
-    fs.unlinkSync(path.join(BUILD, file));
+    fs.rmSync(path.join(BUILD, file));
   }
 }
