@@ -1,5 +1,9 @@
 Note: I’m currently working on several breaking changes to tiny-decoders, but I’m trying out releasing them piece by piece. The idea is that you can either upgrade version by version only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time.
 
+### Version 22.0.0 (unreleased)
+
+This release renames `fieldsUnion` to `taggedUnion` since it better describes what it is, and it goes along better with the `tag` function.
+
 ### Version 21.0.0 (2023-10-30)
 
 This release renames `nullable` to `nullOr` to be consistent with `undefinedOr`.

@@ -9,7 +9,6 @@ import {
   DecoderResult,
   field,
   fieldsAuto,
-  fieldsUnion,
   flatMap,
   Infer,
   InferEncoded,
@@ -22,6 +21,7 @@ import {
   recursive,
   string,
   tag,
+  taggedUnion,
   tuple,
   undefinedOr,
   unknown,
@@ -978,10 +978,10 @@ describe("fieldsAuto", () => {
   });
 });
 
-describe("fieldsUnion", () => {
+describe("taggedUnion", () => {
   test("string tags", () => {
     type Shape = Infer<typeof Shape>;
-    const Shape = fieldsUnion("tag", [
+    const Shape = taggedUnion("tag", [
       {
         tag: tag("Circle"),
         radius: number,
@@ -1059,7 +1059,7 @@ describe("fieldsUnion", () => {
         Got: "Square"
       `);
 
-    expect(run(fieldsUnion("0", [{ "0": tag("a") }]), ["a"]))
+    expect(run(taggedUnion("0", [{ "0": tag("a") }]), ["a"]))
       .toMatchInlineSnapshot(`
       At root:
       Expected an object
@@ -1071,7 +1071,7 @@ describe("fieldsUnion", () => {
 
   test("boolean tags", () => {
     type User = Infer<typeof User>;
-    const User = fieldsUnion("isAdmin", [
+    const User = taggedUnion("isAdmin", [
       {
         isAdmin: tag(true),
         name: string,
@@ -1163,7 +1163,7 @@ describe("fieldsUnion", () => {
     const symbol2 = Symbol("symbol2");
 
     type Type = Infer<typeof codec>;
-    const codec = fieldsUnion("tag", [
+    const codec = taggedUnion("tag", [
       { tag: tag(undefined) },
       { tag: tag(null) },
       { tag: tag(true) },
@@ -1240,7 +1240,7 @@ describe("fieldsUnion", () => {
 
     type Type = Infer<typeof codec>;
     type EncodedType = InferEncoded<typeof codec>;
-    const codec = fieldsUnion("tag", [
+    const codec = taggedUnion("tag", [
       { tag: tag("undefined", { renameTagFrom: undefined }) },
       { tag: tag("null", { renameTagFrom: null }) },
       { tag: tag("true", { renameTagFrom: true }) },
@@ -1335,9 +1335,9 @@ describe("fieldsUnion", () => {
 
   test("__proto__ is not allowed", () => {
     expect(() =>
-      fieldsUnion("__proto__", [{ __proto__: tag("Test") }]),
+      taggedUnion("__proto__", [{ __proto__: tag("Test") }]),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"fieldsUnion: decoded common field cannot be __proto__"',
+      '"taggedUnion: decoded common field cannot be __proto__"',
     );
   });
 
@@ -1345,59 +1345,59 @@ describe("fieldsUnion", () => {
     expect(() =>
       // @ts-expect-error Argument of type '[]' is not assignable to parameter of type 'readonly [Variant<"tag">, ...Variant<"tag">[]]'.
       //   Source has 0 element(s) but target requires 1.
-      fieldsUnion("tag", []),
+      taggedUnion("tag", []),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"fieldsUnion: Got unusable encoded common field: undefined"',
+      '"taggedUnion: Got unusable encoded common field: undefined"',
     );
   });
 
   test("decodedCommonField mismatch", () => {
     expect(() =>
       // @ts-expect-error Property 'tag' is missing in type '{ type: Field<"Test", { tag: { decoded: string; encoded: string; }; }>; }' but required in type 'Record<"tag", Field<any, { tag: { decoded: string; encoded: string; }; }>>'.
-      fieldsUnion("tag", [{ type: tag("Test") }]),
+      taggedUnion("tag", [{ type: tag("Test") }]),
     ).toThrow();
   });
 
   test("one variant uses wrong decodedCommonField", () => {
     expect(() =>
       // @ts-expect-error Property 'tag' is missing in type '{ type: Field<"B", { tag: { decoded: string; encoded: string; }; }>; }' but required in type 'Record<"tag", Field<any, { tag: { decoded: string; encoded: string; }; }>>'.
-      fieldsUnion("tag", [{ tag: tag("A") }, { type: tag("B") }]),
+      taggedUnion("tag", [{ tag: tag("A") }, { type: tag("B") }]),
     ).toThrow();
   });
 
   test("decodedCommonField does not use the tag function", () => {
     expect(() =>
       // @ts-expect-error Type '(value: unknown) => string' is not assignable to type 'Field<any, { tag: { decoded: string; encoded: string; }; }>'.
-      fieldsUnion("tag", [{ tag: string }]),
+      taggedUnion("tag", [{ tag: string }]),
     ).toThrow();
   });
 
   test("encodedCommonField mismatch", () => {
     expect(() =>
-      // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["fieldsUnion variants must have a field in common, and their encoded field names must be the same", never]'.
-      fieldsUnion("tag", [
+      // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["taggedUnion variants must have a field in common, and their encoded field names must be the same", never]'.
+      taggedUnion("tag", [
         { tag: tag("A") },
         { tag: tag("B", { renameFieldFrom: "type" }) },
       ]),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"fieldsUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"tag\\")."',
+      '"taggedUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"tag\\")."',
     );
   });
 
   test("encodedCommonField mismatch 2", () => {
     expect(() =>
-      // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["fieldsUnion variants must have a field in common, and their encoded field names must be the same", never]'.
-      fieldsUnion("tag", [
+      // @ts-expect-error Argument of type 'string' is not assignable to parameter of type '["taggedUnion variants must have a field in common, and their encoded field names must be the same", never]'.
+      taggedUnion("tag", [
         { tag: tag("A", { renameFieldFrom: "other" }) },
         { tag: tag("B", { renameFieldFrom: "type" }) },
       ]),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"fieldsUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"other\\")."',
+      '"taggedUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"other\\")."',
     );
   });
 
   test("same encodedCommonField correctly used on every variant", () => {
-    const codec = fieldsUnion("tag", [
+    const codec = taggedUnion("tag", [
       { tag: tag("A", { renameFieldFrom: "type" }) },
       { tag: tag("B", { renameFieldFrom: "type" }) },
     ]);
@@ -1418,7 +1418,7 @@ describe("fieldsUnion", () => {
 
   test("same tag used twice", () => {
     type Type = Infer<typeof codec>;
-    const codec = fieldsUnion("tag", [
+    const codec = taggedUnion("tag", [
       { tag: tag("Test"), one: number },
       { tag: tag("Test"), two: string },
     ]);
@@ -1479,7 +1479,7 @@ describe("fieldsUnion", () => {
       okCodec: Codec<Ok>,
       errCodec: Codec<Err>,
     ): Codec<Result<Ok, Err>> =>
-      fieldsUnion("tag", [
+      taggedUnion("tag", [
         {
           tag: tag("Ok"),
           value: okCodec,
@@ -1533,7 +1533,7 @@ describe("fieldsUnion", () => {
       okCodec: Codec<OkDecoded, OkEncoded>,
       errCodec: Codec<ErrDecoded, ErrEncoded>,
     ): Codec<Result<OkDecoded, ErrDecoded>, Result<OkEncoded, ErrEncoded>> =>
-      fieldsUnion("tag", [
+      taggedUnion("tag", [
         {
           tag: tag("Ok"),
           value: okCodec,
@@ -1567,7 +1567,7 @@ describe("fieldsUnion", () => {
   });
 
   test("always print the expected tags in full", () => {
-    const codec = fieldsUnion("tag", [
+    const codec = taggedUnion("tag", [
       { tag: tag("PrettyLongTagName1"), value: string },
       { tag: tag("PrettyLongTagName2"), value: string },
     ]);
@@ -1588,7 +1588,7 @@ describe("fieldsUnion", () => {
   });
 
   test("unexpectedly found no encoder for decoded variant name", () => {
-    const codec = fieldsUnion("tag", [
+    const codec = taggedUnion("tag", [
       { tag: tag("One") },
       { tag: tag("Two") },
     ]);
@@ -1597,7 +1597,7 @@ describe("fieldsUnion", () => {
       // @ts-expect-error Type '"Three"' is not assignable to type '"One" | "Two"'.
       codec.encoder({ tag: "Three" }),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"fieldsUnion: Unexpectedly found no encoder for decoded variant name: \\"Three\\" at key \\"tag\\""',
+      '"taggedUnion: Unexpectedly found no encoder for decoded variant name: \\"Three\\" at key \\"tag\\""',
     );
   });
 
@@ -1605,7 +1605,7 @@ describe("fieldsUnion", () => {
     test("allows excess properties by default", () => {
       expect(
         run(
-          fieldsUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }]),
+          taggedUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }]),
           {
             tag: "Test",
             one: "a",
@@ -1618,7 +1618,7 @@ describe("fieldsUnion", () => {
 
       expect(
         run(
-          fieldsUnion(
+          taggedUnion(
             "tag",
             [{ tag: tag("Test"), one: string, two: boolean }],
             { allowExtraFields: true },
@@ -1633,7 +1633,7 @@ describe("fieldsUnion", () => {
         ),
       ).toStrictEqual({ tag: "Test", one: "a", two: true });
 
-      fieldsUnion("tag", [
+      taggedUnion("tag", [
         { tag: tag("Test"), one: string, two: boolean },
       ]).encoder({
         tag: "Test",
@@ -1648,7 +1648,7 @@ describe("fieldsUnion", () => {
     test("fail on excess properties", () => {
       expect(
         run(
-          fieldsUnion(
+          taggedUnion(
             "tag",
             [{ tag: tag("Test"), one: string, two: boolean }],
             { allowExtraFields: false },
@@ -1672,7 +1672,7 @@ describe("fieldsUnion", () => {
         "four"
     `);
 
-      fieldsUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }], {
+      taggedUnion("tag", [{ tag: tag("Test"), one: string, two: boolean }], {
         allowExtraFields: false,
       }).encoder({
         tag: "Test",
@@ -1687,7 +1687,7 @@ describe("fieldsUnion", () => {
     test("large number of excess properties", () => {
       expect(
         run(
-          fieldsUnion(
+          taggedUnion(
             "tag",
             [{ tag: tag("Test"), "1": boolean, "2": boolean }],
             { allowExtraFields: false },
@@ -1716,7 +1716,7 @@ describe("fieldsUnion", () => {
     });
 
     test("always print the expected keys in full", () => {
-      const codec = fieldsUnion(
+      const codec = taggedUnion(
         "tag",
         [
           {
