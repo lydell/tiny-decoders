@@ -110,7 +110,25 @@ tiny-decoders ships with a bunch of codecs, and a few functions to combine codec
 
 ## Codecs
 
-Here’s a summary of all codecs (with slightly simplified type annotations):
+Here’s a summary of all codecs (with slightly simplified type annotations) and related functions.
+
+- Codec type: [Codec and DecoderResult](#codect-and-decoderresultt)
+- Primitives: [unknown](#unknown), [boolean](#boolean), [number](#number), [bigint](#bigint), [string](#string)
+- Collections: [array](#array), [record](#record), [tuple](#tuple)
+- Object literals: [fieldsAuto](#fieldsauto) with [field](#field)
+- Unions:
+  - Of primitive literals: [primitiveUnion](#primitiveunion)
+  - Of different types: [multi](#multi)
+  - Of tagged objects: [fieldsUnion](#fieldsunion) with [tag](#tag)
+  - With undefined: [undefinedOr](#undefinedor)
+  - With null: [nullable](#nullable)
+  - Other unions: [untagged union example](examples/untagged-union.test.ts)
+- Intersections: [intersection example](examples/fieldsUnion-with-common-fields.test.ts)
+- Transformation: [map](#map), [flatMap](#flatmap)
+- Recursion: [recursive](#recursive)
+- Errors: [DecoderError](#decodererror), [format](#format), [repr](#repr)
+- JSON: [Replacement for JSON.parse and JSON.stringify](#replacement-for-jsonparse-and-jsonstringify)
+- Tips: [Type inference](#type-inference), [things left out](#things-left-out)
 
 <table>
 <thead>
