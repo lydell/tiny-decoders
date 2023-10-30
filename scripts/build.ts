@@ -69,3 +69,9 @@ if (fs.rmSync !== undefined) {
 } else if (fs.existsSync(MODULE_BUILD)) {
   fs.rmdirSync(MODULE_BUILD, { recursive: true });
 }
+
+for (const file of fs.readdirSync(BUILD)) {
+  if (file.startsWith("vitest")) {
+    fs.unlinkSync(path.join(BUILD, file));
+  }
+}
