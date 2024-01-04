@@ -1046,7 +1046,7 @@ function repr(
 ): string;
 ```
 
-Takes any value, and returns a string representation of it for use in error messages. [DecoderError.prototype.format](#format) uses it behind the scenes. If you want to do your own formatting, `repr` can be useful.
+Takes any value, and returns a string representation of it for use in error messages. [format](#format) uses it behind the scenes. If you want to do your own formatting, `repr` can be useful.
 
 Options:
 
