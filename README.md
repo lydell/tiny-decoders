@@ -699,7 +699,7 @@ Used with [taggedUnion](#taggedunion), once for each variant of the union.
 
 `tag("MyTag", { renameTagFrom: "my_tag" })` returns a `Field` with a codec that requires the input `"my_tag"` but returns `"MyTag"`.
 
-For `renameFieldFrom`, see [taggedUnion](#taggedunion).
+For `renameFieldFrom`, see the [Renaming union field](examples/renaming-union-field.test.ts) example.
 
 You will typically use string tags for your tagged unions, but other primitive types such as `boolean` and `number` are supported too.
 
