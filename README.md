@@ -1057,7 +1057,7 @@ Options:
 | maxArrayChildren | `number` | `5` | The number of array items to print. |
 | maxObjectChildren | `number` | `5` | The number of object key-values to print. |
 | maxLength | `number` | `100` | The maximum length of literals, such as strings, before truncating them. |
-| sensitive | `boolean` | `false` | Set it do `true` if you deal with sensitive data to avoid leaks. See below. |
+| sensitive | `boolean` | `false` | Set it to `true` if you deal with sensitive data to avoid leaks. See below. |
 
 `format(someDecoderError)` example:
 
