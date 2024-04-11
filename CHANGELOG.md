@@ -1,4 +1,4 @@
-> **Note**  
+> [!NOTE]  
 > While working on several breaking changes to tiny-decoders, I tried out releasing them piece by piece. The idea was that you could either upgrade version by version, only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time. That’s why there are so many breaking changes in such a short time.
 >
 > Currently there are no more breaking changes planned.
@@ -223,7 +223,7 @@ This release removes the `fields` function, which was deprecated in version 11.0
 
 ### Version 13.0.0 (2023-10-22)
 
-> **Warning**  
+> [!WARNING]  
 > This release contains a breaking change, but no TypeScript errors! Be careful!
 
 Version 11.0.0 made changes to `fieldsAuto`, but had a temporary behavior for backwards compatibility, awaiting the changes to `fieldsUnion` in version 12.0.0. This release (13.0.0) removes that temporary behavior.
@@ -388,7 +388,7 @@ The motivation for the changes are:
 
   In other words, `fieldsAuto` now checks if fields exist, rather than trying to access them regardless. Previously, `fieldsAuto` ran `decoderAtKey(object[key])` even when `key` did not exist in `object`, which is equivalent to `decoderAtKey(undefined)`. Whether or not that succeeded was up to if `decoderAtKey` was using `optional` or not. This resulted in the worse (but technically correct) error message. The new version of `fieldsAuto` knows if the field is supposed to be optional or not thanks to the `Field` type and the `field` function mentioned above.
 
-  > **Warning**  
+  > [!WARNING]  
   > Temporary behavior: If a field is missing and _not_ marked as optional, `fieldsAuto` still _tries_ the decoder at the field (passing `undefined` to it). If the decoder succeeds (because it allows `undefined` or succeeds for any input), that value is used. If it fails, the regular “missing field” error is thrown. This means that `fieldsAuto({ name: undefinedOr(string) })` successfully produces `{ name: undefined }` if given `{}` as input. It is supposed to fail in that case (because a required field is missing), but temporarily it does not fail. This is to support how `fieldsUnion` is used currently. When `fieldsUnion` is updated to a new API in an upcoming version of tiny-decoders, this temporary behavior in `fieldsAuto` will be removed.
 
 - Being able to rename fields with `fieldsAuto`. Now you don’t need to refactor from `fieldsAuto` to `fields` anymore if you need to rename a field. This is done by using the `field` function.

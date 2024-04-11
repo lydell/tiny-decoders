@@ -565,7 +565,7 @@ type Example = {
 };
 ```
 
-> **Warning**  
+> [!WARNING]  
 > It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json`.
 >
 > Why? Let’s take this codec as an example:
@@ -1113,7 +1113,7 @@ You can use ESLint’s [no-restricted-globals](https://eslint.org/docs/latest/ru
 }
 ```
 
-> **Note**  
+> [!NOTE]  
 > The standard `JSON.stringify` can return `undefined` (if you try to stringify `undefined` itself, or a function or a symbol). tiny-decoder’s `JSON.stringify` _always_ returns a string – it returns `"null"` for `undefined`, functions and symbols.
 
 ## Type inference
