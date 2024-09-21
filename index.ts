@@ -55,6 +55,7 @@ const CodecJSON = {
     value: Decoded,
     space?: number | string,
   ): string {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return JSON.stringify(codec.encoder(value), null, space) ?? "null";
   },
 };
@@ -268,7 +269,6 @@ type InferEncodedField<T extends Codec<any> | Field<any, any, FieldMeta>> =
       : never;
 
 type InferFields<Mapping extends FieldsMapping> = Expand<
-  // eslint-disable-next-line @typescript-eslint/sort-type-constituents
   {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? never
@@ -281,7 +281,6 @@ type InferFields<Mapping extends FieldsMapping> = Expand<
 >;
 
 type InferEncodedFields<Mapping extends FieldsMapping> = Expand<
-  // eslint-disable-next-line @typescript-eslint/sort-type-constituents
   {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? never
@@ -699,7 +698,7 @@ type Multi<Types> = Types extends any
               : Types extends "symbol"
                 ? { type: "symbol"; value: symbol }
                 : Types extends "function"
-                  ? { type: "function"; value: Function } // eslint-disable-line @typescript-eslint/ban-types
+                  ? { type: "function"; value: Function } // eslint-disable-line @typescript-eslint/no-unsafe-function-type
                   : Types extends "array"
                     ? { type: "array"; value: Array<unknown> }
                     : Types extends "object"
