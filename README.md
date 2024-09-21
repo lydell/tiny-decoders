@@ -750,24 +750,24 @@ type Multi<Types> = Types extends any
   ? Types extends "undefined"
     ? { type: "undefined"; value: undefined }
     : Types extends "null"
-    ? { type: "null"; value: null }
-    : Types extends "boolean"
-    ? { type: "boolean"; value: boolean }
-    : Types extends "number"
-    ? { type: "number"; value: number }
-    : Types extends "bigint"
-    ? { type: "bigint"; value: bigint }
-    : Types extends "string"
-    ? { type: "string"; value: string }
-    : Types extends "symbol"
-    ? { type: "symbol"; value: symbol }
-    : Types extends "function"
-    ? { type: "function"; value: Function }
-    : Types extends "array"
-    ? { type: "array"; value: Array<unknown> }
-    : Types extends "object"
-    ? { type: "object"; value: Record<string, unknown> }
-    : never
+      ? { type: "null"; value: null }
+      : Types extends "boolean"
+        ? { type: "boolean"; value: boolean }
+        : Types extends "number"
+          ? { type: "number"; value: number }
+          : Types extends "bigint"
+            ? { type: "bigint"; value: bigint }
+            : Types extends "string"
+              ? { type: "string"; value: string }
+              : Types extends "symbol"
+                ? { type: "symbol"; value: symbol }
+                : Types extends "function"
+                  ? { type: "function"; value: Function }
+                  : Types extends "array"
+                    ? { type: "array"; value: Array<unknown> }
+                    : Types extends "object"
+                      ? { type: "object"; value: Record<string, unknown> }
+                      : never
   : never;
 ```
 

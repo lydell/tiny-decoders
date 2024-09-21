@@ -5,6 +5,9 @@
     "isolatedModules": true,
     "module": "CommonJS",
     "moduleResolution": "node",
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
@@ -23,6 +26,7 @@
     "scripts",
     "tests",
     "examples",
-    "build"
+    "build",
+    "coverage"
   ]
 }
