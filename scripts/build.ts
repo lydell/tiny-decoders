@@ -39,7 +39,7 @@ for (const { src, dest = src, transform } of FILES_TO_COPY) {
   }
 }
 
-childProcess.spawnSync("npx", ["--no-install", "tsc", "--declaration"], {
+childProcess.spawnSync("npx", ["tsc", "--declaration"], {
   shell: true,
   stdio: "inherit",
 });
@@ -48,7 +48,7 @@ fs.renameSync(path.join(BUILD, "index.js"), path.join(BUILD, "index.cjs"));
 
 childProcess.spawnSync(
   "npx",
-  ["--no-install", "tsc", "--module", "es2015", "--outDir", MODULE_BUILD],
+  ["tsc", "--module", "es2015", "--outDir", MODULE_BUILD],
   {
     shell: true,
     stdio: "inherit",
