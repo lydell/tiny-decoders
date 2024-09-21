@@ -1,7 +1,7 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { Infer, InferEncoded, number, tag, taggedUnion } from "../";
+import { Infer, InferEncoded, number, tag, taggedUnion } from "../index.js";
 
 test("using different tags in JSON and in TypeScript", () => {
   // Here’s how to use different keys and values in JSON and TypeScript.

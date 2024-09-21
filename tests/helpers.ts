@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 
-import { Codec, format, ReprOptions } from "..";
+import { Codec, format, ReprOptions } from "../index.js";
 
 export function run<Decoded, Encoded>(
   codec: Codec<Decoded, Encoded>,

@@ -1,7 +1,7 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { repr, ReprOptions } from "../";
+import { repr, ReprOptions } from "../index.js";
 
 expect.addSnapshotSerializer({
   test: (value: unknown): boolean => typeof value === "string",

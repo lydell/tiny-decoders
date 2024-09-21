@@ -25,8 +25,8 @@ import {
   tuple,
   undefinedOr,
   unknown,
-} from "..";
-import { run } from "./helpers";
+} from "../index.js";
+import { run } from "./helpers.js";
 
 test("unknown", () => {
   expect(run(unknown, true)).toBe(true);

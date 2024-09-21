@@ -14,8 +14,8 @@ import {
   number,
   primitiveUnion,
   string,
-} from "..";
-import { run } from "../tests/helpers";
+} from "../index.js";
+import { run } from "../tests/helpers.js";
 
 test("making a type from a codec", () => {
   // Rather than first typing out a `type` for `Person` and then essentially

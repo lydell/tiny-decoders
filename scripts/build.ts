@@ -2,7 +2,7 @@ import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
-const DIR = path.dirname(__dirname);
+const DIR = path.dirname(import.meta.dirname);
 const BUILD = path.join(DIR, "build");
 const MODULE_BUILD = path.join(BUILD, "module");
 
@@ -39,16 +39,29 @@ for (const { src, dest = src, transform } of FILES_TO_COPY) {
   }
 }
 
-childProcess.spawnSync("npx", ["tsc", "--declaration"], {
-  shell: true,
-  stdio: "inherit",
-});
+childProcess.spawnSync(
+  "npx",
+  [
+    "tsc",
+    "--allowJs",
+    "false",
+    "--checkJs",
+    "false",
+    "--module",
+    "CommonJS",
+    "--declaration",
+  ],
+  {
+    shell: true,
+    stdio: "inherit",
+  },
+);
 
 fs.renameSync(path.join(BUILD, "index.js"), path.join(BUILD, "index.cjs"));
 
 childProcess.spawnSync(
   "npx",
-  ["tsc", "--module", "es2015", "--outDir", MODULE_BUILD],
+  ["tsc", "--allowJs", "false", "--checkJs", "false", "--outDir", MODULE_BUILD],
   {
     shell: true,
     stdio: "inherit",

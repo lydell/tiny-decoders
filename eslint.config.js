@@ -18,8 +18,6 @@ export default typescriptEslint.config(
     languageOptions: {
       parserOptions: {
         projectService: true,
-        // @ts-expect-error: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', or 'NodeNext'.
-        // Ignore this until we manage to move away from `"module": "CommonJS"`.
         tsconfigRootDir: import.meta.dirname,
       },
     },

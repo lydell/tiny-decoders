@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
-import { Codec, fields, map, number, string } from "..";
-import { run } from "../tests/helpers";
+import { Codec, fields, map, number, string } from "../index.js";
+import { run } from "../tests/helpers.js";
 
 test("adding extra fields to records", () => {
   // Want to add an extra field to a record, that doesn’t look at the input at

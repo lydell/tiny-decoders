@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { Codec, fields, map, number, tuple } from "../";
+import { Codec, fields, map, number, tuple } from "../index.js";
 
 test("decoding tuples", () => {
   type PointTuple = [number, number];

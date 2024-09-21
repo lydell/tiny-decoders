@@ -1,4 +1,4 @@
-import "../tests/helpers";
+import "../tests/helpers.js";
 
 import { expect, test } from "vitest";
 
@@ -9,7 +9,7 @@ import {
   format,
   primitiveUnion,
   string,
-} from "../";
+} from "../index.js";
 
 test("decode constrained", () => {
   const codec1 = fields({

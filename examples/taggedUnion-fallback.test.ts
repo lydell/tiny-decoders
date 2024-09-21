@@ -1,8 +1,8 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { Codec, Infer, number, tag, taggedUnion } from "../";
-import { run } from "../tests/helpers";
+import { Codec, Infer, number, tag, taggedUnion } from "../index.js";
+import { run } from "../tests/helpers.js";
 
 test("taggedUnion with fallback for unknown tags", () => {
   // Here’s a helper function that takes a codec – which is supposed to be a
