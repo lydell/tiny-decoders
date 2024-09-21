@@ -1,7 +1,7 @@
 import { expectType, TypeEqual } from "ts-expect";
 import { expect, test } from "vitest";
 
-import { repr, ReprOptions } from "../";
+import { repr, ReprOptions } from "../index.js";
 
 expect.addSnapshotSerializer({
   test: (value: unknown): boolean => typeof value === "string",
@@ -234,7 +234,6 @@ test("array", () => {
   `);
   expect(
     repr(
-      // eslint-disable-next-line no-sparse-arrays
       [
         undefined,
         ,
@@ -467,7 +466,7 @@ test("catch errors", () => {
     throw new Error("failed for whatever reason");
   };
   expect(() => regex.toString()).toThrowErrorMatchingInlineSnapshot(
-    `failed for whatever reason`,
+    `[Error: failed for whatever reason]`,
   );
   expect(repr(regex)).toMatchInlineSnapshot(`RegExp`);
 });
@@ -519,7 +518,6 @@ test("sensitive output", () => {
   `);
   expect(
     sensitive(
-      // eslint-disable-next-line no-sparse-arrays
       [
         undefined,
         ,

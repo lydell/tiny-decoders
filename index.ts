@@ -55,6 +55,7 @@ const CodecJSON = {
     value: Decoded,
     space?: number | string,
   ): string {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return JSON.stringify(codec.encoder(value), null, space) ?? "null";
   },
 };
@@ -257,18 +258,17 @@ type InferField<T extends Codec<any> | Field<any, any, FieldMeta>> =
   T extends Field<any, any, FieldMeta>
     ? Infer<T["codec"]>
     : T extends Codec<any>
-    ? Infer<T>
-    : never;
+      ? Infer<T>
+      : never;
 
 type InferEncodedField<T extends Codec<any> | Field<any, any, FieldMeta>> =
   T extends Field<any, any, FieldMeta>
     ? InferEncoded<T["codec"]>
     : T extends Codec<any>
-    ? InferEncoded<T>
-    : never;
+      ? InferEncoded<T>
+      : never;
 
 type InferFields<Mapping extends FieldsMapping> = Expand<
-  // eslint-disable-next-line @typescript-eslint/sort-type-constituents
   {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? never
@@ -281,15 +281,14 @@ type InferFields<Mapping extends FieldsMapping> = Expand<
 >;
 
 type InferEncodedFields<Mapping extends FieldsMapping> = Expand<
-  // eslint-disable-next-line @typescript-eslint/sort-type-constituents
   {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? never
       : Mapping[Key] extends { renameFrom: infer Name }
-      ? Name extends string
-        ? Name
-        : Key
-      : Key]: InferEncodedField<Mapping[Key]>;
+        ? Name extends string
+          ? Name
+          : Key
+        : Key]: InferEncodedField<Mapping[Key]>;
   } & {
     [Key in keyof Mapping as Mapping[Key] extends { optional: true }
       ? Mapping[Key] extends { renameFrom: infer Name }
@@ -687,24 +686,24 @@ type Multi<Types> = Types extends any
   ? Types extends "undefined"
     ? { type: "undefined"; value: undefined }
     : Types extends "null"
-    ? { type: "null"; value: null }
-    : Types extends "boolean"
-    ? { type: "boolean"; value: boolean }
-    : Types extends "number"
-    ? { type: "number"; value: number }
-    : Types extends "bigint"
-    ? { type: "bigint"; value: bigint }
-    : Types extends "string"
-    ? { type: "string"; value: string }
-    : Types extends "symbol"
-    ? { type: "symbol"; value: symbol }
-    : Types extends "function"
-    ? { type: "function"; value: Function } // eslint-disable-line @typescript-eslint/ban-types
-    : Types extends "array"
-    ? { type: "array"; value: Array<unknown> }
-    : Types extends "object"
-    ? { type: "object"; value: Record<string, unknown> }
-    : never
+      ? { type: "null"; value: null }
+      : Types extends "boolean"
+        ? { type: "boolean"; value: boolean }
+        : Types extends "number"
+          ? { type: "number"; value: number }
+          : Types extends "bigint"
+            ? { type: "bigint"; value: bigint }
+            : Types extends "string"
+              ? { type: "string"; value: string }
+              : Types extends "symbol"
+                ? { type: "symbol"; value: symbol }
+                : Types extends "function"
+                  ? { type: "function"; value: Function } // eslint-disable-line @typescript-eslint/no-unsafe-function-type
+                  : Types extends "array"
+                    ? { type: "array"; value: Array<unknown> }
+                    : Types extends "object"
+                      ? { type: "object"; value: Record<string, unknown> }
+                      : never
   : never;
 
 type MultiTypeName =

@@ -11,8 +11,8 @@ import {
   string,
   tag,
   taggedUnion,
-} from "../";
-import { run } from "../tests/helpers";
+} from "../index.js";
+import { run } from "../tests/helpers.js";
 
 test("taggedUnion with common fields", () => {
   // This function takes two codecs for object types and returns

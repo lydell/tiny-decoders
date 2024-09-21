@@ -13,8 +13,8 @@ import {
   tag,
   taggedUnion,
   unknown,
-} from "../";
-import { run } from "../tests/helpers";
+} from "../index.js";
+import { run } from "../tests/helpers.js";
 
 test("untagged union", () => {
   type User = {

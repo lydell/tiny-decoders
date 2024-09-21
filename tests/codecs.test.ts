@@ -25,8 +25,8 @@ import {
   tuple,
   undefinedOr,
   unknown,
-} from "..";
-import { run } from "./helpers";
+} from "../index.js";
+import { run } from "./helpers.js";
 
 test("unknown", () => {
   expect(run(unknown, true)).toBe(true);
@@ -1332,7 +1332,7 @@ describe("taggedUnion", () => {
     expect(() =>
       taggedUnion("__proto__", [{ __proto__: tag("Test") }]),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"taggedUnion: decoded common field cannot be __proto__"',
+      `[Error: taggedUnion: decoded common field cannot be __proto__]`,
     );
   });
 
@@ -1342,7 +1342,7 @@ describe("taggedUnion", () => {
       //   Source has 0 element(s) but target requires 1.
       taggedUnion("tag", []),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"taggedUnion: Got unusable encoded common field: undefined"',
+      `[Error: taggedUnion: Got unusable encoded common field: undefined]`,
     );
   });
 
@@ -1375,7 +1375,7 @@ describe("taggedUnion", () => {
         { tag: tag("B", { renameFieldFrom: "type" }) },
       ]),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"taggedUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"tag\\")."',
+      `[Error: taggedUnion: Variant at index 1: Key "tag": Got a different encoded field name ("type") than before ("tag").]`,
     );
   });
 
@@ -1387,7 +1387,7 @@ describe("taggedUnion", () => {
         { tag: tag("B", { renameFieldFrom: "type" }) },
       ]),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"taggedUnion: Variant at index 1: Key \\"tag\\": Got a different encoded field name (\\"type\\") than before (\\"other\\")."',
+      `[Error: taggedUnion: Variant at index 1: Key "tag": Got a different encoded field name ("type") than before ("other").]`,
     );
   });
 
@@ -1592,7 +1592,7 @@ describe("taggedUnion", () => {
       // @ts-expect-error Type '"Three"' is not assignable to type '"One" | "Two"'.
       codec.encoder({ tag: "Three" }),
     ).toThrowErrorMatchingInlineSnapshot(
-      '"taggedUnion: Unexpectedly found no encoder for decoded variant name: \\"Three\\" at key \\"tag\\""',
+      `[Error: taggedUnion: Unexpectedly found no encoder for decoded variant name: "Three" at key "tag"]`,
     );
   });
 
@@ -1950,10 +1950,8 @@ describe("tuple", () => {
       Got: 3
     `);
 
-    expect(
-      // eslint-disable-next-line no-sparse-arrays
-      run(codec, [1, "a", true, 2, "too", , , "many"]),
-    ).toMatchInlineSnapshot(`
+    expect(run(codec, [1, "a", true, 2, "too", , , "many"]))
+      .toMatchInlineSnapshot(`
       At root:
       Expected 4 items
       Got: 8
@@ -2402,7 +2400,7 @@ describe("undefinedOr", () => {
 
     // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'never'.
     expect(() => codec.encoder(1)).toThrowErrorMatchingInlineSnapshot(
-      '"never"',
+      `[Error: never]`,
     );
   });
 
@@ -2571,7 +2569,7 @@ describe("nullOr", () => {
 
     // @ts-expect-error Argument of type 'number' is not assignable to parameter of type 'never'.
     expect(() => codec.encoder(1)).toThrowErrorMatchingInlineSnapshot(
-      '"never"',
+      `[Error: never]`,
     );
   });
 

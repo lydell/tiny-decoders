@@ -3,8 +3,10 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "NodeNext",
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
@@ -23,6 +25,7 @@
     "scripts",
     "tests",
     "examples",
-    "build"
+    "build",
+    "coverage"
   ]
 }

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { Codec, DecoderResult, fields, number, string } from "../";
+import { Codec, DecoderResult, fields, number, string } from "../index.js";
 
 test("type annotations", () => {
   // First, a small test type and a function that receives it:

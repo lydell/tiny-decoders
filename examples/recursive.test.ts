@@ -10,7 +10,7 @@ import {
   record,
   recursive,
   string,
-} from "../";
+} from "../index.js";
 
 test("recursive data structure", () => {
   // Consider this recursive data structure:

@@ -10,7 +10,7 @@ import {
   number,
   string,
   unknown,
-} from "..";
+} from "../index.js";
 
 expect.addSnapshotSerializer({
   test: (value: unknown): boolean => typeof value === "string",

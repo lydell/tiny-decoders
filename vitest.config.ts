@@ -5,7 +5,9 @@ export default defineConfig({
     coverage: {
       enabled: true,
       include: ["index.ts"],
-      100: true,
+      thresholds: {
+        100: true,
+      },
     },
   },
 });

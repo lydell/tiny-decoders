@@ -14,21 +14,21 @@ import {
   number,
   primitiveUnion,
   string,
-} from "..";
-import { run } from "../tests/helpers";
+} from "../index.js";
+import { run } from "../tests/helpers.js";
 
 test("making a type from a codec", () => {
   // Rather than first typing out a `type` for `Person` and then essentially
   // typing the same thing again in the codec (especially `fields` codecs
   // look almost identical to the `type` they decode to!), you can start with the
   // codec and extract the type afterwards with tiny-decoder’s `Infer` utility.
-  const personCodec = fields({
+  const _personCodec = fields({
     name: string,
     age: number,
   });
 
   // Hover over `Person` to see what it looks like!
-  type Person = Infer<typeof personCodec>;
+  type Person = Infer<typeof _personCodec>;
   expectType<TypeEqual<Person, { name: string; age: number }>>(true);
 
   // If it feels like you are specifying everything twice – once in a `type` or

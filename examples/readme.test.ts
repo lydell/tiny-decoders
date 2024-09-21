@@ -12,8 +12,8 @@ import {
   number,
   string,
   undefinedOr,
-} from "..";
-import { run } from "../tests/helpers";
+} from "../index.js";
+import { run } from "../tests/helpers.js";
 
 test("the main readme example", () => {
   type User = {
