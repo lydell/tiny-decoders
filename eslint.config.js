@@ -145,7 +145,10 @@ export default typescriptEslint.config(
       ],
       "@typescript-eslint/switch-exhaustiveness-check": [
         error,
-        { allowDefaultCaseForExhaustiveSwitch: false },
+        {
+          allowDefaultCaseForExhaustiveSwitch: false,
+          requireDefaultForNonUnion: true,
+        },
       ],
       "@typescript-eslint/triple-slash-reference": warn,
       "@typescript-eslint/unbound-method": error,
