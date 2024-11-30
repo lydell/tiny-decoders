@@ -212,10 +212,12 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <th><a href="#fields">fields</a></th>
 <td><pre>(mapping: {
  field1: Codec&lt;T1&gt;,
- field2: Field&lt;T2,
-  {optional: true}&gt;,
- field3: Field&lt;T3,
-  {renameFrom: "field_3"}&gt;,
+ field2:
+  Field&lt;T2,
+   { optional: true }&gt;,
+ field3:
+  Field&lt;T3,
+   { renameFrom: "field_3" }&gt;,
  fieldN: Codec&lt;TN&gt;
 }) =&gt; Codec&lt;{
  field1: T1,
