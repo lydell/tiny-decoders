@@ -245,7 +245,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <td><pre>(
   codec: Codec&lt;Decoded&gt;,
   meta: Meta,
-): Field&lt;Decoded, Meta&gt;</pre></td>
+) => Field&lt;Decoded, Meta&gt;</pre></td>
 <td>n/a</td>
 <td>n/a, only used with <code>fields</code></td>
 </tr>
@@ -266,7 +266,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <td><pre>(
   decoded: "string literal",
   options?: Options,
-): Field&lt;"string literal", Meta&gt;</pre></td>
+) => Field&lt;"string literal", Meta&gt;</pre></td>
 <td>string</td>
 <td><code>"string literal"</code></td>
 </tr>
