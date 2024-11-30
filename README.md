@@ -265,7 +265,8 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <td><pre>(
  decoded: "string literal",
  options?: Options,
-) =&gt; Field&lt;"string literal", Meta&gt;</pre></td>
+) =&gt;
+ Field&lt;"string literal", Meta&gt;</pre></td>
 <td>string</td>
 <td><code>"string literal"</code></td>
 </tr>
