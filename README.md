@@ -287,9 +287,12 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
  "type2",
  "type10"
 ]) =&gt; Codec&lt;
- { type: "type1", value: type1 }
- | { type: "type2", value: type2 }
- | { type: "type10", value: type10 }
+   { type: "type1",
+     value: type1 }
+ | { type: "type2",
+     value: type2 }
+ | { type: "type10",
+     value: type10 }
 &gt;</pre></td>
 <td>you decide</td>
 <td>A subset of: <pre>{ type: "undefined"; value: undefined }
