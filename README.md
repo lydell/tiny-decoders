@@ -172,7 +172,7 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 </tr>
 <th><a href="#primitiveunion">primitiveUnion</a></th>
 <td><pre>(variants: [
- "string1",
+  "string1",
   "string2",
   "stringN",
   1,
