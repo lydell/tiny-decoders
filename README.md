@@ -172,21 +172,20 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 </tr>
 <th><a href="#primitiveunion">primitiveUnion</a></th>
 <td><pre>(variants: [
-  "string1",
+ "string1",
   "string2",
   "stringN",
   1,
   2,
   true
-]) =&gt;
-  Codec&lt;
-    "string1"
-    | "string2"
-    | "stringN"
-    | 1
-    | 2
-    | true
-  &gt;</pre></td>
+]) =&gt; Codec&lt;
+ "string1"
+ | "string2"
+ | "stringN"
+ | 1
+ | 2
+ | true
+&gt;</pre></td>
 <td>string, number, boolean, null</td>
 <td><pre>"string1"
 | "string2"
@@ -198,101 +197,99 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 <tr>
 <th><a href="#array">array</a></th>
 <td><pre>(decoder: Codec&lt;T&gt;) =&gt;
-  Codec&lt;Array&lt;T&gt;&gt;</pre></td>
+ Codec&lt;Array&lt;T&gt;&gt;</pre></td>
 <td>array</td>
 <td><code>Array&lt;T&gt;</code></td>
 </tr>
 <tr>
 <th><a href="#record">record</a></th>
 <td><pre>(decoder: Codec&lt;T&gt;) =&gt;
-  Codec&lt;Record&lt;string, T&gt;&gt;</pre></td>
+ Codec&lt;Record&lt;string, T&gt;&gt;</pre></td>
 <td>object</td>
 <td><code>Record&lt;string, T&gt;</code></td>
 </tr>
 <tr>
 <th><a href="#fields">fields</a></th>
 <td><pre>(mapping: {
-  field1: Codec&lt;T1&gt;,
-  field2: Field&lt;T2, {optional: true}&gt;,
-  field3: Field&lt;T3, {renameFrom: "field_3"}&gt;,
-  fieldN: Codec&lt;TN&gt;
-}) =&gt;
-  Codec&lt;{
-    field1: T1,
-    field2?: T2,
-    field3: T3,
-    fieldN: TN
-  }&gt;</pre></td>
+ field1: Codec&lt;T1&gt;,
+ field2: Field&lt;T2,
+  {optional: true}&gt;,
+ field3: Field&lt;T3,
+  {renameFrom: "field_3"}&gt;,
+ fieldN: Codec&lt;TN&gt;
+}) =&gt; Codec&lt;{
+ field1: T1,
+ field2?: T2,
+ field3: T3,
+ fieldN: TN
+}&gt;</pre></td>
 <td><pre>{
-  "field1": ...,
-  "field2": ...,
-  "field_3": ...,
-  "fieldN": ...
+ "field1": ...,
+ "field2": ...,
+ "field_3": ...,
+ "fieldN": ...
 }</pre> or: <pre>{
-  "field1": ...,
-  "field_3": ...,
-  "fieldN": ...
+ "field1": ...,
+ "field_3": ...,
+ "fieldN": ...
 }</pre></td>
 <td><pre>{
-  field1: T1,
-  field2?: T2,
-  field3: T3,
-  fieldN: TN
+ field1: T1,
+ field2?: T2,
+ field3: T3,
+ fieldN: TN
 }</pre></td>
 </tr>
 <tr>
 <th><a href="#field">field</a></th>
 <td><pre>(
-  codec: Codec&lt;Decoded&gt;,
-  meta: Meta,
-) => Field&lt;Decoded, Meta&gt;</pre></td>
+ codec: Codec&lt;Decoded&gt;,
+ meta: Meta,
+) =&gt; Field&lt;Decoded, Meta&gt;</pre></td>
 <td>n/a</td>
 <td>n/a, only used with <code>fields</code></td>
 </tr>
 <tr>
 <th><a href="#taggedunion">taggedUnion</a></th>
 <td><pre>(
-  decodedCommonField: string,
-  variants: Array&lt;
-    Parameters&lt;typeof fields&gt;[0]
-  &gt;,
-) =&gt;
-  Codec&lt;T1 | T2 | TN&gt;</pre></td>
+ decodedCommonField: string,
+ variants: Array&lt;
+  Parameters&lt;typeof fields&gt;[0]
+ &gt;,
+) =&gt; Codec&lt;T1 | T2 | TN&gt;</pre></td>
 <td>object</td>
 <td><code>T1 | T2 | TN</code></td>
 </tr>
 <tr>
 <th><a href="#tag">tag</a></th>
 <td><pre>(
-  decoded: "string literal",
-  options?: Options,
-) => Field&lt;"string literal", Meta&gt;</pre></td>
+ decoded: "string literal",
+ options?: Options,
+) =&gt; Field&lt;"string literal", Meta&gt;</pre></td>
 <td>string</td>
 <td><code>"string literal"</code></td>
 </tr>
 <tr>
 <th><a href="#tuple">tuple</a></th>
 <td><pre>(codecs: [
-  Codec&lt;T1&gt;,
-  Codec&lt;T2&gt;,
-  Codec&lt;TN&gt;
-]) =&gt;
-  Codec&lt;[T1, T2, TN]&gt;</pre></td>
+ Codec&lt;T1&gt;,
+ Codec&lt;T2&gt;,
+ Codec&lt;TN&gt;
+]) =&gt; Codec&lt;[T1, T2, TN]&gt;</pre></td>
 <td>array</td>
 <td><code>[T1, T2, TN]</code></td>
 </tr>
 <tr>
 <th><a href="#multi">multi</a></th>
 <td><pre>(types: [
-  "type1",
-  "type2",
-  "type10"
-]) =&gt;
-  Codec&lt;
-    { type: "type1", value: type1 }
-    | { type: "type2", value: type2 }
-    | { type: "type10", value: type10 }
-  &gt;</pre></td>
+ "type1",
+ "type2",
+ "type10"
+]) =&gt; Codec&lt;
+ { type: "type1", value: type1 }
+ | { type: "type2", value: type2 }
+ | { type: "type10", value: type10 }
+&gt;</pre></td>
 <td>you decide</td>
 <td>A subset of: <pre>{ type: "undefined"; value: undefined }
 | { type: "null"; value: null }
@@ -307,48 +304,47 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
 </tr>
 <tr>
 <th><a href="#recursive">recursive</a></th>
-<td><pre>(callback: () => Codec&lt;T&gt;) =&gt;
-  Codec&lt;T&gt;</pre></td>
+<td><pre>(callback: () =&gt; Codec&lt;T&gt;) =&gt;
+ Codec&lt;T&gt;</pre></td>
 <td>n/a</td>
 <td><code>T</code></td>
 </tr>
 <tr>
 <th><a href="#undefinedor">undefinedOr</a></th>
 <td><pre>(codec: Codec&lt;T&gt;) =&gt;
-  Codec&lt;T | undefined&gt;</pre></td>
+ Codec&lt;T | undefined&gt;</pre></td>
 <td>undefined or …</td>
 <td><code>T | undefined</code></td>
 </tr>
 <tr>
 <th><a href="#nullOr">nullOr</a></th>
 <td><pre>(codec: Codec&lt;T&gt;) =&gt;
-  Codec&lt;T | null&gt;</pre></td>
+ Codec&lt;T | null&gt;</pre></td>
 <td>null or …</td>
 <td><code>T | null</code></td>
 </tr>
 <tr>
 <th><a href="#map">map</a></th>
 <td><pre>(
-  codec: Codec&lt;T&gt;,
-  transform: {
-    decoder: (value: T) =&gt; U;
-    encoder: (value: U) =&gt; T;
-  },
-) =&gt;
-  Codec&lt;U&gt;</pre></td>
+ codec: Codec&lt;T&gt;,
+ transform: {
+  decoder: (value: T) =&gt; U;
+  encoder: (value: U) =&gt; T;
+ },
+) =&gt; Codec&lt;U&gt;</pre></td>
 <td>n/a</td>
 <td><code>U</code></td>
 </tr>
 <tr>
 <th><a href="#flatmap">flatMap</a></th>
 <td><pre>(
-  decoder: Codec&lt;T&gt;,
-  transform: {
-    decoder: (value: T) =&gt; DecoderResult&lt;U&gt;;
-    encoder: (value: U) =&gt; T;
-  },
-) =&gt;
-  Codec&lt;U&gt;</pre></td>
+ decoder: Codec&lt;T&gt;,
+ transform: {
+  decoder: (value: T) =&gt;
+   DecoderResult&lt;U&gt;;
+  encoder: (value: U) =&gt; T;
+ },
+) =&gt; Codec&lt;U&gt;</pre></td>
 <td>n/a</td>
 <td><code>U</code></td>
 </tr>
