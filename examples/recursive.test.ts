@@ -20,15 +20,15 @@ test("recursive data structure", () => {
   };
 
   // This wouldn’t work to decode it, because we’re trying to use
-  // `personDecoder` in the definition of `personDecoder` itself.
+  // `personCodec` in the definition of `personCodec` itself.
   /*
   const personCodec = fields<Person>({
     name: string,
-    friends: array(personDecoder2), // ReferenceError: Cannot access 'personDecoder2' before initialization
+    friends: array(personCodec), // ReferenceError: Cannot access 'personCodec' before initialization
   });
   */
 
-  // `recursive` lets us delay when `personDecoder` is referenced, solving the
+  // `recursive` lets us delay when `personCodec` is referenced, solving the
   // issue.
   const personCodec: Codec<Person> = fields({
     name: string,

@@ -21,7 +21,7 @@ test("decode constrained", () => {
   });
 
   // `.decoder` of a codec usually accepts `unknown` – you can pass in anything.
-  // This function constrains us constrain so we can only decode what the codec
+  // This function constrains us so that we can only decode what the codec
   // has encoded.
   function decodeConstrained<Decoded, Encoded>(
     codec: Codec<Decoded, Encoded>,
