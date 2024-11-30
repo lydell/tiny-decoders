@@ -299,16 +299,26 @@ Here’s a summary of all codecs (with slightly simplified type annotations) and
      value: type10 }
 &gt;</pre></td>
 <td>you decide</td>
-<td>A subset of: <pre>{ type: "undefined"; value: undefined }
-| { type: "null"; value: null }
-| { type: "boolean"; value: boolean }
-| { type: "number"; value: number }
-| { type: "bigint"; value: bigint }
-| { type: "string"; value: string }
-| { type: "symbol"; value: symbol }
-| { type: "function"; value: Function }
-| { type: "array"; value: Array<unknown> }
-| { type: "object"; value: Record<string, unknown> }</pre></td>
+<td>A subset of: <pre>  { type: "undefined";
+    value: undefined }
+| { type: "null";
+    value: null }
+| { type: "boolean";
+    value: boolean }
+| { type: "number";
+    value: number }
+| { type: "bigint";
+    value: bigint }
+| { type: "string";
+    value: string }
+| { type: "symbol";
+    value: symbol }
+| { type: "function";
+    value: Function }
+| { type: "array";
+    value: Array<unknown> }
+| { type: "object";
+    value: Record<string, unknown> }</pre></td>
 </tr>
 <tr>
 <th><a href="#recursive">recursive</a></th>
