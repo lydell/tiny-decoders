@@ -155,7 +155,8 @@ test("circular objects", () => {
   };
 
   // Make the object circular:
-  alice.likes = bob;
+  // Make the object circular:
+  alice["likes"] = bob;
 
   // Calling the decoder would cause infinite recursion!
   // So be careful when working with recursive data!

@@ -424,8 +424,8 @@ test("object", () => {
   `,
   );
   const circular: Record<string, unknown> = {};
-  circular.circular = circular;
-  circular.other = { a: [{ other: 1, circular }] };
+  circular["circular"] = circular;
+  circular["other"] = { a: [{ other: 1, circular }] };
   expect(repr(circular, { depth: Infinity })).toMatchInlineSnapshot(`
     {
       "circular": circular Object(2),
