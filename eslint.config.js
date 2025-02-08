@@ -67,6 +67,7 @@ export default typescriptEslint.config(
       "@typescript-eslint/no-invalid-this": error,
       "@typescript-eslint/no-invalid-void-type": error,
       "@typescript-eslint/no-misused-promises": error,
+      "@typescript-eslint/no-misused-spread": error,
       "@typescript-eslint/no-namespace": error,
       "@typescript-eslint/no-non-null-assertion": error,
       "@typescript-eslint/no-redundant-type-constituents": error,
@@ -147,6 +148,7 @@ export default typescriptEslint.config(
         error,
         {
           allowDefaultCaseForExhaustiveSwitch: false,
+          considerDefaultExhaustiveForUnions: true,
           requireDefaultForNonUnion: true,
         },
       ],
