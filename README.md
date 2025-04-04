@@ -14,7 +14,10 @@ npm install tiny-decoders
 
 tiny-decoders requires TypeScript 5+ (because it uses [const type parameters](https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/#const-type-parameters)).
 
-It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json` – see the note at the [field](#field) function.
+It is recommended to enable the following `tsconfig.json` options:
+
+- [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) – see the note at the [field](#field) function.
+- [strictFunctionTypes](https://www.typescriptlang.org/tsconfig#strictFunctionTypes) – see [issue 50](https://github.com/lydell/tiny-decoders/issues/50) (which also contains a workaround if you aren’t able to turn this option on). This option is included in the [strict](https://www.typescriptlang.org/tsconfig/#strict) option.
 
 Note that it is possible to use tiny-decoders in plain JavaScript without type checking as well.
 
