@@ -138,14 +138,8 @@ type Codec<Decoded, Encoded = unknown> = {
 };
 
 type DecoderResult<Decoded> =
-  | {
-      tag: "DecoderError";
-      error: DecoderError;
-    }
-  | {
-      tag: "Valid";
-      value: Decoded;
-    };
+  | { tag: "DecoderError"; error: DecoderError }
+  | { tag: "Valid"; value: Decoded };
 ```
 
 A codec is an object with a decoder and an encoder.
@@ -469,6 +463,24 @@ Codec for a JSON string, and a TypeScript `string`.
 ### primitiveUnion
 
 ```ts
+type Color = "green" | "red";
+
+const colorCodec: Codec<Color> = primitiveUnion(["green", "red"]);
+```
+
+Codec for a set of specific primitive values, and a TypeScript union of those values.
+
+It takes one parameter (`variants`), which is an array of the values you want.
+
+Notes:
+
+- You must provide at least one variant.
+- If you provide exactly one variant, you get a codec for a single, constant, exact value (a union with just one variant).
+- If you have an object and want to use its keys for a string union there’s an example of that in the [type inference example](examples/type-inference.test.ts).
+
+Full type definition:
+
+```ts
 function primitiveUnion<
   const Variants extends readonly [primitive, ...Array<primitive>],
 >(variants: Variants): Codec<Variants[number], Variants[number]>;
@@ -476,21 +488,19 @@ function primitiveUnion<
 type primitive = bigint | boolean | number | string | symbol | null | undefined;
 ```
 
-Codec for a set of specific primitive values, and a TypeScript union of those values.
-
-The `variants` is an array of the values you want. You must provide at least one variant. If you provide exactly one variant, you get a codec for a single, constant, exact value (a union with just one variant).
-
-If you have an object and want to use its keys for a string union there’s an example of that in the [type inference example](examples/type-inference.test.ts).
-
-Example:
+### array
 
 ```ts
-type Color = "green" | "red";
-
-const colorCodec: Codec<Color> = primitiveUnion(["green", "red"]);
+const stringsCodec: Codec<Array<string>> = array(string);
 ```
 
-### array
+Codec for a JSON array, and a TypeScript `Array`.
+
+It takes one parameter (`codec`), which is a codec for each item of the array.
+
+As shown in the example above, `array(string)` is a codec for an array of strings (`Array<string>`).
+
+Full type definition:
 
 ```ts
 function array<DecodedItem, EncodedItem>(
@@ -498,13 +508,19 @@ function array<DecodedItem, EncodedItem>(
 ): Codec<Array<DecodedItem>, Array<EncodedItem>>;
 ```
 
-Codec for a JSON array, and a TypeScript `Array`.
-
-The passed `codec` is for each item of the array.
-
-For example, `array(string)` is a codec for an array of strings (`Array<string>`).
-
 ### record
+
+```ts
+const countsCodec: Codec<Record<string, number>> = record(number);
+```
+
+Codec for a JSON object, and a TypeScript `Record`. (Yes, this function is named after TypeScript’s type. Other languages call this a “dict”.)
+
+It takes one parameter (`codec`), which is a codec for each value of the object.
+
+As shown in the example above, `record(number)` is a codec for an object where the keys can be any strings and the values are numbers (`Record<string, number>`).
+
+Full type definition:
 
 ```ts
 function record<DecodedValue, EncodedValue>(
@@ -512,13 +528,36 @@ function record<DecodedValue, EncodedValue>(
 ): Codec<Record<string, DecodedValue>, Record<string, EncodedValue>>;
 ```
 
-Codec for a JSON object, and a TypeScript `Record`. (Yes, this function is named after TypeScript’s type. Other languages call this a “dict”.)
-
-The passed `codec` is for each value of the object.
-
-For example, `record(number)` is a codec for an object where the keys can be anything and the values are numbers (`Record<string, number>`).
-
 ### fields
+
+```ts
+type User = {
+  name: string;
+  age?: number;
+  active: boolean;
+};
+
+const userCodec: Codec<User> = fields({
+  name: string,
+  age: field(number, { optional: true }),
+  active: field(boolean, { renameFrom: "is_active" }),
+});
+```
+
+Codec for a JSON object with certain fields, and a TypeScript object type (also called interface) with known fields.
+
+It takes one main parameter (`mapping`), which is an object with the keys you want in your TypeScript object. The values are either `Codec`s or `Field`s. A `Field` is just a `Codec` with some metadata: Whether the field is optional, and whether the field has a different name in the JSON object. Passing a plain `Codec` instead of a `Field` is just a convenience shortcut for passing a `Field` with the default metadata (the field is required, and has the same name both in TypeScript and in JSON).
+
+Use the [field](#field) function to create a `Field` – use it when you need to mark a field as optional, or when it has a different name in JSON than in TypeScript.
+
+`fields` also takes an `allowExtraFields` option, which lets you choose between ignoring extraneous fields and making it an error.
+
+- `true` (default) allows extra fields on the object.
+- `false` returns a `DecoderError` for extra fields.
+
+See also the [Extra fields](examples/extra-fields.test.ts) example.
+
+Full type definition (it’s a bit of a mouthful and looks much more complicated than using `fields` actually is):
 
 ```ts
 function fields<Mapping extends FieldsMapping>(
@@ -545,54 +584,12 @@ type InferFields<Mapping extends FieldsMapping> = magic;
 type InferEncodedFields<Mapping extends FieldsMapping> = magic;
 ```
 
-Codec for a JSON object with certain fields, and a TypeScript object type/interface with known fields.
-
-The `mapping` parameter is an object with the keys you want in your TypeScript object. The values are either `Codec`s or `Field`s. A `Field` is just a `Codec` with some metadata: Whether the field is optional, and whether the field has a different name in the JSON object. Passing a plain `Codec` instead of a `Field` is just a convenience shortcut for passing a `Field` with the default metadata (the field is required, and has the same name both in TypeScript and in JSON).
-
-Use the [field](#field) function to create a `Field` – use it when you need to mark a field as optional, or when it has a different name in JSON than in TypeScript.
-
-Example:
-
-```ts
-type User = {
-  name: string;
-  age?: number;
-  active: boolean;
-};
-
-const userCodec: Codec<User> = fields({
-  name: string,
-  age: field(number, { optional: true }),
-  active: field(boolean, { renameFrom: "is_active" }),
-});
-```
-
-The `allowExtraFields` option lets you choose between ignoring extraneous fields and making it an error.
-
-- `true` (default) allows extra fields on the object.
-- `false` returns a `DecoderError` for extra fields.
-
-See also the [Extra fields](examples/extra-fields.test.ts) example.
-
 ### field
 
 ```ts
-function field<Decoded, Encoded, const Meta extends Omit<FieldMeta, "tag">>(
-  codec: Codec<Decoded, Encoded>,
-  meta: Meta,
-): Field<Decoded, Encoded, Meta>;
-
-type Field<Decoded, Encoded, Meta extends FieldMeta> = Meta & {
-  codec: Codec<Decoded, Encoded>;
-};
-
-type FieldMeta = {
-  renameFrom?: string | undefined;
-  optional?: boolean | undefined;
-  tag?: { decoded: primitive; encoded: primitive } | undefined;
-};
-
-type primitive = bigint | boolean | number | string | symbol | null | undefined;
+const optionalFieldCodec: Codec<{ maybe?: string }> = fields({
+  maybe: field(string, { optional: true }),
+});
 ```
 
 This function takes a codec and lets you:
@@ -602,8 +599,6 @@ This function takes a codec and lets you:
 - Both: `field(string, { optional: true, renameFrom: "some_name" })`
 
 Use it with [fields](#fields).
-
-The `tag` thing is handled by the [tag](#tag) function. It’s not something you’ll set manually using `field`. (That’s why the type annotation says `Omit<FieldMeta, "tag">`.)
 
 Here’s an example illustrating the difference between `field(string, { optional: true })` and `undefinedOr(string)`:
 
@@ -634,15 +629,36 @@ type Example = {
 };
 ```
 
+Full type definition:
+
+```ts
+function field<Decoded, Encoded, const Meta extends Omit<FieldMeta, "tag">>(
+  codec: Codec<Decoded, Encoded>,
+  meta: Meta,
+): Field<Decoded, Encoded, Meta>;
+
+type Field<Decoded, Encoded, Meta extends FieldMeta> = Meta & {
+  codec: Codec<Decoded, Encoded>;
+};
+
+type FieldMeta = {
+  renameFrom?: string | undefined;
+  optional?: boolean | undefined;
+  tag?: { decoded: primitive; encoded: primitive } | undefined;
+};
+
+type primitive = bigint | boolean | number | string | symbol | null | undefined;
+```
+
+The `tag` thing is handled by the [tag](#tag) function. It’s not something you’ll set manually using `field`. (That’s why the type annotation says `Omit<FieldMeta, "tag">`.)
+
 > [!WARNING]  
 > It is recommended to enable the [exactOptionalPropertyTypes](https://www.typescriptlang.org/tsconfig#exactOptionalPropertyTypes) option in `tsconfig.json`.
 >
 > Why? Let’s take this codec as an example:
 >
 > ```ts
-> const exampleCodec = fields({
->   name: field(string, { optional: true }),
-> });
+> const exampleCodec = fields({ name: field(string, { optional: true }) });
 > ```
 >
 > With `exactOptionalPropertyTypes` enabled, the inferred type for `exampleCodec` is:
@@ -672,6 +688,41 @@ type Example = {
 > All in all, you avoid a slight gotcha with optional fields and inferred types if you enable `exactOptionalPropertyTypes`.
 
 ### taggedUnion
+
+```ts
+type Shape =
+  | { tag: "Circle"; radius: number }
+  | { tag: "Rectangle"; width: number; height: number };
+
+const shapeCodec: Codec<Shape> = taggedUnion("tag", [
+  {
+    tag: tag("Circle"),
+    radius: number,
+  },
+  {
+    tag: tag("Rectangle"),
+    width: field(number, { renameFrom: "width_px" }),
+    height: field(number, { renameFrom: "height_px" }),
+  },
+]);
+```
+
+Codec for JSON objects with a common field (that tells them apart), and a TypeScript tagged union type.
+
+The first parameter (`decodedCommonField`) is the name of the common field.
+
+The second parameter (`variants`) is an array of objects. Those objects are “`fields` objects” – they fit when passed to `fields` as well. All of those objects must have `decodedCommonField` as a key, and use the [tag](#tag) function on that key (that’s the field also called `tag` in the example above).
+
+`taggedUnion` also takes an `allowExtraFields` option, which works just like for [fields](#fields).
+
+See also these examples:
+
+- [Renaming union field](examples/renaming-union-field.test.ts)
+- [`taggedUnion` with common fields](examples/taggedUnion-with-common-fields.test.ts)
+
+Note: If you use the same tag value twice, the last one wins. TypeScript infers a type with two variants with the same tag (which is a valid type), but tiny-decoders can’t tell them apart. Nothing will ever decode to the first one, only the last one will succeed. Trying to encode the first one might result in bad data.
+
+Full type definition (just like `fields` it’s a bit complicated):
 
 ```ts
 function taggedUnion<
@@ -704,40 +755,26 @@ type InferEncodedFieldsUnion<MappingsUnion extends FieldsMapping> = magic;
 // See `fields` for the definitions of `Field`, `FieldMeta` and `FieldsMapping`.
 ```
 
-Codec for JSON objects with a common field (that tells them apart), and a TypeScript tagged union type.
-
-The `decodedCommonField` is the name of the common field.
-
-`variants` is an array of objects. Those objects are “`fields` objects” – they fit when passed to `fields` as well. All of those objects must have `decodedCommonField` as a key, and use the [tag](#tag) function on that key.
+### tag
 
 ```ts
-type Shape =
-  | { tag: "Circle"; radius: number }
-  | { tag: "Rectangle"; width: number; height: number };
-
-const shapeCodec: Codec<Shape> = taggedUnion("tag", [
-  {
-    tag: tag("Circle"),
-    radius: number,
-  },
-  {
-    tag: tag("Rectangle"),
-    width: field(number, { renameFrom: "width_px" }),
-    height: field(number, { renameFrom: "height_px" }),
-  },
-]);
+const directionCodec: Codec<{ tag: "Left" } | { tag: "Right" }> = taggedUnion(
+  "tag",
+  [{ tag: tag("Left") }, { tag: tag("Right") }],
+);
 ```
 
-The `allowExtraFields` option works just like for [fields](#fields).
+Used with [taggedUnion](#taggedunion), once for each variant of the union.
 
-See also these examples:
+`tag("MyTag")` returns a `Field` with a codec that requires the input `"MyTag"` and returns `"MyTag"`. The metadata of the `Field` also advertises that the tag value is `"MyTag"`, which `taggedUnion` uses to know what to do.
 
-- [Renaming union field](examples/renaming-union-field.test.ts)
-- [`taggedUnion` with common fields](examples/taggedUnion-with-common-fields.test.ts)
+`tag("MyTag", { renameTagFrom: "my_tag" })` returns a `Field` with a codec that requires the input `"my_tag"` but returns `"MyTag"`.
 
-Note: If you use the same tag value twice, the last one wins. TypeScript infers a type with two variants with the same tag (which is a valid type), but tiny-decoders can’t tell them apart. Nothing will ever decode to the first one, only the last one will succeed. Trying to encode the first one might result in bad data.
+`tag("MyTag", { renameFieldFrom: "otherFieldName" })` lets you use another common field name in TypeScript than in JSON – see the [Renaming union field](examples/renaming-union-field.test.ts) example.
 
-### tag
+You will typically use string tags for your tagged unions, but other primitive types such as `boolean` and `number` are supported too.
+
+Full type definition:
 
 ```ts
 function tag<
@@ -746,10 +783,7 @@ function tag<
   const EncodedFieldName extends string,
 >(
   decoded: Decoded,
-  options: {
-    renameTagFrom?: Encoded;
-    renameFieldFrom?: EncodedFieldName;
-  } = {},
+  options: { renameTagFrom?: Encoded; renameFieldFrom?: EncodedFieldName } = {},
 ): Field<
   Decoded,
   Encoded,
@@ -762,17 +796,21 @@ function tag<
 type primitive = bigint | boolean | number | string | symbol | null | undefined;
 ```
 
-Used with [taggedUnion](#taggedunion), once for each variant of the union.
-
-`tag("MyTag")` returns a `Field` with a codec that requires the input `"MyTag"` and returns `"MyTag"`. The metadata of the `Field` also advertises that the tag value is `"MyTag"`, which `taggedUnion` uses to know what to do.
-
-`tag("MyTag", { renameTagFrom: "my_tag" })` returns a `Field` with a codec that requires the input `"my_tag"` but returns `"MyTag"`.
-
-For `renameFieldFrom`, see the [Renaming union field](examples/renaming-union-field.test.ts) example.
-
-You will typically use string tags for your tagged unions, but other primitive types such as `boolean` and `number` are supported too.
-
 ### tuple
+
+```ts
+type Point = [number, number];
+
+const pointCodec: Codec<Point> = tuple([number, number]);
+```
+
+Codec for a JSON array, and a TypeScript tuple. They both must have the exact same length, otherwise the decoder fails.
+
+It takes one parameter (`codecs`), which is a tuple of codecs, one codec per slot in the tuple.
+
+See the [tuples example](examples/tuples.test.ts) for more details.
+
+Full type definition:
 
 ```ts
 function tuple<const Codecs extends ReadonlyArray<Codec<any>>>(
@@ -784,19 +822,45 @@ type InferTuple<Codecs extends ReadonlyArray<Codec<any>>> = magic;
 type InferEncodedTuple<Codecs extends ReadonlyArray<Codec<any>>> = magic;
 ```
 
-Codec for a JSON array, and a TypeScript tuple. They both must have the exact same length, otherwise the decoder fails.
-
-Example:
+### multi
 
 ```ts
-type Point = [number, number];
+type Id = { tag: "Id"; id: string } | { tag: "LegacyId"; id: number };
 
-const pointCodec: Codec<Point> = tuple([number, number]);
+const idCodec: Codec<Id> = map(multi(["string", "number"]), {
+  decoder: (value) => {
+    switch (value.type) {
+      case "string":
+        return { tag: "Id" as const, id: value.value };
+      case "number":
+        return { tag: "LegacyId" as const, id: value.value };
+    }
+  },
+  encoder: (id) => {
+    switch (id.tag) {
+      case "Id":
+        return { type: "string", value: id.id };
+      case "LegacyId":
+        return { type: "number", value: id.id };
+    }
+  },
+});
 ```
 
-See the [tuples example](examples/tuples.test.ts) for more details.
+Codec for multiple types, and a TypeScript tagged union for those types.
 
-### multi
+This is useful for supporting stuff that can be either a string or a number, for example. It lets you do a JavaScript `typeof`, basically.
+
+The type annotation for `multi` is a bit wacky, but it’s not that complicated to use. The `types` parameter is an array of strings – the wanted types. For example, you can say `["string", "number"]`. Then the decoder will give you back either `{ type: "string", value: string }` or `{ type: "number", value: number }`. You can use [map](#map) to map that to some type of choice, or [flatMap](#flatmap) to decode further. The example above shows that.
+
+The `types` strings are the same as the JavaScript [typeof](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof) returns, with two exceptions:
+
+- `null` is `"null"` instead of `"object"` (because `typeof null === "object"` is a famous mistake).
+- `array` is `"array"` instead of `"object"` (because arrays are very common).
+
+If you need to tell other objects apart, write a custom codec.
+
+Full type definition:
 
 ```ts
 function multi<Types extends readonly [MultiTypeName, ...Array<MultiTypeName>]>(
@@ -840,45 +904,31 @@ type Multi<Types> = Types extends any
   : never;
 ```
 
-Codec for multiple types, and a TypeScript tagged union for those types.
-
-This is useful for supporting stuff that can be either a string or a number, for example. It lets you do a JavaScript `typeof`, basically.
-
-The type annotation for `multi` is a bit wacky, but it’s not that complicated to use. The `types` parameter is an array of strings – the wanted types. For example, you can say `["string", "number"]`. Then the decoder will give you back either `{ type: "string", value: string }` or `{ type: "number", value: number }`. You can use [map](#map) to map that to some type of choice, or [flatMap](#flatmap) to decode further.
-
-The `types` strings are the same as the JavaScript [typeof](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof) returns, with two exceptions:
-
-- `null` is `"null"` instead of `"object"` (because `typeof null === "object"` is a famous mistake).
-- `array` is `"array"` instead of `"object"` (because arrays are very common).
-
-If you need to tell other objects apart, write a custom codec.
-
-Example:
+### recursive
 
 ```ts
-type Id = { tag: "Id"; id: string } | { tag: "LegacyId"; id: number };
+type Person = {
+  name: string;
+  friends: Array<Person>;
+};
 
-const idCodec: Codec<Id> = map(multi(["string", "number"]), {
-  decoder: (value) => {
-    switch (value.type) {
-      case "string":
-        return { tag: "Id" as const, id: value.value };
-      case "number":
-        return { tag: "LegacyId" as const, id: value.value };
-    }
-  },
-  encoder: (id) => {
-    switch (id.tag) {
-      case "Id":
-        return { type: "string", value: id.id };
-      case "LegacyId":
-        return { type: "number", value: id.id };
-    }
-  },
+const personCodec: Codec<Person> = fields({
+  name: string,
+  friends: array(recursive(() => personCodec)),
 });
 ```
 
-### recursive
+When you make a codec for a recursive data structure, you might end up with errors like:
+
+```
+ReferenceError: Cannot access 'personCodec' before initialization
+```
+
+The solution is to wrap `personCodec` in `recursive`: `recursive(() => personCodec)`. The unnecessary-looking arrow function delays the reference to `personCodec` so we’re able to define it.
+
+See the [recursive example](examples/recursive.test.ts) for more information.
+
+Full type definition:
 
 ```ts
 function recursive<Decoded, Encoded>(
@@ -886,22 +936,10 @@ function recursive<Decoded, Encoded>(
 ): Codec<Decoded, Encoded>;
 ```
 
-When you make a codec for a recursive data structure, you might end up with errors like:
-
-```
-ReferenceError: Cannot access 'myCodec' before initialization
-```
-
-The solution is to wrap `myCodec` in `recursive`: `recursive(() => myCodec)`. The unnecessary-looking arrow function delays the reference to `myCodec` so we’re able to define it.
-
-See the [recursive example](examples/recursive.test.ts) for more information.
-
 ### undefinedOr
 
 ```ts
-function undefinedOr<Decoded, Encoded>(
-  codec: Codec<Decoded, Encoded>,
-): Codec<Decoded | undefined, Encoded | undefined>;
+const undefinedOrStringCodec: Codec<undefined | string> = undefinedOr(string);
 ```
 
 Returns a new codec that also accepts `undefined`.
@@ -911,7 +949,23 @@ Notes:
 - Using `undefinedOr` does _not_ make a field in an object optional. It only allows the field to be `undefined`. Similarly, using the [field](#field) function to mark a field as optional does not allow setting the field to `undefined`, only omitting it.
 - JSON does not have `undefined` (only `null`). So `undefinedOr` is more useful when you are decoding something that does not come from JSON. However, even when working with JSON `undefinedOr` still has a use: If you infer types from codecs, using `undefinedOr` on object fields results in `| undefined` for the type of the field, which allows you to assign `undefined` to it which is occasionally useful.
 
+Full type definition:
+
+```ts
+function undefinedOr<Decoded, Encoded>(
+  codec: Codec<Decoded, Encoded>,
+): Codec<Decoded | undefined, Encoded | undefined>;
+```
+
 ### nullOr
+
+```ts
+const nullOrStringCodec: Codec<null | string> = nullOr(string);
+```
+
+Returns a new codec that also accepts `null`.
+
+Full type definition:
 
 ```ts
 function nullOr<Decoded, Encoded>(
@@ -919,9 +973,20 @@ function nullOr<Decoded, Encoded>(
 ): Codec<Decoded | null, Encoded | null>;
 ```
 
-Returns a new codec that also accepts `null`.
-
 ### map
+
+```ts
+const numberSetCodec: Codec<Set<number>> = map(array(number), {
+  decoder: (arr) => new Set(arr),
+  encoder: Array.from,
+});
+```
+
+`map` takes two parameters: `codec`, and `transform`, which is an object with two functions.
+
+Use `map` to run a function (`transform.decoder`) after a decoder (if it succeeds). The function transforms the decoded data. `transform.encoder` turns the transformed data back again.
+
+Full type definition:
 
 ```ts
 function map<const Decoded, Encoded, NewDecoded>(
@@ -933,32 +998,7 @@ function map<const Decoded, Encoded, NewDecoded>(
 ): Codec<NewDecoded, Encoded>;
 ```
 
-Run a function (`transform.decoder`) after a decoder (if it succeeds). The function transforms the decoded data. `transform.encoder` turns the transformed data back again.
-
-Example:
-
-```ts
-const numberSetCodec: Codec<Set<number>> = map(array(number), {
-  decoder: (arr) => new Set(arr),
-  encoder: Array.from,
-});
-```
-
 ### flatMap
-
-```ts
-function flatMap<const Decoded, Encoded, NewDecoded>(
-  codec: Codec<Decoded, Encoded>,
-  transform: {
-    decoder: (value: Decoded) => DecoderResult<NewDecoded>;
-    encoder: (value: NewDecoded) => Readonly<Decoded>;
-  },
-): Codec<NewDecoded, Encoded>;
-```
-
-Run a function (`transform.decoder`) after a decoder (if it succeeds). The function decodes the decoded data further, returning another `DecoderResult` which is then “flattened” (so you don’t end up with a `DecoderResult` inside a `DecoderResult`). `transform.encoder` turns the transformed data back again.
-
-Example:
 
 ```ts
 const regexCodec: Codec<RegExp> = flatMap(string, {
@@ -981,7 +1021,23 @@ const regexCodec: Codec<RegExp> = flatMap(string, {
 });
 ```
 
+`flatMap` takes two parameters: `codec`, and `transform`, which is an object with two functions.
+
+Use `flatMap` to run a function (`transform.decoder`) after a decoder (if it succeeds). The function decodes the decoded data further, returning another `DecoderResult` which is then “flattened” (so you don’t end up with a `DecoderResult` inside a `DecoderResult`). `transform.encoder` turns the transformed data back again.
+
 Note: Sometimes TypeScript has trouble inferring the return type of the `transform.decoder` function. No matter what you do, it keeps complaining. In such cases it helps to add return type annotation on the `transform.decoder` function.
+
+Full type definition:
+
+```ts
+function flatMap<const Decoded, Encoded, NewDecoded>(
+  codec: Codec<Decoded, Encoded>,
+  transform: {
+    decoder: (value: Decoded) => DecoderResult<NewDecoded>;
+    encoder: (value: NewDecoded) => Readonly<Decoded>;
+  },
+): Codec<NewDecoded, Encoded>;
+```
 
 ## DecoderError
 
@@ -1207,15 +1263,14 @@ This is a nice pattern (naming the type and the codec the same):
 
 ```ts
 type Person = Infer<typeof Person>;
-const Person = fields({
-  name: string,
-  age: number,
-});
+const Person = fields({ name: string, age: number });
 ```
 
 Note that if you don’t annotate a codec, TypeScript infers both type parameters of `Codec<Decoded, Encoded>`. But if you annotate it with `Codec<MyType>`, TypeScript does _not_ infer `Encoded` – it will become `unknown`. If you specify one type parameter, TypeScript stops inferring them altogether and requires you to specify _all_ of them – except the ones with defaults. `Encoded` defaults to `unknown`, which is usually fine, but occasionally you need to work with a more precise type for `Encoded`. Then it might even be easier to leave out the type annotation!
 
 See the [type inference example](examples/type-inference.test.ts) for more details.
+
+Some people like writing the types first, and then the codecs. Other people like writing only the codec and inferring the type. Some like both. It’s up to you to choose.
 
 ## Things left out
 
