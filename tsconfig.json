@@ -4,8 +4,6 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "module": "NodeNext",
-    "allowJs": true,
-    "checkJs": true,
     "esModuleInterop": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,

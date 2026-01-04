@@ -4,7 +4,6 @@ import * as path from "path";
 
 const DIR = path.dirname(import.meta.dirname);
 const BUILD = path.join(DIR, "build");
-const MODULE_BUILD = path.join(BUILD, "module");
 
 const READ_MORE =
   "**[➡️ Full readme](https://github.com/lydell/tiny-decoders/#readme)**";
@@ -39,24 +38,7 @@ for (const { src, dest = src, transform } of FILES_TO_COPY) {
   }
 }
 
-childProcess.execSync(
-  "npx tsc --allowJs false --checkJs false --module CommonJS --declaration",
-  { stdio: "inherit" },
-);
-
-fs.renameSync(path.join(BUILD, "index.js"), path.join(BUILD, "index.cjs"));
-
-childProcess.execSync(
-  `npx tsc --allowJs false --checkJs false --outDir ${MODULE_BUILD}`,
-  { stdio: "inherit" },
-);
-
-fs.renameSync(
-  path.join(MODULE_BUILD, "index.js"),
-  path.join(BUILD, "index.mjs"),
-);
-
-fs.rmSync(MODULE_BUILD, { recursive: true, force: true });
+childProcess.execSync("npx tsc --declaration", { stdio: "inherit" });
 
 for (const file of fs.readdirSync(BUILD)) {
   if (file.startsWith("vitest")) {

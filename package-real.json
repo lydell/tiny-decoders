@@ -4,14 +4,10 @@
   "license": "MIT",
   "author": "Simon Lydell",
   "repository": "lydell/tiny-decoders",
-  "description": "Type-safe data decoding for the minimalist.",
+  "description": "Type-safe data decoding and encoding for the minimalist.",
   "type": "module",
-  "main": "./index.cjs",
-  "module": "./index.mjs",
-  "exports": {
-    "require": { "types": "./index.d.ts", "default": "./index.cjs" },
-    "import": { "types": "./index.d.ts", "default": "./index.mjs" }
-  },
+  "exports": "./index.js",
+  "types": "./index.d.ts",
   "sideEffects": false,
   "keywords": ["decode", "decoders", "elm", "json", "typescript"]
 }
