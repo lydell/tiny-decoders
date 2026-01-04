@@ -2,6 +2,57 @@
 
 Type-safe data decoding and encoding for the minimalist.
 
+It’s similar to [zod/mini](https://zod.dev/packages/mini), but simpler. tiny-decoders is a single file, around a thousand lines of TypeScript, with rather trivial functions and a few kinda nuts TypeScript types. Unlike Zod, there are no date parsing or email validation functions or anything like that. Just decoders and encoders for all basic TypeScript types.
+
+## The problem
+
+A typical use case for tiny-decoders is making sure that JSON you read from somewhere actually looks like you expect. Consider this example:
+
+```ts
+const user = JSON.parse(someData) as User;
+
+if (user.permissions.launchRockets) {
+  launchRockets();
+}
+```
+
+`as User` makes TypeScript trust you that the JSON actually matches your `User` type, but that could lead to problems:
+
+- That `if` statement could crash with `TypeError: Cannot read properties of undefined (reading 'launchRockets')` if `user` turned out not to have `.permissions`. Maybe it’s called something else. Maybe it’s missing if the user has zero permissions. With tiny-decoders, you’d be alerted while parsing the JSON instead – where the actual problem is, instead of at a random spot in your code.
+- That `if` statement could wrongly run if it turns out that `.launchRockets` is an object (instead of a boolean), and you were actually supposed to do `if (user.permissions.launchRockets.granted)`. Oops! Launched some extra rockets there.
+
+Here’s what the code could look like with tiny-decoders (except `User` would be much longer in reality):
+
+```ts
+import { boolean, fields, format, type Infer, JSON } from "tiny-decoders";
+
+const User = fields({ permissions: fields({ launchRockets: boolean }) });
+type User = Infer<typeof User>;
+
+const userResult = JSON.parse(User, someData);
+
+if (userResult.tag === "DecoderError") {
+  throw new Error(`Failed to decode user:\n${format(userResult.error)}`);
+}
+
+const user = userResult.value;
+
+if (user.permissions.launchRockets) {
+  launchRockets();
+}
+```
+
+And here’s an error message you could get:
+
+```
+Failed to decode user:
+At root["permissions"]["launchRockets"]:
+Expected a boolean
+Got: {
+  "granted": false
+}
+```
+
 ## Installation
 
 ```
@@ -53,6 +104,7 @@ type User = {
   age?: number;
   interests: Array<string>;
 };
+// Note how the type syntax looks pretty similar to the codec! That’s on purpose!
 
 const payload: unknown = getSomeJSON();
 
