@@ -1,7 +1,13 @@
 > [!NOTE]  
-> While working on several breaking changes to tiny-decoders, I tried out releasing them piece by piece. The idea was that you could either upgrade version by version, only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time. That’s why there are so many breaking changes in such a short time.
+> While working on several breaking changes to tiny-decoders, I tried out releasing them piece by piece. The idea was that you could either upgrade version by version, only having to deal with one or a few breaking changes at a time, or wait and do a bunch of them at the same time. That’s why there are so many breaking changes in such a short time in 2023.
 >
 > Currently there are no more breaking changes planned.
+
+### Version 24.0.0 (2026-01-04)
+
+This release removes the CommonJS build from the npm package. Only an ESM file is shipped now (cutting the package size in half).
+
+Note that since Node.js 20 it is still possible to `require("tiny-decoders")`. Node.js supports `require`-ing “simple” ESM modules these days.
 
 ### Version 23.0.0 (2023-10-30)
 
