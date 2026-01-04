@@ -543,7 +543,6 @@ If you have an object and want to use its keys for a string union there’s an e
 ### Version 7.0.0 (2022-03-27)
 
 - Changed: Removed “tolerant decoding”:
-
   - Decoders no longer take an optional second `errors` parameter.
   - The `mode` option has been removed from `array`, `record` and `field`.
   - The `"push"` value has been removed from the `exact` option of `fields` and `fieldsAuto`.
@@ -564,7 +563,6 @@ If you have an object and want to use its keys for a string union there’s an e
 - Removed: Flow support. This package has been re-written in TypeScript and is now TypeScript only.
 
 - Changed: New API.
-
   - Renamed: `map` → `chain`
   - Renamed: `dict` → `record`
   - Renamed: `pair` → `tuple`
