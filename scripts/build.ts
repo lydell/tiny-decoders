@@ -39,33 +39,16 @@ for (const { src, dest = src, transform } of FILES_TO_COPY) {
   }
 }
 
-childProcess.spawnSync(
-  "npx",
-  [
-    "tsc",
-    "--allowJs",
-    "false",
-    "--checkJs",
-    "false",
-    "--module",
-    "CommonJS",
-    "--declaration",
-  ],
-  {
-    shell: true,
-    stdio: "inherit",
-  },
+childProcess.execSync(
+  "npx tsc --allowJs false --checkJs false --module CommonJS --declaration",
+  { stdio: "inherit" },
 );
 
 fs.renameSync(path.join(BUILD, "index.js"), path.join(BUILD, "index.cjs"));
 
-childProcess.spawnSync(
-  "npx",
-  ["tsc", "--allowJs", "false", "--checkJs", "false", "--outDir", MODULE_BUILD],
-  {
-    shell: true,
-    stdio: "inherit",
-  },
+childProcess.execSync(
+  `npx tsc --allowJs false --checkJs false --outDir ${MODULE_BUILD}`,
+  { stdio: "inherit" },
 );
 
 fs.renameSync(

@@ -1,6 +1,7 @@
 // @ts-check
 
 import vitest from "@vitest/eslint-plugin";
+import { defineConfig } from "eslint/config";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import typescriptEslint from "typescript-eslint";
 
@@ -9,7 +10,7 @@ const warn = process.argv.includes("--report-unused-disable-directives")
   ? "error"
   : "warn";
 
-export default typescriptEslint.config(
+export default defineConfig(
   typescriptEslint.configs.base,
   {
     files: ["**/*.{js,ts}"],
